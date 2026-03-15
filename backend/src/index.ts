@@ -1,4 +1,7 @@
+import { join } from "node:path";
 import Fastify from "fastify";
+import multipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
 import { env, validateEnv } from "./config/env";
 import { registerCors } from "./plugins/cors";
 import { registerHelmet } from "./plugins/helmet";
@@ -9,6 +12,11 @@ import { healthRoutes } from "./routes/health.routes";
 import { authRoutes } from "./routes/auth.routes";
 import { customerRoutes } from "./routes/customer.routes";
 import { ticketRoutes } from "./routes/ticket.routes";
+import { attachmentRoutes } from "./routes/attachment.routes";
+import { inventoryRoutes } from "./routes/inventory.routes";
+import { invoiceRoutes } from "./routes/invoice.routes";
+import { dashboardRoutes } from "./routes/dashboard.routes";
+import { userRoutes } from "./routes/user.routes";
 import { closeDb } from "./db/index";
 
 async function main() {
@@ -33,6 +41,20 @@ async function main() {
   await registerJwt(app);
   registerErrorHandler(app);
 
+  // Multipart (file uploads) — registered before routes, 10MB limit
+  await app.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB
+      files: 1,
+    },
+  });
+
+  // Serve uploaded files at /uploads/* (unauthenticated; filenames include UUID prefix)
+  await app.register(fastifyStatic, {
+    root: join(process.cwd(), "uploads"),
+    prefix: "/uploads/",
+  });
+
   // Register routes under /api/v1
   await app.register(
     async (api) => {
@@ -40,6 +62,11 @@ async function main() {
       await api.register(authRoutes);
       await api.register(customerRoutes);
       await api.register(ticketRoutes);
+      await api.register(attachmentRoutes);
+      await api.register(inventoryRoutes);
+      await api.register(invoiceRoutes);
+      await api.register(dashboardRoutes);
+      await api.register(userRoutes);
     },
     { prefix: "/api/v1" },
   );

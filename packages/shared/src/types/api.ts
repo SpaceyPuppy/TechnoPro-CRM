@@ -138,6 +138,152 @@ export interface CreateTicketEventRequest {
   content?: string;
 }
 
+// --- Inventory ---
+
+export interface InventoryItemResponse {
+  id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  stockQty: number | null; // null = stock not tracked
+  cost: string;
+  price: string;
+  barcode: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateInventoryItemRequest {
+  sku: string;
+  name: string;
+  description?: string;
+  stockQty?: number | null;
+  cost?: string;
+  price: string;
+  barcode?: string;
+}
+
+export interface UpdateInventoryItemRequest {
+  sku?: string;
+  name?: string;
+  description?: string;
+  stockQty?: number | null;
+  cost?: string;
+  price?: string;
+  barcode?: string;
+}
+
+// --- Line Items ---
+
+export interface LineItemResponse {
+  id: string;
+  invoiceId: string;
+  inventoryItemId: string | null;
+  type: import("./enums.js").LineItemType;
+  description: string;
+  quantity: number;
+  unitPrice: string;
+  total: string;
+  createdAt: string;
+}
+
+export interface CreateLineItemRequest {
+  type: import("./enums.js").LineItemType;
+  description: string;
+  quantity?: number;
+  unitPrice: string;
+  inventoryItemId?: string;
+}
+
+export interface UpdateLineItemRequest {
+  description?: string;
+  quantity?: number;
+  unitPrice?: string;
+}
+
+// --- Invoices ---
+
+export interface InvoiceResponse {
+  id: string;
+  invoiceNumber: string;
+  ticketId: string | null;
+  subtotal: string;
+  tax: string;
+  total: string;
+  status: import("./enums.js").InvoiceStatus;
+  amountPaid: string;
+  balance: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvoiceDetailResponse extends InvoiceResponse {
+  lineItems: LineItemResponse[];
+  payments: PaymentResponse[];
+}
+
+export interface CreateInvoiceRequest {
+  ticketId?: string;
+}
+
+// --- Payments ---
+
+export interface PaymentResponse {
+  id: string;
+  invoiceId: string;
+  amount: string;
+  method: import("./enums.js").PaymentMethod;
+  reference: string | null;
+  paidAt: string;
+  createdAt: string;
+}
+
+export interface CreatePaymentRequest {
+  amount: string;
+  method: import("./enums.js").PaymentMethod;
+  reference?: string;
+  paidAt?: string;
+}
+
+// --- Attachments ---
+
+export interface AttachmentResponse {
+  id: string;
+  ticketId: string;
+  uploadedById: string;
+  fileName: string;
+  filePath: string;
+  mimeType: string;
+  fileSize: number;
+  createdAt: string;
+}
+
+// --- Dashboard ---
+
+export interface DashboardTicketCount {
+  status: string;
+  count: number;
+}
+
+export interface DashboardRecentEvent {
+  id: string;
+  ticketId: string;
+  ticketNumber: string;
+  ticketSummary: string;
+  eventType: string;
+  content: string | null;
+  createdAt: string;
+}
+
+export interface DashboardStatsResponse {
+  ticketCounts: DashboardTicketCount[];
+  overdueCount: number;
+  todayNewTickets: number;
+  todayRevenue: string;
+  recentEvents: DashboardRecentEvent[];
+  myTickets?: TicketResponse[];
+}
+
 // --- Pagination ---
 
 export interface PaginationParams {

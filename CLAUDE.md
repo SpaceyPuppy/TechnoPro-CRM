@@ -67,15 +67,28 @@ This system handles sensitive customer and business data. Security is non-negoti
 - **IDs:** UUIDs as CHAR(36) in MySQL (readable in queries/logs)
 - **Docs:** Markdown + Mermaid diagrams, ADRs for architectural decisions
 
+## Developer Machines
+
+Chris develops on four Windows machines. At the start of each session, ask which machine he's on and tailor advice accordingly (e.g. whether Flutter is installed, whether the dev environment needs any setup).
+
+| Machine | Node/Web env | Flutter | Notes |
+|---------|-------------|---------|-------|
+| Desktop (home) | Set up 2026-03-15 | Not installed | Main dev machine |
+| ThinkPad | Set up 2026-03-15 | Not installed | |
+| HP Spectre | Unknown | Not installed | |
+| Microsoft Surface | Unknown | Not installed | |
+
+Update this table as each machine gets set up.
+
 ## Stage Plan
 
 | Stage | Focus | Status |
 |-------|-------|--------|
 | 0 | Setup, repo structure, tooling, architecture docs | Complete |
 | 1 | DB schema, migrations, auth, customer/ticket CRUD, health check | Complete |
-| 2 | Web MVP — login, customer pages, ticket pages | Not started |
-| 3 | Inventory, line items, invoices, payments, POS basics | Not started |
-| 4 | Ticket events, attachments, file upload, tech dashboard, email hooks | Not started |
+| 2 | Web MVP — login, customer pages, ticket pages | Complete |
+| 3 | Inventory, line items, invoices, payments, POS basics | Complete |
+| 4 | Ticket events, attachments, file upload, tech dashboard, email hooks | Complete |
 | 5 | Flutter app — login, tickets, photo capture, tablet UI (Android + Windows) | Not started |
 | 6 | Configurable fields, signatures, warranties, deposits, customer tags | Not started |
 | 7 | Reporting, exports, audit logs, roles hardening | Not started |
@@ -93,8 +106,8 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 ## Current State & Resumption Notes
 
 **Last updated:** 2026-03-15
-**Last completed stage:** Stage 1
-**Next stage:** Stage 2 — Web MVP (login, customer pages, ticket pages)
+**Last completed stage:** Stage 4
+**Next stage:** Stage 5 — Flutter app (login, tickets, photo capture, tablet UI)
 
 ### What's done
 
@@ -133,6 +146,48 @@ See `docs/environment-setup.md` for full step-by-step instructions. Quick versio
 5. `npm run seed --workspace=backend`
 6. `npm run backend:dev`
 7. Verify: `curl http://localhost:3000/api/v1/health`
+
+### Flutter dev environment setup (required for Stage 5+)
+
+Required on every machine before working on the Flutter app:
+
+**1. Flutter SDK**
+- Download latest stable from flutter.dev/docs/get-started/install/windows
+- Extract to `C:\flutter` (no spaces in path)
+- Add `C:\flutter\bin` to user PATH
+
+**2. Android Studio** (for Android builds + SDK)
+- Download from developer.android.com/studio
+- During install: enable Android SDK, Android Virtual Device
+- After install: `flutter doctor --android-licenses`
+
+**3. Visual Studio 2022** (for Windows desktop builds)
+- Community edition is free
+- Required workload: **Desktop development with C++**
+
+**4. Scaffold Flutter project** (first time only, from repo root)
+```
+cd flutter
+flutter create --org com.technopro --project-name technopro_crm --platforms android,windows .
+```
+
+**5. Install Flutter dependencies**
+```
+cd flutter
+flutter pub get
+```
+
+**6. Verify**
+```
+flutter doctor
+```
+Green ticks needed for: Flutter, Android toolchain, Windows desktop.
+
+**Device notes:**
+- Desktop (home) — Flutter not yet installed (as of 2026-03-16)
+- ThinkPad — Flutter not yet installed (as of 2026-03-16)
+- HP Spectre — Flutter not yet installed (as of 2026-03-16)
+- Microsoft Surface — Flutter not yet installed (as of 2026-03-16)
 
 ### Known issues fixed
 

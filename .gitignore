@@ -51,6 +51,10 @@ flutter/windows/flutter/ephemeral/
 *.aab
 *.ipa
 
+# Uploaded files (keep directory, ignore contents)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 # Temporary files
 *.tmp
 *.bak
