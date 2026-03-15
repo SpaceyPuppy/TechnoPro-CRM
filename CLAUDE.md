@@ -66,6 +66,7 @@ This system handles sensitive customer and business data. Security is non-negoti
 - **Password hashing:** bcryptjs (pure JS, no native bindings — portable to all hosts)
 - **IDs:** UUIDs as CHAR(36) in MySQL (readable in queries/logs)
 - **Docs:** Markdown + Mermaid diagrams, ADRs for architectural decisions
+- **Package manager (Windows):** Chocolatey — installed on all of Chris's machines, use it for installing dev tools
 
 ## Developer Machines
 
@@ -76,7 +77,7 @@ Chris develops on four Windows machines. At the start of each session, ask which
 | Desktop (home) | Set up 2026-03-15 | Not installed | Main dev machine |
 | ThinkPad | Set up 2026-03-15 | Not installed | |
 | HP Spectre | Unknown | Not installed | |
-| Microsoft Surface | Unknown | Not installed | |
+| Microsoft Surface | Set up 2026-03-16 | Installing 2026-03-16 | VS 2026 Build Tools + vctools already installed; `choco install docker-desktop flutter androidstudio -y` running — reboot required after |
 
 Update this table as each machine gets set up.
 
@@ -108,8 +109,10 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 
 **Last updated:** 2026-03-16
 **Last completed stage:** Stage 4 (all committed, verified working)
-**Next stage:** Stage 5 — Flutter app (blocked on Flutter installation)
+**Next stage:** Stage 5 — Flutter app
 **After Stage 5:** Stage 4.5 — Visual polish
+
+**Surface setup in progress (2026-03-16):** `choco install docker-desktop flutter androidstudio -y` was kicked off in elevated PowerShell. Machine needs a reboot after. Once back up: run `flutter doctor`, accept Android licenses (`flutter doctor --android-licenses`), then confirm green ticks for Flutter + Android toolchain + Windows desktop. After that, set up backend/.env and Docker, then start Stage 5.
 
 ### What's done
 
