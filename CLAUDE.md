@@ -89,8 +89,9 @@ Update this table as each machine gets set up.
 | 2 | Web MVP — login, customer pages, ticket pages | Complete |
 | 3 | Inventory, line items, invoices, payments, POS basics | Complete |
 | 4 | Ticket events, attachments, file upload, tech dashboard, email hooks | Complete |
-| 5 | Flutter app — login, tickets, photo capture, tablet UI (Android + Windows) | Not started |
-| 6 | Configurable fields, signatures, warranties, deposits, customer tags | Not started |
+| 4.5 | Visual polish — colour scheme, typography, empty states, toasts, skeletons | Not started |
+| 5 | Flutter app — login, tickets, customers, inventory, photo capture, tablet UI | Not started |
+| 6 | Configurable fields, GST/tax settings, signatures, warranties, deposits, tags | Not started |
 | 7 | Reporting, exports, audit logs, roles hardening | Not started |
 
 ## How to Drive
@@ -105,36 +106,56 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 
 ## Current State & Resumption Notes
 
-**Last updated:** 2026-03-15
-**Last completed stage:** Stage 4
-**Next stage:** Stage 5 — Flutter app (login, tickets, photo capture, tablet UI)
+**Last updated:** 2026-03-16
+**Last completed stage:** Stage 4 (all committed, verified working)
+**Next stage:** Stage 5 — Flutter app (blocked on Flutter installation)
+**After Stage 5:** Stage 4.5 — Visual polish
 
 ### What's done
 
-- **Stage 0 (Complete):** Repo structure, npm workspaces, Biome config, Docker Compose, architecture docs, ADRs for all tooling decisions, environment setup guide.
-- **Stage 1 (Complete):** Full backend API is built and verified working:
-  - Drizzle schema for all 10 domain entities (users, customers, devices, tickets, ticket_events, ticket_attachments, inventory_items, invoices, payments, line_items)
-  - Shared TypeScript types and enums in @technopro/shared
-  - Fastify server with plugins: CORS, Helmet, rate limiting, JWT auth, error handler
-  - Auth: POST /api/v1/auth/login, GET /api/v1/auth/me (bcryptjs hashing, 12 rounds)
-  - Customer CRUD: GET/POST/PATCH/DELETE /api/v1/customers (with search, pagination)
-  - Ticket CRUD: GET/POST/PATCH /api/v1/tickets (with status/assignee/customer filters)
-  - Ticket events: auto-created on status change, assignment; manual notes via POST /api/v1/tickets/:id/notes
-  - Health check: GET /api/v1/health
-  - Seed script with 4 test users (admin/manager/technician/counter)
-  - Docker Compose for MySQL + phpMyAdmin
-  - 11 passing Vitest tests (auth, pagination, ID generation)
+- **Stage 0 (Complete):** Repo structure, npm workspaces, Biome config, Docker Compose, architecture docs, ADRs.
+- **Stage 1 (Complete):** Full backend API — Drizzle schema, auth, customer/ticket CRUD, health check, seed script, 11 Vitest tests.
+- **Stage 2 (Complete):** Web MVP — React 19, React Router v7, TanStack Query, Zustand, Tailwind v4, shadcn-style components. Login, customers, tickets (full CRUD + status + notes + history).
+- **Stage 3 (Complete):** Inventory CRUD, invoices (standalone + ticket-linked), line items, payments, auto-status progression (draft→open→paid). INV-00001 sequential numbering.
+- **Stage 4 (Complete):** File attachments on tickets (@fastify/multipart + @fastify/static, 10MB, UUID-prefixed filenames). Live dashboard (stats, overdue, revenue, recent activity, "My Tickets" for tech/counter roles). GET /api/v1/users for assignment dropdowns. Assigned To field on ticket forms.
+
+### Tech stack decisions (web)
+
+- **Framework:** React 19 + React Router v7
+- **Data fetching:** TanStack Query (staleTime 30s, retry 1)
+- **State:** Zustand with persist (localStorage key: `technopro-auth`)
+- **Styling:** Tailwind v4 (`@tailwindcss/vite` plugin, `@theme inline` tokens, no config file)
+- **Components:** Hand-rolled shadcn-style with CVA + Radix primitives
+- **Forms:** react-hook-form + zod
+
+### Tech stack decisions (Flutter — Stage 5)
+
+- **State:** Riverpod
+- **Navigation:** go_router (compatible with future offline/Drift layer)
+- **HTTP:** Dio with interceptors
+- **Offline:** Cache-only for Stage 5, full Drift SQLite sync in Stage 6
+- **Camera:** `camera` package (direct preview/control) + file picker fallback on Windows
+- **Scope:** Login, Tickets, Customers, Inventory — match web features as closely as possible. Bottom nav (mobile) / NavigationRail (tablet/desktop). Master-detail split view on wide screens.
+
+### Known open items (deferred)
+
+- **Stage 2 polish:** No loading spinner on customer delete button; no success toast after adding ticket note; customer select capped at 100 (revisit Stage 6); no 401 interceptor for auto-logout (Stage 7)
+- **Stage 6:** GST/tax % in settings — critical for AU businesses, applied to invoices
+- **Stage 6:** Drift SQLite offline sync for Flutter
+- **Stage 7:** 401 interceptor, audit logs, roles hardening
+
+### Test credentials (seed script)
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@technopro.local | admin123 |
+| Manager | manager@technopro.local | manager123 |
+| Technician | tech1@technopro.local | tech123 |
+| Counter | counter@technopro.local | counter123 |
 
 ### What's next
 
-Stage 2 — Web MVP. Before writing code, Claude should present options and discuss:
-- React Router vs TanStack Router
-- State management approach (React Query, Zustand, etc.)
-- UI component library or headless components vs hand-rolled
-- Auth token storage strategy (httpOnly cookies vs localStorage)
-- Folder structure for the web app
-
-Stage 2 scope: login page, auth token handling, customer list/detail/create/edit pages, ticket list/detail/create with status updates, error handling, loading states, navigation.
+Stage 5 — Flutter app. Flutter must be installed first (see Flutter dev environment setup section below). Once installed, run `flutter create` scaffold command, then continue here.
 
 ### How to get running on a new machine
 
@@ -189,8 +210,10 @@ Green ticks needed for: Flutter, Android toolchain, Windows desktop.
 - HP Spectre — Flutter not yet installed (as of 2026-03-16)
 - Microsoft Surface — Flutter not yet installed (as of 2026-03-16)
 
-### Known issues fixed
+### Known issues / gotchas
 
-- Drizzle schema files: removed `.js` extensions from imports (drizzle-kit CJS loader can't resolve them)
-- PowerShell curl: use single quotes for JSON bodies, not escaped double quotes
-- drizzle-kit audit warnings: 4 moderate esbuild vulnerabilities (dev tooling only, upstream issue, safe to ignore)
+- **CORS:** `backend/.env` `CORS_ORIGIN` must list the Vite port. Default is `http://localhost:5173` but if port 5173 is in use Vite increments to 5174 — add both: `CORS_ORIGIN=http://localhost:5173,http://localhost:5174`
+- **Drizzle schema files:** removed `.js` extensions from imports (drizzle-kit CJS loader can't resolve them)
+- **PowerShell curl:** use single quotes for JSON bodies, not escaped double quotes
+- **drizzle-kit audit warnings:** 4 moderate esbuild vulnerabilities — dev tooling only, upstream issue, safe to ignore
+- **mysql2 aggregates:** SUM/MAX return as strings in JS — always wrap with `Number()`. Already handled in invoice and dashboard services.
