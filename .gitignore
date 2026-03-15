@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files — NEVER commit real env files
+.env
+.env.local
+.env.*.local
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Vite
+web/.vite/
+
+# Flutter
+flutter/.dart_tool/
+flutter/.packages
+flutter/build/
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/android/.gradle/
+flutter/android/build/
+flutter/android/app/build/
+flutter/android/local.properties
+flutter/ios/Pods/
+flutter/ios/.symlinks/
+flutter/macos/Flutter/ephemeral/
+flutter/windows/flutter/ephemeral/
+*.apk
+*.aab
+*.ipa
+
+# Temporary files
+*.tmp
+*.bak

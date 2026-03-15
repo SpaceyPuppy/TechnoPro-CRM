@@ -1,0 +1,21 @@
+{
+  "name": "technopro-crm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Internal CRM + POS for tech repair shops",
+  "workspaces": [
+    "backend",
+    "web",
+    "packages/*"
+  ],
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "backend:dev": "npm run dev --workspace=backend",
+    "web:dev": "npm run dev --workspace=web"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
