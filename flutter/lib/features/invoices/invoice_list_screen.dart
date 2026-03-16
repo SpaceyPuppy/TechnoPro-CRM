@@ -45,46 +45,51 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
           ),
         ],
       ),
-      body: listState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.read(invoiceListProvider.notifier).refresh(),
-        ),
-        data: (page) {
-          if (page.data.isEmpty) {
-            return EmptyStateWidget(
-              icon: Icons.receipt_long_outlined,
-              message: 'No invoices yet',
-              action: FloatingActionButton.small(
-                onPressed: () => context.go('/invoices/new'),
-                child: const Icon(Icons.add),
-              ),
-            );
-          }
-          if (tier == LayoutTier.desktop) {
-            return _DesktopInvoiceTable(
-              invoices: page.data,
-              selectedId: widget.selectedId,
-              onTap: (inv) => widget.onSelect != null
-                  ? widget.onSelect!(inv.id)
-                  : context.go('/invoices/${inv.id}'),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () => ref.read(invoiceListProvider.notifier).refresh(),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(8),
-              itemCount: page.data.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
-              itemBuilder: (context, i) => _InvoiceCard(
-                invoice: page.data[i],
-                isSelected: page.data[i].id == widget.selectedId,
-                onTap: () => widget.onSelect != null
-                    ? widget.onSelect!(page.data[i].id)
-                    : context.go('/invoices/${page.data[i].id}'),
-              ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final tier = layoutTier(constraints.maxWidth, isTouch);
+          return listState.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => ErrorView(
+              message: e.toString(),
+              onRetry: () => ref.read(invoiceListProvider.notifier).refresh(),
             ),
+            data: (page) {
+              if (page.data.isEmpty) {
+                return EmptyStateWidget(
+                  icon: Icons.receipt_long_outlined,
+                  message: 'No invoices yet',
+                  action: FloatingActionButton.small(
+                    onPressed: () => context.go('/invoices/new'),
+                    child: const Icon(Icons.add),
+                  ),
+                );
+              }
+              if (tier == LayoutTier.desktop) {
+                return _DesktopInvoiceTable(
+                  invoices: page.data,
+                  selectedId: widget.selectedId,
+                  onTap: (inv) => widget.onSelect != null
+                      ? widget.onSelect!(inv.id)
+                      : context.go('/invoices/${inv.id}'),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: () => ref.read(invoiceListProvider.notifier).refresh(),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: page.data.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                  itemBuilder: (context, i) => _InvoiceCard(
+                    invoice: page.data[i],
+                    isSelected: page.data[i].id == widget.selectedId,
+                    onTap: () => widget.onSelect != null
+                        ? widget.onSelect!(page.data[i].id)
+                        : context.go('/invoices/${page.data[i].id}'),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

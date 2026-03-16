@@ -46,46 +46,51 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
           ),
         ],
       ),
-      body: listState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.read(ticketListProvider.notifier).refresh(),
-        ),
-        data: (page) {
-          if (page.data.isEmpty) {
-            return EmptyStateWidget(
-              icon: Icons.confirmation_number_outlined,
-              message: 'No tickets found',
-              action: FloatingActionButton.small(
-                onPressed: () => context.go('/tickets/new'),
-                child: const Icon(Icons.add),
-              ),
-            );
-          }
-          if (tier == LayoutTier.desktop) {
-            return _DesktopTicketTable(
-              tickets: page.data,
-              selectedId: widget.selectedId,
-              onTap: (t) => widget.onSelect != null
-                  ? widget.onSelect!(t.id)
-                  : context.go('/tickets/${t.id}'),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () => ref.read(ticketListProvider.notifier).refresh(),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(8),
-              itemCount: page.data.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
-              itemBuilder: (context, i) => _TicketCard(
-                ticket: page.data[i],
-                isSelected: page.data[i].id == widget.selectedId,
-                onTap: () => widget.onSelect != null
-                    ? widget.onSelect!(page.data[i].id)
-                    : context.go('/tickets/${page.data[i].id}'),
-              ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final tier = layoutTier(constraints.maxWidth, isTouch);
+          return listState.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => ErrorView(
+              message: e.toString(),
+              onRetry: () => ref.read(ticketListProvider.notifier).refresh(),
             ),
+            data: (page) {
+              if (page.data.isEmpty) {
+                return EmptyStateWidget(
+                  icon: Icons.confirmation_number_outlined,
+                  message: 'No tickets found',
+                  action: FloatingActionButton.small(
+                    onPressed: () => context.go('/tickets/new'),
+                    child: const Icon(Icons.add),
+                  ),
+                );
+              }
+              if (tier == LayoutTier.desktop) {
+                return _DesktopTicketTable(
+                  tickets: page.data,
+                  selectedId: widget.selectedId,
+                  onTap: (t) => widget.onSelect != null
+                      ? widget.onSelect!(t.id)
+                      : context.go('/tickets/${t.id}'),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: () => ref.read(ticketListProvider.notifier).refresh(),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: page.data.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                  itemBuilder: (context, i) => _TicketCard(
+                    ticket: page.data[i],
+                    isSelected: page.data[i].id == widget.selectedId,
+                    onTap: () => widget.onSelect != null
+                        ? widget.onSelect!(page.data[i].id)
+                        : context.go('/tickets/${page.data[i].id}'),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

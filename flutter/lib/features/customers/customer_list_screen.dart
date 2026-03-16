@@ -31,46 +31,51 @@ class CustomerListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: customersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(customerListProvider),
-        ),
-        data: (customers) {
-          if (customers.isEmpty) {
-            return EmptyStateWidget(
-              icon: Icons.people_outline,
-              message: 'No customers yet',
-              action: FloatingActionButton.small(
-                onPressed: () => context.go('/customers/new'),
-                child: const Icon(Icons.add),
-              ),
-            );
-          }
-          if (tier == LayoutTier.desktop) {
-            return _DesktopCustomerTable(
-              customers: customers,
-              selectedId: selectedId,
-              onTap: (c) => onSelect != null
-                  ? onSelect!(c.id)
-                  : context.go('/customers/${c.id}'),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(customerListProvider),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(8),
-              itemCount: customers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
-              itemBuilder: (context, i) => _CustomerCard(
-                customer: customers[i],
-                isSelected: customers[i].id == selectedId,
-                onTap: () => onSelect != null
-                    ? onSelect!(customers[i].id)
-                    : context.go('/customers/${customers[i].id}'),
-              ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final tier = layoutTier(constraints.maxWidth, isTouch);
+          return customersAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => ErrorView(
+              message: e.toString(),
+              onRetry: () => ref.invalidate(customerListProvider),
             ),
+            data: (customers) {
+              if (customers.isEmpty) {
+                return EmptyStateWidget(
+                  icon: Icons.people_outline,
+                  message: 'No customers yet',
+                  action: FloatingActionButton.small(
+                    onPressed: () => context.go('/customers/new'),
+                    child: const Icon(Icons.add),
+                  ),
+                );
+              }
+              if (tier == LayoutTier.desktop) {
+                return _DesktopCustomerTable(
+                  customers: customers,
+                  selectedId: selectedId,
+                  onTap: (c) => onSelect != null
+                      ? onSelect!(c.id)
+                      : context.go('/customers/${c.id}'),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: () async => ref.invalidate(customerListProvider),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: customers.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                  itemBuilder: (context, i) => _CustomerCard(
+                    customer: customers[i],
+                    isSelected: customers[i].id == selectedId,
+                    onTap: () => onSelect != null
+                        ? onSelect!(customers[i].id)
+                        : context.go('/customers/${customers[i].id}'),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

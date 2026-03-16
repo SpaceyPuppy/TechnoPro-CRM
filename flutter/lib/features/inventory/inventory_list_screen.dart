@@ -30,46 +30,51 @@ class InventoryListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: inventoryAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(inventoryListProvider),
-        ),
-        data: (items) {
-          if (items.isEmpty) {
-            return EmptyStateWidget(
-              icon: Icons.inventory_2_outlined,
-              message: 'No inventory items yet',
-              action: FloatingActionButton.small(
-                onPressed: () => context.go('/inventory/new'),
-                child: const Icon(Icons.add),
-              ),
-            );
-          }
-          if (tier == LayoutTier.desktop) {
-            return _DesktopInventoryTable(
-              items: items,
-              selectedId: selectedId,
-              onTap: (item) => onSelect != null
-                  ? onSelect!(item.id)
-                  : context.go('/inventory/${item.id}'),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(inventoryListProvider),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(8),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
-              itemBuilder: (context, i) => _InventoryCard(
-                item: items[i],
-                isSelected: items[i].id == selectedId,
-                onTap: () => onSelect != null
-                    ? onSelect!(items[i].id)
-                    : context.go('/inventory/${items[i].id}'),
-              ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final tier = layoutTier(constraints.maxWidth, isTouch);
+          return inventoryAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => ErrorView(
+              message: e.toString(),
+              onRetry: () => ref.invalidate(inventoryListProvider),
             ),
+            data: (items) {
+              if (items.isEmpty) {
+                return EmptyStateWidget(
+                  icon: Icons.inventory_2_outlined,
+                  message: 'No inventory items yet',
+                  action: FloatingActionButton.small(
+                    onPressed: () => context.go('/inventory/new'),
+                    child: const Icon(Icons.add),
+                  ),
+                );
+              }
+              if (tier == LayoutTier.desktop) {
+                return _DesktopInventoryTable(
+                  items: items,
+                  selectedId: selectedId,
+                  onTap: (item) => onSelect != null
+                      ? onSelect!(item.id)
+                      : context.go('/inventory/${item.id}'),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: () async => ref.invalidate(inventoryListProvider),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                  itemBuilder: (context, i) => _InventoryCard(
+                    item: items[i],
+                    isSelected: items[i].id == selectedId,
+                    onTap: () => onSelect != null
+                        ? onSelect!(items[i].id)
+                        : context.go('/inventory/${items[i].id}'),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
