@@ -5,6 +5,7 @@ import '../../core/api/api_client.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
+import '../invoices/invoices_provider.dart';
 import 'tickets_provider.dart';
 
 class TicketDetailScreen extends ConsumerWidget {
@@ -34,6 +35,8 @@ class TicketDetailScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             _InfoCard(ticket: ticket),
+            const SizedBox(height: 16),
+            _InvoiceSection(ticketId: id),
             const SizedBox(height: 16),
             _AddNoteCard(ticketId: id, onAdded: () {
               ref.invalidate(ticketEventsProvider(id));
@@ -198,6 +201,64 @@ class _AddNoteCardState extends ConsumerState<_AddNoteCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _InvoiceSection extends ConsumerWidget {
+  const _InvoiceSection({required this.ticketId});
+  final String ticketId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final invoiceAsync = ref.watch(ticketInvoiceProvider(ticketId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('Invoice', style: Theme.of(context).textTheme.titleMedium),
+            const Spacer(),
+            invoiceAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (invoice) => invoice == null
+                  ? TextButton.icon(
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Create Invoice'),
+                      onPressed: () =>
+                          context.go('/invoices/new?ticketId=$ticketId'),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        invoiceAsync.when(
+          loading: () => const LinearProgressIndicator(),
+          error: (e, _) => Text('Failed to load invoice: $e'),
+          data: (invoice) => invoice == null
+              ? const Text('No invoice for this ticket',
+                  style: TextStyle(color: Colors.grey))
+              : Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.receipt_outlined),
+                    title: Text(invoice.invoiceNumber),
+                    subtitle: Text(
+                        'Total: \$${invoice.total} · Balance: \$${invoice.balance}'),
+                    trailing: Chip(
+                      label: Text(invoice.statusLabel,
+                          style: const TextStyle(fontSize: 11)),
+                      padding: EdgeInsets.zero,
+                      labelPadding:
+                          const EdgeInsets.symmetric(horizontal: 6),
+                    ),
+                    onTap: () => context.go('/invoices/${invoice.id}'),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

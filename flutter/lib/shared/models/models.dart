@@ -282,6 +282,142 @@ class InventoryItemModel {
       );
 }
 
+// --- Line Items ---
+
+class LineItemModel {
+  final String id;
+  final String invoiceId;
+  final String? inventoryItemId;
+  final String type;
+  final String description;
+  final int quantity;
+  final String unitPrice;
+  final String total;
+  final String createdAt;
+
+  LineItemModel({
+    required this.id,
+    required this.invoiceId,
+    this.inventoryItemId,
+    required this.type,
+    required this.description,
+    required this.quantity,
+    required this.unitPrice,
+    required this.total,
+    required this.createdAt,
+  });
+
+  factory LineItemModel.fromJson(Map<String, dynamic> j) => LineItemModel(
+        id: j['id'] as String,
+        invoiceId: j['invoiceId'] as String,
+        inventoryItemId: j['inventoryItemId'] as String?,
+        type: j['type'] as String,
+        description: j['description'] as String,
+        quantity: j['quantity'] as int,
+        unitPrice: j['unitPrice'] as String,
+        total: j['total'] as String,
+        createdAt: j['createdAt'] as String,
+      );
+}
+
+// --- Payments ---
+
+class PaymentModel {
+  final String id;
+  final String invoiceId;
+  final String amount;
+  final String method;
+  final String? reference;
+  final String paidAt;
+  final String createdAt;
+
+  PaymentModel({
+    required this.id,
+    required this.invoiceId,
+    required this.amount,
+    required this.method,
+    this.reference,
+    required this.paidAt,
+    required this.createdAt,
+  });
+
+  factory PaymentModel.fromJson(Map<String, dynamic> j) => PaymentModel(
+        id: j['id'] as String,
+        invoiceId: j['invoiceId'] as String,
+        amount: j['amount'] as String,
+        method: j['method'] as String,
+        reference: j['reference'] as String?,
+        paidAt: j['paidAt'] as String,
+        createdAt: j['createdAt'] as String,
+      );
+}
+
+// --- Invoices ---
+
+class InvoiceModel {
+  final String id;
+  final String invoiceNumber;
+  final String? ticketId;
+  final String subtotal;
+  final String tax;
+  final String total;
+  final String status;
+  final String amountPaid;
+  final String balance;
+  final String createdAt;
+  final String updatedAt;
+  final List<LineItemModel> lineItems;
+  final List<PaymentModel> payments;
+
+  InvoiceModel({
+    required this.id,
+    required this.invoiceNumber,
+    this.ticketId,
+    required this.subtotal,
+    required this.tax,
+    required this.total,
+    required this.status,
+    required this.amountPaid,
+    required this.balance,
+    required this.createdAt,
+    required this.updatedAt,
+    this.lineItems = const [],
+    this.payments = const [],
+  });
+
+  factory InvoiceModel.fromJson(Map<String, dynamic> j) => InvoiceModel(
+        id: j['id'] as String,
+        invoiceNumber: j['invoiceNumber'] as String,
+        ticketId: j['ticketId'] as String?,
+        subtotal: j['subtotal'] as String,
+        tax: j['tax'] as String,
+        total: j['total'] as String,
+        status: j['status'] as String,
+        amountPaid: j['amountPaid'] as String,
+        balance: j['balance'] as String,
+        createdAt: j['createdAt'] as String,
+        updatedAt: j['updatedAt'] as String,
+        lineItems: (j['lineItems'] as List? ?? [])
+            .map((e) => LineItemModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        payments: (j['payments'] as List? ?? [])
+            .map((e) => PaymentModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
+  String get statusLabel => switch (status) {
+        'draft' => 'Draft',
+        'open' => 'Open',
+        'paid' => 'Paid',
+        'void' => 'Void',
+        _ => status,
+      };
+
+  bool get isPaid => status == 'paid';
+  bool get isVoid => status == 'void';
+  bool get canEdit => status == 'draft';
+}
+
 // --- Pagination ---
 
 class PaginatedResponse<T> {

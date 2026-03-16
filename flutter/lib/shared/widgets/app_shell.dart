@@ -12,12 +12,14 @@ class AppShell extends ConsumerWidget {
     (icon: Icons.confirmation_number_outlined, label: 'Tickets', path: '/tickets'),
     (icon: Icons.people_outline, label: 'Customers', path: '/customers'),
     (icon: Icons.inventory_2_outlined, label: 'Inventory', path: '/inventory'),
+    (icon: Icons.receipt_outlined, label: 'Invoices', path: '/invoices'),
   ];
 
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/customers')) return 1;
     if (location.startsWith('/inventory')) return 2;
+    if (location.startsWith('/invoices')) return 3;
     return 0;
   }
 

@@ -12,6 +12,9 @@ import '../../features/customers/customer_form_screen.dart';
 import '../../features/inventory/inventory_list_screen.dart';
 import '../../features/inventory/inventory_detail_screen.dart';
 import '../../features/inventory/inventory_form_screen.dart';
+import '../../features/invoices/invoice_list_screen.dart';
+import '../../features/invoices/invoice_detail_screen.dart';
+import '../../features/invoices/invoice_form_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -102,6 +105,23 @@ final routerProvider = Provider<GoRouter>((ref) {
                         InventoryFormScreen(id: state.pathParameters['id']!),
                   ),
                 ],
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/invoices',
+            builder: (_, __) => const InvoiceListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (_, state) => InvoiceFormScreen(
+                  ticketId: state.uri.queryParameters['ticketId'],
+                ),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (_, state) =>
+                    InvoiceDetailScreen(id: state.pathParameters['id']!),
               ),
             ],
           ),
