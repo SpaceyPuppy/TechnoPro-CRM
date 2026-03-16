@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import '../../core/providers/layout_provider.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/empty_state_widget.dart';
 import '../../shared/widgets/error_view.dart';
@@ -15,6 +17,9 @@ class CustomerListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final customersAsync = ref.watch(customerListProvider);
+    final width = MediaQuery.sizeOf(context).width;
+    final isTouch = ref.watch(touchModeProvider);
+    final tier = layoutTier(width, isTouch);
 
     return Scaffold(
       appBar: AppBar(
@@ -32,30 +37,42 @@ class CustomerListScreen extends ConsumerWidget {
           message: e.toString(),
           onRetry: () => ref.invalidate(customerListProvider),
         ),
-        data: (customers) => customers.isEmpty
-            ? EmptyStateWidget(
-                icon: Icons.people_outline,
-                message: 'No customers yet',
-                action: FloatingActionButton.small(
-                  onPressed: () => context.go('/customers/new'),
-                  child: const Icon(Icons.add),
-                ),
-              )
-            : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(customerListProvider),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: customers.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (context, i) => _CustomerCard(
-                    customer: customers[i],
-                    isSelected: customers[i].id == selectedId,
-                    onTap: () => onSelect != null
-                        ? onSelect!(customers[i].id)
-                        : context.go('/customers/${customers[i].id}'),
-                  ),
-                ),
+        data: (customers) {
+          if (customers.isEmpty) {
+            return EmptyStateWidget(
+              icon: Icons.people_outline,
+              message: 'No customers yet',
+              action: FloatingActionButton.small(
+                onPressed: () => context.go('/customers/new'),
+                child: const Icon(Icons.add),
               ),
+            );
+          }
+          if (tier == LayoutTier.desktop) {
+            return _DesktopCustomerTable(
+              customers: customers,
+              selectedId: selectedId,
+              onTap: (c) => onSelect != null
+                  ? onSelect!(c.id)
+                  : context.go('/customers/${c.id}'),
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(customerListProvider),
+            child: ListView.separated(
+              padding: const EdgeInsets.all(8),
+              itemCount: customers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              itemBuilder: (context, i) => _CustomerCard(
+                customer: customers[i],
+                isSelected: customers[i].id == selectedId,
+                onTap: () => onSelect != null
+                    ? onSelect!(customers[i].id)
+                    : context.go('/customers/${customers[i].id}'),
+              ),
+            ),
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.go('/customers/new'),
@@ -65,8 +82,134 @@ class CustomerListScreen extends ConsumerWidget {
   }
 }
 
+// --- Desktop table ---
+
+class _DesktopCustomerTable extends StatelessWidget {
+  const _DesktopCustomerTable({
+    required this.customers,
+    required this.selectedId,
+    required this.onTap,
+  });
+
+  final List<CustomerModel> customers;
+  final String? selectedId;
+  final void Function(CustomerModel) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final headerStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          color: colorScheme.surfaceContainerHighest.withAlpha(60),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(children: [
+            Expanded(flex: 2, child: Text('Name', style: headerStyle)),
+            Expanded(flex: 2, child: Text('Email', style: headerStyle)),
+            SizedBox(width: 140, child: Text('Phone', style: headerStyle)),
+            SizedBox(width: 96, child: Text('Added', style: headerStyle)),
+          ]),
+        ),
+        Divider(height: 1, color: colorScheme.outlineVariant),
+        Expanded(
+          child: ListView.separated(
+            itemCount: customers.length,
+            separatorBuilder: (_, __) =>
+                Divider(height: 1, color: colorScheme.outlineVariant),
+            itemBuilder: (context, i) => _DesktopCustomerRow(
+              customer: customers[i],
+              isSelected: customers[i].id == selectedId,
+              onTap: () => onTap(customers[i]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopCustomerRow extends StatelessWidget {
+  const _DesktopCustomerRow({
+    required this.customer,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final CustomerModel customer;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final dateStr = DateFormat('d MMM yy')
+        .format(DateTime.parse(customer.createdAt).toLocal());
+
+    return Material(
+      color: isSelected ? colorScheme.primaryContainer.withAlpha(160) : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(children: [
+            Expanded(
+              flex: 2,
+              child: Row(children: [
+                CircleAvatar(
+                  radius: 14,
+                  child: Text(customer.name[0].toUpperCase(),
+                      style: const TextStyle(fontSize: 12)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(customer.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w500)),
+                ),
+              ]),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(customer.email ?? '—',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant)),
+            ),
+            SizedBox(
+              width: 140,
+              child: Text(customer.phone ?? '—',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onSurfaceVariant)),
+            ),
+            SizedBox(
+              width: 96,
+              child: Text(dateStr,
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.outline)),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Touch/tablet card ---
+
 class _CustomerCard extends StatelessWidget {
-  const _CustomerCard({required this.customer, required this.onTap, this.isSelected = false});
+  const _CustomerCard(
+      {required this.customer, required this.onTap, this.isSelected = false});
 
   final CustomerModel customer;
   final VoidCallback onTap;
