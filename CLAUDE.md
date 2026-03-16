@@ -77,7 +77,7 @@ Chris develops on four Windows machines. At the start of each session, ask which
 | Desktop (home) | Set up 2026-03-15 | Not installed | Main dev machine |
 | ThinkPad | Set up 2026-03-15 | Not installed | |
 | HP Spectre | Unknown | Not installed | |
-| Microsoft Surface | Set up 2026-03-16 | Ready 2026-03-16 | Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0 — all green (`flutter doctor` no issues) |
+| Microsoft Surface | Set up 2026-03-16 | Ready 2026-03-16 | Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0 — all green. ATL component added manually to VS Build Tools (required by flutter_secure_storage_windows) |
 
 Update this table as each machine gets set up.
 
@@ -91,7 +91,7 @@ Update this table as each machine gets set up.
 | 3 | Inventory, line items, invoices, payments, POS basics | Complete |
 | 4 | Ticket events, attachments, file upload, tech dashboard, email hooks | Complete |
 | 4.5 | Visual polish — colour scheme, typography, empty states, toasts, skeletons | Not started |
-| 5 | Flutter app — login, tickets, customers, inventory, photo capture, tablet UI | Not started |
+| 5 | Flutter app — login, tickets, customers, inventory, photo capture, tablet UI | In progress |
 | 6 | Configurable fields, GST/tax settings, signatures, warranties, deposits, tags | Not started |
 | 7 | Reporting, exports, audit logs, roles hardening | Not started |
 
@@ -112,7 +112,7 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 **Next stage:** Stage 5 — Flutter app
 **After Stage 5:** Stage 4.5 — Visual polish
 
-**Surface fully set up (2026-03-16):** Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0, VS 2026 Build Tools — `flutter doctor` all green. Backend running, DB migrated and seeded. Ready for Stage 5.
+**Surface fully set up (2026-03-16):** Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0, VS 2026 Build Tools — `flutter doctor` all green. ATL component added to VS Build Tools (needed for flutter_secure_storage_windows). Backend running, DB migrated and seeded. Stage 5 scaffold complete and building.
 
 ### What's done
 
@@ -158,7 +158,7 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 
 ### What's next
 
-Stage 5 — Flutter app. Surface is fully ready. Next step: scaffold the Flutter project (`flutter create`) then build out login, tickets, customers, inventory with Riverpod + go_router + Dio.
+Stage 5 in progress. Flutter scaffold done, building confirmed. Next: run the app (`flutter run -d windows`), test login + navigation, then iterate on UX (camera/photo capture, tablet master-detail split view, offline indicators).
 
 ### How to get running on a new machine
 
@@ -185,6 +185,12 @@ Reboot after. Then open Android Studio → Settings → SDK Manager → SDK Tool
 - VS 2022 Community: `choco install visualstudio2022community` with workload `Microsoft.VisualStudio.Workload.NativeDesktop`
 - Or if VS Build Tools already installed (check `choco list`): add `visualstudio2022-workload-vctools`
 - Note: VS 2026 Build Tools also satisfies this requirement (confirmed on Surface)
+
+**3. Add ATL component** (required by flutter_secure_storage_windows — run in elevated PowerShell)
+```powershell
+& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify --installPath "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart
+```
+For VS 2022: replace `\18\` with `\2022\`.
 
 **4. Scaffold Flutter project** (first time only, from repo root)
 ```
