@@ -77,7 +77,7 @@ Chris develops on four Windows machines. At the start of each session, ask which
 | Desktop (home) | Set up 2026-03-15 | Not installed | Main dev machine |
 | ThinkPad | Set up 2026-03-15 | Not installed | |
 | HP Spectre | Unknown | Not installed | |
-| Microsoft Surface | Set up 2026-03-16 | Installing 2026-03-16 | VS 2026 Build Tools + vctools already installed; `choco install docker-desktop flutter androidstudio -y` running — reboot required after |
+| Microsoft Surface | Set up 2026-03-16 | Ready 2026-03-16 | Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0 — all green (`flutter doctor` no issues) |
 
 Update this table as each machine gets set up.
 
@@ -112,7 +112,7 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 **Next stage:** Stage 5 — Flutter app
 **After Stage 5:** Stage 4.5 — Visual polish
 
-**Surface setup in progress (2026-03-16):** `choco install docker-desktop flutter androidstudio -y` was kicked off in elevated PowerShell. Machine needs a reboot after. Once back up: run `flutter doctor`, accept Android licenses (`flutter doctor --android-licenses`), then confirm green ticks for Flutter + Android toolchain + Windows desktop. After that, set up backend/.env and Docker, then start Stage 5.
+**Surface fully set up (2026-03-16):** Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0, VS 2026 Build Tools — `flutter doctor` all green. Backend running, DB migrated and seeded. Ready for Stage 5.
 
 ### What's done
 
@@ -158,7 +158,7 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 
 ### What's next
 
-Stage 5 — Flutter app. Flutter must be installed first (see Flutter dev environment setup section below). Once installed, run `flutter create` scaffold command, then continue here.
+Stage 5 — Flutter app. Surface is fully ready. Next step: scaffold the Flutter project (`flutter create`) then build out login, tickets, customers, inventory with Riverpod + go_router + Dio.
 
 ### How to get running on a new machine
 
@@ -175,19 +175,16 @@ See `docs/environment-setup.md` for full step-by-step instructions. Quick versio
 
 Required on every machine before working on the Flutter app:
 
-**1. Flutter SDK**
-- Download latest stable from flutter.dev/docs/get-started/install/windows
-- Extract to `C:\flutter` (no spaces in path)
-- Add `C:\flutter\bin` to user PATH
+**1. Flutter SDK + Android Studio + Docker Desktop** (via Chocolatey — preferred)
+```
+choco install docker-desktop flutter androidstudio -y
+```
+Reboot after. Then: `flutter doctor --android-licenses`
 
-**2. Android Studio** (for Android builds + SDK)
-- Download from developer.android.com/studio
-- During install: enable Android SDK, Android Virtual Device
-- After install: `flutter doctor --android-licenses`
-
-**3. Visual Studio 2022** (for Windows desktop builds)
-- Community edition is free
-- Required workload: **Desktop development with C++**
+**2. Visual Studio C++ workload** (for Windows desktop builds)
+- VS 2022 Community: `choco install visualstudio2022community` with workload `Microsoft.VisualStudio.Workload.NativeDesktop`
+- Or if VS Build Tools already installed (check `choco list`): add `visualstudio2022-workload-vctools`
+- Note: VS 2026 Build Tools also satisfies this requirement (confirmed on Surface)
 
 **4. Scaffold Flutter project** (first time only, from repo root)
 ```
@@ -211,7 +208,7 @@ Green ticks needed for: Flutter, Android toolchain, Windows desktop.
 - Desktop (home) — Flutter not yet installed (as of 2026-03-16)
 - ThinkPad — Flutter not yet installed (as of 2026-03-16)
 - HP Spectre — Flutter not yet installed (as of 2026-03-16)
-- Microsoft Surface — Flutter not yet installed (as of 2026-03-16)
+- Microsoft Surface — Fully set up 2026-03-16, all green
 
 ### Known issues / gotchas
 
