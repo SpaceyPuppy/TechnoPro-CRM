@@ -1,12 +1,15 @@
 import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../auth/auth_storage.dart';
 
 String get _baseUrl {
   if (Platform.isAndroid) return 'http://10.0.2.2:3000/api/v1';
   return 'http://localhost:3000/api/v1';
 }
+
+/// In-memory token — updated by AuthNotifier on login/logout/init.
+/// The interceptor reads this synchronously, avoiding async storage race conditions.
+final tokenProvider = StateProvider<String?>((ref) => null);
 
 final apiClientProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(
@@ -16,12 +19,9 @@ final apiClientProvider = Provider<Dio>((ref) {
     headers: {'Content-Type': 'application/json'},
   ));
 
-  final storage = AuthStorage();
-
-  // Attach JWT to every request
   dio.interceptors.add(InterceptorsWrapper(
-    onRequest: (options, handler) async {
-      final token = await storage.getToken();
+    onRequest: (options, handler) {
+      final token = ref.read(tokenProvider);
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }

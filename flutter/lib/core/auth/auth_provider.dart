@@ -32,17 +32,24 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._dio, this._storage) : super(const AuthState(isLoading: true)) {
+  AuthNotifier(this._ref, this._dio, this._storage)
+      : super(const AuthState(isLoading: true)) {
     _init();
   }
 
+  final Ref _ref;
   final Dio _dio;
   final AuthStorage _storage;
+
+  void _setToken(String? token) {
+    _ref.read(tokenProvider.notifier).state = token;
+  }
 
   Future<void> _init() async {
     final token = await _storage.getToken();
     final user = await _storage.getUser();
     if (token != null && user != null) {
+      _setToken(token);
       state = AuthState(token: token, user: user);
     } else {
       state = const AuthState();
@@ -57,6 +64,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         data: LoginRequest(email: email, password: password).toJson(),
       );
       final body = LoginResponse.fromJson(res.data!['data'] as Map<String, dynamic>);
+      _setToken(body.token);
       await _storage.save(body.token, body.user);
       state = AuthState(token: body.token, user: body.user);
     } on DioException catch (e) {
@@ -65,6 +73,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    _setToken(null);
     await _storage.clear();
     state = const AuthState();
   }
@@ -73,5 +82,5 @@ class AuthNotifier extends StateNotifier<AuthState> {
 final authStorageProvider = Provider<AuthStorage>((ref) => AuthStorage());
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.read(apiClientProvider), ref.read(authStorageProvider));
+  return AuthNotifier(ref, ref.read(apiClientProvider), ref.read(authStorageProvider));
 });

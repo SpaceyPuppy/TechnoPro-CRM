@@ -18,7 +18,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.read(authProvider.notifier);
 
   return GoRouter(
-    initialLocation: '/tickets',
+    initialLocation: '/login',
     redirect: (context, state) {
       final auth = ref.read(authProvider);
 
