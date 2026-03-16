@@ -179,7 +179,7 @@ Required on every machine before working on the Flutter app:
 ```
 choco install docker-desktop flutter androidstudio -y
 ```
-Reboot after. Then: `flutter doctor --android-licenses`
+Reboot after. Then open Android Studio → Settings → SDK Manager → SDK Tools tab → check **Android SDK Command-line Tools** → Apply. Then: `flutter doctor --android-licenses`
 
 **2. Visual Studio C++ workload** (for Windows desktop builds)
 - VS 2022 Community: `choco install visualstudio2022community` with workload `Microsoft.VisualStudio.Workload.NativeDesktop`
