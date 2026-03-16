@@ -6,7 +6,10 @@ import '../../shared/widgets/error_view.dart';
 import 'invoices_provider.dart';
 
 class InvoiceListScreen extends ConsumerStatefulWidget {
-  const InvoiceListScreen({super.key});
+  const InvoiceListScreen({super.key, this.selectedId, this.onSelect});
+
+  final String? selectedId;
+  final void Function(String id)? onSelect;
 
   @override
   ConsumerState<InvoiceListScreen> createState() => _InvoiceListScreenState();
@@ -52,7 +55,10 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
                   itemBuilder: (context, i) => _InvoiceCard(
                     invoice: page.data[i],
-                    onTap: () => context.go('/invoices/${page.data[i].id}'),
+                    isSelected: page.data[i].id == widget.selectedId,
+                    onTap: () => widget.onSelect != null
+                        ? widget.onSelect!(page.data[i].id)
+                        : context.go('/invoices/${page.data[i].id}'),
                   ),
                 ),
               ),
@@ -66,14 +72,16 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
 }
 
 class _InvoiceCard extends StatelessWidget {
-  const _InvoiceCard({required this.invoice, required this.onTap});
+  const _InvoiceCard({required this.invoice, required this.onTap, this.isSelected = false});
 
   final InvoiceModel invoice;
   final VoidCallback onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
       child: ListTile(
         onTap: onTap,
         title: Text(invoice.invoiceNumber),

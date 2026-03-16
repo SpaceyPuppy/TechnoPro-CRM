@@ -15,6 +15,7 @@ import '../../features/inventory/inventory_form_screen.dart';
 import '../../features/invoices/invoice_list_screen.dart';
 import '../../features/invoices/invoice_detail_screen.dart';
 import '../../features/invoices/invoice_form_screen.dart';
+import '../../shared/widgets/adaptive_split_view.dart';
 import '../../shared/widgets/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -46,7 +47,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/tickets',
-            builder: (_, __) => const TicketListScreen(),
+            builder: (_, __) => AdaptiveSplitView(
+              listBuilder: (selectedId, onSelect) =>
+                  TicketListScreen(selectedId: selectedId, onSelect: onSelect),
+              detailBuilder: (id) => TicketDetailScreen(id: id),
+              emptyDetail: const Center(child: Text('Select a ticket', style: TextStyle(color: Colors.grey))),
+            ),
             routes: [
               GoRoute(
                 path: 'new',
@@ -66,7 +72,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/customers',
-            builder: (_, __) => const CustomerListScreen(),
+            builder: (_, __) => AdaptiveSplitView(
+              listBuilder: (selectedId, onSelect) =>
+                  CustomerListScreen(selectedId: selectedId, onSelect: onSelect),
+              detailBuilder: (id) => CustomerDetailScreen(id: id),
+              emptyDetail: const Center(child: Text('Select a customer', style: TextStyle(color: Colors.grey))),
+            ),
             routes: [
               GoRoute(
                 path: 'new',
@@ -88,7 +99,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/inventory',
-            builder: (_, __) => const InventoryListScreen(),
+            builder: (_, __) => AdaptiveSplitView(
+              listBuilder: (selectedId, onSelect) =>
+                  InventoryListScreen(selectedId: selectedId, onSelect: onSelect),
+              detailBuilder: (id) => InventoryDetailScreen(id: id),
+              emptyDetail: const Center(child: Text('Select an item', style: TextStyle(color: Colors.grey))),
+            ),
             routes: [
               GoRoute(
                 path: 'new',
@@ -110,7 +126,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/invoices',
-            builder: (_, __) => const InvoiceListScreen(),
+            builder: (_, __) => AdaptiveSplitView(
+              listBuilder: (selectedId, onSelect) =>
+                  InvoiceListScreen(selectedId: selectedId, onSelect: onSelect),
+              detailBuilder: (id) => InvoiceDetailScreen(id: id),
+              emptyDetail: const Center(child: Text('Select an invoice', style: TextStyle(color: Colors.grey))),
+            ),
             routes: [
               GoRoute(
                 path: 'new',

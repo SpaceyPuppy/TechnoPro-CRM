@@ -6,7 +6,10 @@ import '../../shared/widgets/error_view.dart';
 import 'inventory_provider.dart';
 
 class InventoryListScreen extends ConsumerWidget {
-  const InventoryListScreen({super.key});
+  const InventoryListScreen({super.key, this.selectedId, this.onSelect});
+
+  final String? selectedId;
+  final void Function(String id)? onSelect;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,7 +41,10 @@ class InventoryListScreen extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
                   itemBuilder: (context, i) => _InventoryCard(
                     item: items[i],
-                    onTap: () => context.go('/inventory/${items[i].id}'),
+                    isSelected: items[i].id == selectedId,
+                    onTap: () => onSelect != null
+                        ? onSelect!(items[i].id)
+                        : context.go('/inventory/${items[i].id}'),
                   ),
                 ),
               ),
@@ -52,10 +58,11 @@ class InventoryListScreen extends ConsumerWidget {
 }
 
 class _InventoryCard extends StatelessWidget {
-  const _InventoryCard({required this.item, required this.onTap});
+  const _InventoryCard({required this.item, required this.onTap, this.isSelected = false});
 
   final InventoryItemModel item;
   final VoidCallback onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +79,7 @@ class _InventoryCard extends StatelessWidget {
             : Colors.green;
 
     return Card(
+      color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
       child: ListTile(
         onTap: onTap,
         title: Text(item.name),

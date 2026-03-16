@@ -282,6 +282,43 @@ class InventoryItemModel {
       );
 }
 
+// --- Attachments ---
+
+class AttachmentModel {
+  final String id;
+  final String ticketId;
+  final String uploadedById;
+  final String fileName;
+  final String filePath;
+  final String mimeType;
+  final int fileSize;
+  final String createdAt;
+
+  AttachmentModel({
+    required this.id,
+    required this.ticketId,
+    required this.uploadedById,
+    required this.fileName,
+    required this.filePath,
+    required this.mimeType,
+    required this.fileSize,
+    required this.createdAt,
+  });
+
+  factory AttachmentModel.fromJson(Map<String, dynamic> j) => AttachmentModel(
+        id: j['id'] as String,
+        ticketId: j['ticketId'] as String,
+        uploadedById: j['uploadedById'] as String,
+        fileName: j['fileName'] as String,
+        filePath: j['filePath'] as String,
+        mimeType: j['mimeType'] as String,
+        fileSize: j['fileSize'] as int,
+        createdAt: j['createdAt'] as String,
+      );
+
+  bool get isImage => mimeType.startsWith('image/');
+}
+
 // --- Line Items ---
 
 class LineItemModel {

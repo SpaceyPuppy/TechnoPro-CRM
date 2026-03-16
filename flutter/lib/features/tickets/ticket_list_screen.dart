@@ -7,7 +7,10 @@ import '../../shared/widgets/error_view.dart';
 import 'tickets_provider.dart';
 
 class TicketListScreen extends ConsumerStatefulWidget {
-  const TicketListScreen({super.key});
+  const TicketListScreen({super.key, this.selectedId, this.onSelect});
+
+  final String? selectedId;
+  final void Function(String id)? onSelect;
 
   @override
   ConsumerState<TicketListScreen> createState() => _TicketListScreenState();
@@ -53,7 +56,10 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
                   itemBuilder: (context, i) => _TicketCard(
                     ticket: page.data[i],
-                    onTap: () => context.go('/tickets/${page.data[i].id}'),
+                    isSelected: page.data[i].id == widget.selectedId,
+                    onTap: () => widget.onSelect != null
+                        ? widget.onSelect!(page.data[i].id)
+                        : context.go('/tickets/${page.data[i].id}'),
                   ),
                 ),
               ),
@@ -67,14 +73,16 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
 }
 
 class _TicketCard extends StatelessWidget {
-  const _TicketCard({required this.ticket, required this.onTap});
+  const _TicketCard({required this.ticket, required this.onTap, this.isSelected = false});
 
   final TicketModel ticket;
   final VoidCallback onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
       child: ListTile(
         onTap: onTap,
         leading: _PriorityDot(priority: ticket.priority),

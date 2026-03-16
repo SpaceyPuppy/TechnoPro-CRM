@@ -7,6 +7,9 @@ String get _baseUrl {
   return 'http://localhost:3000/api/v1';
 }
 
+/// Base URL for constructing file/attachment URLs.
+String get apiBaseUrl => _baseUrl;
+
 /// In-memory token — updated by AuthNotifier on login/logout/init.
 /// The interceptor reads this synchronously, avoiding async storage race conditions.
 final tokenProvider = StateProvider<String?>((ref) => null);

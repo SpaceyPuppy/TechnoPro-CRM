@@ -6,6 +6,7 @@ import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
 import '../invoices/invoices_provider.dart';
+import 'ticket_attachments.dart';
 import 'tickets_provider.dart';
 
 class TicketDetailScreen extends ConsumerWidget {
@@ -37,6 +38,8 @@ class TicketDetailScreen extends ConsumerWidget {
             _InfoCard(ticket: ticket),
             const SizedBox(height: 16),
             _InvoiceSection(ticketId: id),
+            const SizedBox(height: 16),
+            TicketAttachmentsSection(ticketId: id),
             const SizedBox(height: 16),
             _AddNoteCard(ticketId: id, onAdded: () {
               ref.invalidate(ticketEventsProvider(id));
