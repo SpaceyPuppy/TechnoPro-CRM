@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/empty_state_widget.dart';
 import '../../shared/widgets/error_view.dart';
 import 'inventory_provider.dart';
 
@@ -32,7 +33,14 @@ class InventoryListScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(inventoryListProvider),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No inventory items found'))
+            ? EmptyStateWidget(
+                icon: Icons.inventory_2_outlined,
+                message: 'No inventory items yet',
+                action: FloatingActionButton.small(
+                  onPressed: () => context.go('/inventory/new'),
+                  child: const Icon(Icons.add),
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: () async => ref.invalidate(inventoryListProvider),
                 child: ListView.separated(

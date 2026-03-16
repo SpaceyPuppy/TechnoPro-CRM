@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { invoicesApi } from "@/api/invoices";
 import { inventoryApi } from "@/api/inventory";
 import { LineItemType, PaymentMethod, InvoiceStatus } from "@technopro/shared";
@@ -51,12 +52,14 @@ function AddLineItemForm({ invoiceId, onDone }: { invoiceId: string; onDone: () 
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["invoices", invoiceId] });
+      toast.success("Item added");
       setDescription("");
       setQuantity("1");
       setUnitPrice("0.00");
       setInventoryItemId("");
       onDone();
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   function handleInventorySelect(id: string) {
@@ -121,7 +124,6 @@ function AddLineItemForm({ invoiceId, onDone }: { invoiceId: string; onDone: () 
         </Button>
         <Button size="sm" variant="outline" onClick={onDone}>Cancel</Button>
       </div>
-      {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
     </div>
   );
 }
@@ -143,8 +145,10 @@ function AddPaymentForm({ invoiceId, balance, onDone }: { invoiceId: string; bal
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["invoices", invoiceId] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Payment recorded");
       onDone();
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   return (
@@ -176,7 +180,6 @@ function AddPaymentForm({ invoiceId, balance, onDone }: { invoiceId: string; bal
         </Button>
         <Button size="sm" variant="outline" onClick={onDone}>Cancel</Button>
       </div>
-      {mutation.error && <p className="text-xs text-destructive">{mutation.error.message}</p>}
     </div>
   );
 }
@@ -199,14 +202,18 @@ export function InvoiceDetailPage() {
     mutationFn: (status: string) => invoicesApi.updateStatus(id!, status),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Invoice updated");
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const removeItemMutation = useMutation({
     mutationFn: (lineItemId: string) => invoicesApi.removeLineItem(id!, lineItemId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["invoices", id] });
+      toast.success("Item removed");
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;

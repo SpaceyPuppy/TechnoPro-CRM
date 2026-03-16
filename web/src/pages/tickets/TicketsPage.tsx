@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, Ticket } from "lucide-react";
 import { ticketsApi } from "@/api/tickets";
 import { TicketStatus } from "@technopro/shared";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import {
   ticketStatusVariant,
   ticketStatusLabel,
@@ -57,7 +58,7 @@ export function TicketsPage() {
         </select>
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+      {isLoading && <TableSkeleton rows={5} cols={5} />}
       {isError && <p className="text-sm text-destructive">Failed to load tickets.</p>}
 
       {data && (
@@ -76,8 +77,11 @@ export function TicketsPage() {
               <tbody className="divide-y">
                 {data.data.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                      No tickets found.
+                    <td colSpan={5} className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Ticket size={32} className="opacity-30" />
+                        <p className="text-sm">No tickets found.</p>
+                      </div>
                     </td>
                   </tr>
                 )}

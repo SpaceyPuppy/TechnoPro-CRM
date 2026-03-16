@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Edit, FileText, Paperclip, Trash2, Image, File } from "lucide-react";
+import { toast } from "sonner";
 import { ticketsApi } from "@/api/tickets";
 import { invoicesApi } from "@/api/invoices";
 import { attachmentsApi } from "@/api/attachments";
@@ -38,9 +39,10 @@ export function TicketDetailPage() {
   const statusMutation = useMutation({
     mutationFn: (status: TicketStatus) => ticketsApi.update(id!, { status }),
     onSuccess: () => {
-      // Invalidate all ticket queries so list views reflect the new status immediately
       qc.invalidateQueries({ queryKey: ["tickets"] });
+      toast.success("Status updated");
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const noteMutation = useMutation({
@@ -48,7 +50,9 @@ export function TicketDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets", id, "events"] });
       setNote("");
+      toast.success("Note added");
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const { data: invoicesData } = useQuery({
@@ -64,20 +68,23 @@ export function TicketDetailPage() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => attachmentsApi.upload(id!, file),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets", id, "attachments"] });
-      setUploadError(null);
+      toast.success("File uploaded");
     },
-    onError: (err: Error) => setUploadError(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const deleteAttachmentMutation = useMutation({
     mutationFn: (attachmentId: string) => attachmentsApi.delete(id!, attachmentId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tickets", id, "attachments"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tickets", id, "attachments"] });
+      toast.success("Attachment deleted");
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const ticketInvoice = invoicesData?.data[0] ?? null;
@@ -236,9 +243,6 @@ export function TicketDetailPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {uploadError && (
-            <p className="text-sm text-destructive mb-3">{uploadError}</p>
-          )}
           {(!attachmentsData || attachmentsData.data.length === 0) && !uploadMutation.isPending && (
             <p className="text-sm text-muted-foreground">No attachments yet.</p>
           )}

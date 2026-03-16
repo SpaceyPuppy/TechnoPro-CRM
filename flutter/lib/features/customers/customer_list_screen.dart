@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/empty_state_widget.dart';
 import '../../shared/widgets/error_view.dart';
 import 'customers_provider.dart';
 
@@ -32,7 +33,14 @@ class CustomerListScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(customerListProvider),
         ),
         data: (customers) => customers.isEmpty
-            ? const Center(child: Text('No customers found'))
+            ? EmptyStateWidget(
+                icon: Icons.people_outline,
+                message: 'No customers yet',
+                action: FloatingActionButton.small(
+                  onPressed: () => context.go('/customers/new'),
+                  child: const Icon(Icons.add),
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: () async => ref.invalidate(customerListProvider),
                 child: ListView.separated(

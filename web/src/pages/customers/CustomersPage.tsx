@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { customersApi } from "@/api/customers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 export function CustomersPage() {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ export function CustomersPage() {
         />
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+      {isLoading && <TableSkeleton rows={5} cols={4} />}
       {isError && <p className="text-sm text-destructive">Failed to load customers.</p>}
 
       {data && (
@@ -59,8 +60,11 @@ export function CustomersPage() {
               <tbody className="divide-y">
                 {data.data.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                      No customers found.
+                    <td colSpan={4} className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Users size={32} className="opacity-30" />
+                        <p className="text-sm">No customers found.</p>
+                      </div>
                     </td>
                   </tr>
                 )}

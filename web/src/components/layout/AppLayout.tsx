@@ -25,7 +25,7 @@ export function AppLayout() {
       <aside className="w-56 flex flex-col border-r bg-card">
         <div className="p-4">
           <Link to="/" className="text-lg font-bold tracking-tight">
-            TechnoPro
+            <span className="text-primary">Techno</span>Pro
           </Link>
           <p className="text-xs text-muted-foreground mt-0.5">CRM</p>
         </div>

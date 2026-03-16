@@ -18,7 +18,7 @@ class TechnoProApp extends ConsumerWidget {
       title: 'TechnoPro CRM',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
         useMaterial3: true,
       ),
       routerConfig: router,

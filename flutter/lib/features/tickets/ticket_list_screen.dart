@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/empty_state_widget.dart';
 import '../../shared/widgets/error_view.dart';
 import 'tickets_provider.dart';
 
@@ -47,7 +48,14 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
           onRetry: () => ref.read(ticketListProvider.notifier).refresh(),
         ),
         data: (page) => page.data.isEmpty
-            ? const Center(child: Text('No tickets found'))
+            ? EmptyStateWidget(
+                icon: Icons.confirmation_number_outlined,
+                message: 'No tickets found',
+                action: FloatingActionButton.small(
+                  onPressed: () => context.go('/tickets/new'),
+                  child: const Icon(Icons.add),
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: () => ref.read(ticketListProvider.notifier).refresh(),
                 child: ListView.separated(

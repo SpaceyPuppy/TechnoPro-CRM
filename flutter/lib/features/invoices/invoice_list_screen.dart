@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/empty_state_widget.dart';
 import '../../shared/widgets/error_view.dart';
 import 'invoices_provider.dart';
 
@@ -46,7 +47,14 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
           onRetry: () => ref.read(invoiceListProvider.notifier).refresh(),
         ),
         data: (page) => page.data.isEmpty
-            ? const Center(child: Text('No invoices found'))
+            ? EmptyStateWidget(
+                icon: Icons.receipt_long_outlined,
+                message: 'No invoices yet',
+                action: FloatingActionButton.small(
+                  onPressed: () => context.go('/invoices/new'),
+                  child: const Icon(Icons.add),
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: () => ref.read(invoiceListProvider.notifier).refresh(),
                 child: ListView.separated(

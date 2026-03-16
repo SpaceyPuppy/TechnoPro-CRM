@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ticketStatusLabel,
   ticketStatusVariant,
@@ -97,7 +98,7 @@ export function DashboardPage() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Active Tickets</p>
-                <p className="text-2xl font-bold mt-1">{isLoading ? "—" : activeCount}</p>
+                {isLoading ? <Skeleton className="h-8 w-12 mt-1" /> : <p className="text-2xl font-bold mt-1">{activeCount}</p>}
               </div>
               <Ticket size={18} className="text-muted-foreground mt-0.5" />
             </div>
@@ -109,7 +110,7 @@ export function DashboardPage() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">In Progress</p>
-                <p className="text-2xl font-bold mt-1">{isLoading ? "—" : inProgressCount}</p>
+                {isLoading ? <Skeleton className="h-8 w-12 mt-1" /> : <p className="text-2xl font-bold mt-1">{inProgressCount}</p>}
               </div>
               <Clock size={18} className="text-muted-foreground mt-0.5" />
             </div>
@@ -121,11 +122,11 @@ export function DashboardPage() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Overdue</p>
-                <p
-                  className={`text-2xl font-bold mt-1 ${(stats?.overdueCount ?? 0) > 0 ? "text-destructive" : ""}`}
-                >
-                  {isLoading ? "—" : (stats?.overdueCount ?? 0)}
-                </p>
+                {isLoading ? <Skeleton className="h-8 w-12 mt-1" /> : (
+                  <p className={`text-2xl font-bold mt-1 ${(stats?.overdueCount ?? 0) > 0 ? "text-destructive" : ""}`}>
+                    {stats?.overdueCount ?? 0}
+                  </p>
+                )}
               </div>
               <AlertTriangle
                 size={18}
@@ -144,9 +145,7 @@ export function DashboardPage() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Today's Revenue</p>
-                <p className="text-2xl font-bold mt-1">
-                  {isLoading ? "—" : formatCurrency(stats?.todayRevenue ?? "0")}
-                </p>
+                {isLoading ? <Skeleton className="h-8 w-20 mt-1" /> : <p className="text-2xl font-bold mt-1">{formatCurrency(stats?.todayRevenue ?? "0")}</p>}
               </div>
               <TrendingUp size={18} className="text-muted-foreground mt-0.5" />
             </div>
@@ -161,7 +160,16 @@ export function DashboardPage() {
             <CardTitle>Tickets by Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+            {isLoading && (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-4 w-6" />
+                  </div>
+                ))}
+              </div>
+            )}
             {sortedCounts.map((c) => (
               <div key={c.status} className="flex items-center justify-between text-sm">
                 <Badge variant={ticketStatusVariant(c.status as TicketStatus)}>
@@ -257,7 +265,16 @@ export function DashboardPage() {
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+          {isLoading && (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex gap-3">
+                  <Skeleton className="h-4 w-14 shrink-0" />
+                  <Skeleton className="h-4 flex-1" />
+                </div>
+              ))}
+            </div>
+          )}
           {!isLoading && (stats?.recentEvents.length ?? 0) === 0 && (
             <p className="text-sm text-muted-foreground">No recent activity.</p>
           )}
