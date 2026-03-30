@@ -13,6 +13,9 @@ function toResponse(row: NonNullable<Awaited<ReturnType<typeof getCustomerById>>
   return {
     id: row.id,
     name: row.name,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    company: row.company,
     email: row.email,
     phone: row.phone,
     notes: row.notes,
@@ -21,16 +24,20 @@ function toResponse(row: NonNullable<Awaited<ReturnType<typeof getCustomerById>>
   };
 }
 
+const customerBodyProperties = {
+  name: { type: "string", minLength: 1, maxLength: 255 },
+  firstName: { type: "string", maxLength: 100 },
+  lastName: { type: "string", maxLength: 100 },
+  company: { type: "string", maxLength: 255 },
+  email: { type: "string", format: "email", maxLength: 255 },
+  phone: { type: "string", maxLength: 50 },
+  notes: { type: "string", maxLength: 5000 },
+} as const;
+
 const createSchema = {
   body: {
     type: "object",
-    required: ["name"],
-    properties: {
-      name: { type: "string", minLength: 1, maxLength: 255 },
-      email: { type: "string", format: "email", maxLength: 255 },
-      phone: { type: "string", maxLength: 50 },
-      notes: { type: "string", maxLength: 5000 },
-    },
+    properties: customerBodyProperties,
     additionalProperties: false,
   },
 } as const;
@@ -38,12 +45,7 @@ const createSchema = {
 const updateSchema = {
   body: {
     type: "object",
-    properties: {
-      name: { type: "string", minLength: 1, maxLength: 255 },
-      email: { type: "string", format: "email", maxLength: 255 },
-      phone: { type: "string", maxLength: 50 },
-      notes: { type: "string", maxLength: 5000 },
-    },
+    properties: customerBodyProperties,
     additionalProperties: false,
   },
 } as const;

@@ -17,6 +17,7 @@ import { inventoryRoutes } from "./routes/inventory.routes";
 import { invoiceRoutes } from "./routes/invoice.routes";
 import { dashboardRoutes } from "./routes/dashboard.routes";
 import { userRoutes } from "./routes/user.routes";
+import { settingsRoutes } from "./routes/settings.routes";
 import { closeDb } from "./db/index";
 
 async function main() {
@@ -67,6 +68,7 @@ async function main() {
       await api.register(invoiceRoutes);
       await api.register(dashboardRoutes);
       await api.register(userRoutes);
+      await api.register(settingsRoutes);
     },
     { prefix: "/api/v1" },
   );

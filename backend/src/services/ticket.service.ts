@@ -2,6 +2,7 @@ import { eq, like, and, or, sql, desc } from "drizzle-orm";
 import { getDb, schema } from "../db/index";
 import { generateId } from "../utils/id";
 import type { CreateTicketRequest, UpdateTicketRequest, TicketStatus } from "@technopro/shared";
+import { createInvoiceWithItems } from "./invoice.service.js";
 
 // Generate sequential ticket numbers: TK-000001, TK-000002, etc.
 async function nextTicketNumber(): Promise<string> {
@@ -78,11 +79,30 @@ export async function createTicket(data: CreateTicketRequest, createdByUserId: s
   const id = generateId();
   const ticketNumber = await nextTicketNumber();
 
+  // Optionally create a new device record
+  let deviceId = data.deviceId ?? null;
+  if (!deviceId && data.device) {
+    deviceId = generateId();
+    await db.insert(schema.devices).values({
+      id: deviceId,
+      customerId: data.customerId,
+      brand: data.device.brand ?? null,
+      model: data.device.model ?? null,
+      serial: data.device.serial ?? null,
+      imei: data.device.imei ?? null,
+      password: data.device.password ?? null,
+      patternLock: data.device.patternLock ?? null,
+      storage: data.device.storage ?? null,
+      color: data.device.color ?? null,
+      carrier: data.device.carrier ?? null,
+    });
+  }
+
   await db.insert(schema.tickets).values({
     id,
     ticketNumber,
     customerId: data.customerId,
-    deviceId: data.deviceId ?? null,
+    deviceId,
     assignedToId: data.assignedToId ?? null,
     priority: data.priority ?? "normal",
     summary: data.summary,
@@ -90,7 +110,6 @@ export async function createTicket(data: CreateTicketRequest, createdByUserId: s
     dueDate: data.dueDate ? new Date(data.dueDate) : null,
   });
 
-  // Auto-create "ticket created" event
   await createTicketEvent(id, createdByUserId, "system", `Ticket ${ticketNumber} created`);
 
   if (data.assignedToId) {
@@ -100,6 +119,11 @@ export async function createTicket(data: CreateTicketRequest, createdByUserId: s
       "assignment",
       `Ticket assigned to user ${data.assignedToId}`,
     );
+  }
+
+  // Optionally create invoice with repair line items
+  if (data.repairs && data.repairs.length > 0) {
+    await createInvoiceWithItems(id, data.repairs);
   }
 
   return getTicketById(id);

@@ -66,6 +66,9 @@ class UserModel {
 class CustomerModel {
   final String id;
   final String name;
+  final String? firstName;
+  final String? lastName;
+  final String? company;
   final String? email;
   final String? phone;
   final String? notes;
@@ -75,6 +78,9 @@ class CustomerModel {
   CustomerModel({
     required this.id,
     required this.name,
+    this.firstName,
+    this.lastName,
+    this.company,
     this.email,
     this.phone,
     this.notes,
@@ -85,12 +91,20 @@ class CustomerModel {
   factory CustomerModel.fromJson(Map<String, dynamic> j) => CustomerModel(
         id: j['id'] as String,
         name: j['name'] as String,
+        firstName: j['firstName'] as String?,
+        lastName: j['lastName'] as String?,
+        company: j['company'] as String?,
         email: j['email'] as String?,
         phone: j['phone'] as String?,
         notes: j['notes'] as String?,
         createdAt: j['createdAt'] as String,
         updatedAt: j['updatedAt'] as String,
       );
+
+  String get displayName {
+    final fullName = [firstName, lastName].where((s) => s != null && s!.isNotEmpty).join(' ');
+    return fullName.isNotEmpty ? fullName : name;
+  }
 }
 
 // --- Devices ---
@@ -103,6 +117,11 @@ class DeviceModel {
   final String? model;
   final String? serial;
   final String? imei;
+  final String? password;
+  final String? patternLock;
+  final String? storage;
+  final String? color;
+  final String? carrier;
   final String? notes;
   final String createdAt;
   final String updatedAt;
@@ -115,6 +134,11 @@ class DeviceModel {
     this.model,
     this.serial,
     this.imei,
+    this.password,
+    this.patternLock,
+    this.storage,
+    this.color,
+    this.carrier,
     this.notes,
     required this.createdAt,
     required this.updatedAt,
@@ -128,15 +152,45 @@ class DeviceModel {
         model: j['model'] as String?,
         serial: j['serial'] as String?,
         imei: j['imei'] as String?,
+        password: j['password'] as String?,
+        patternLock: j['patternLock'] as String?,
+        storage: j['storage'] as String?,
+        color: j['color'] as String?,
+        carrier: j['carrier'] as String?,
         notes: j['notes'] as String?,
         createdAt: j['createdAt'] as String,
         updatedAt: j['updatedAt'] as String,
       );
 
   String get displayName {
-    final parts = [brand, model].where((s) => s != null && s.isNotEmpty).join(' ');
+    final parts = [brand, model].where((s) => s != null && s!.isNotEmpty).join(' ');
     return parts.isNotEmpty ? parts : type ?? 'Unknown Device';
   }
+}
+
+// --- Device Model Entries (Settings) ---
+
+class DeviceModelEntry {
+  final String id;
+  final String manufacturer;
+  final String name;
+  final int sortOrder;
+
+  const DeviceModelEntry({
+    required this.id,
+    required this.manufacturer,
+    required this.name,
+    required this.sortOrder,
+  });
+
+  factory DeviceModelEntry.fromJson(Map<String, dynamic> j) => DeviceModelEntry(
+        id: j['id'] as String,
+        manufacturer: j['manufacturer'] as String,
+        name: j['name'] as String,
+        sortOrder: j['sortOrder'] as int,
+      );
+
+  String get displayName => '$manufacturer $name';
 }
 
 // --- Tickets ---
@@ -329,6 +383,7 @@ class LineItemModel {
   final String description;
   final int quantity;
   final String unitPrice;
+  final String discount;
   final String total;
   final String createdAt;
 
@@ -340,6 +395,7 @@ class LineItemModel {
     required this.description,
     required this.quantity,
     required this.unitPrice,
+    required this.discount,
     required this.total,
     required this.createdAt,
   });
@@ -352,6 +408,7 @@ class LineItemModel {
         description: j['description'] as String,
         quantity: j['quantity'] as int,
         unitPrice: j['unitPrice'] as String,
+        discount: j['discount'] as String? ?? '0.00',
         total: j['total'] as String,
         createdAt: j['createdAt'] as String,
       );

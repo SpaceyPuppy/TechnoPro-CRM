@@ -15,6 +15,8 @@ import '../../features/inventory/inventory_form_screen.dart';
 import '../../features/invoices/invoice_list_screen.dart';
 import '../../features/invoices/invoice_detail_screen.dart';
 import '../../features/invoices/invoice_form_screen.dart';
+import '../../features/settings/settings_screen.dart';
+import '../../features/settings/device_models_screen.dart';
 import '../../shared/widgets/adaptive_split_view.dart';
 import '../../shared/widgets/app_shell.dart';
 import '../../features/dashboard/dashboard_screen.dart';
@@ -148,6 +150,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: ':id',
                 builder: (_, state) =>
                     InvoiceDetailScreen(id: state.pathParameters['id']!),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (_, __) => const SettingsScreen(),
+            routes: [
+              GoRoute(
+                path: 'device-models',
+                builder: (_, __) => const DeviceModelsScreen(),
               ),
             ],
           ),

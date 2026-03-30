@@ -16,6 +16,7 @@ class AppShell extends ConsumerWidget {
     (icon: Icons.people_outline, label: 'Customers', path: '/customers'),
     (icon: Icons.inventory_2_outlined, label: 'Inventory', path: '/inventory'),
     (icon: Icons.receipt_outlined, label: 'Invoices', path: '/invoices'),
+    (icon: Icons.settings_outlined, label: 'Settings', path: '/settings'),
   ];
 
   int _selectedIndex(BuildContext context) {
@@ -24,6 +25,7 @@ class AppShell extends ConsumerWidget {
     if (location.startsWith('/customers')) return 2;
     if (location.startsWith('/inventory')) return 3;
     if (location.startsWith('/invoices'))  return 4;
+    if (location.startsWith('/settings'))  return 5;
     return 0; // '/dashboard'
   }
 
@@ -142,7 +144,7 @@ class AppShell extends ConsumerWidget {
                 .toList(),
           ),
           VerticalDivider(width: 1, color: colorScheme.outlineVariant),
-          _wrapWithBanner(child, isReachable),
+          Expanded(child: _wrapWithBanner(child, isReachable)),
         ],
       ),
     );
@@ -199,7 +201,7 @@ class AppShell extends ConsumerWidget {
                 .toList(),
           ),
           VerticalDivider(width: 1, color: colorScheme.outlineVariant),
-          _wrapWithBanner(child, isReachable),
+          Expanded(child: _wrapWithBanner(child, isReachable)),
         ],
       ),
     );

@@ -36,6 +36,9 @@ export interface UserResponse {
 export interface CustomerResponse {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
+  company: string | null;
   email: string | null;
   phone: string | null;
   notes: string | null;
@@ -44,7 +47,10 @@ export interface CustomerResponse {
 }
 
 export interface CreateCustomerRequest {
-  name: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  company?: string;
   email?: string;
   phone?: string;
   notes?: string;
@@ -52,6 +58,9 @@ export interface CreateCustomerRequest {
 
 export interface UpdateCustomerRequest {
   name?: string;
+  firstName?: string;
+  lastName?: string;
+  company?: string;
   email?: string;
   phone?: string;
   notes?: string;
@@ -67,6 +76,11 @@ export interface DeviceResponse {
   model: string | null;
   serial: string | null;
   imei: string | null;
+  password: string | null;
+  patternLock: string | null;
+  storage: string | null;
+  color: string | null;
+  carrier: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -79,7 +93,33 @@ export interface CreateDeviceRequest {
   model?: string;
   serial?: string;
   imei?: string;
+  password?: string;
+  patternLock?: string;
+  storage?: string;
+  color?: string;
+  carrier?: string;
   notes?: string;
+}
+
+// --- Device Models (Settings) ---
+
+export interface DeviceModelResponse {
+  id: string;
+  manufacturer: string;
+  name: string;
+  sortOrder: number;
+}
+
+export interface CreateDeviceModelRequest {
+  manufacturer: string;
+  name: string;
+  sortOrder?: number;
+}
+
+export interface UpdateDeviceModelRequest {
+  manufacturer?: string;
+  name?: string;
+  sortOrder?: number;
 }
 
 // --- Tickets ---
@@ -101,14 +141,37 @@ export interface TicketResponse {
   updatedAt: string;
 }
 
+export interface TicketRepairItem {
+  type: LineItemType;
+  description: string;
+  unitPrice: string;
+  quantity?: number;
+  discount?: string; // percentage e.g. "10.00"
+  inventoryItemId?: string;
+}
+
+export interface CreateTicketDeviceData {
+  brand?: string;
+  model?: string;
+  serial?: string;
+  imei?: string;
+  password?: string;
+  patternLock?: string;
+  storage?: string;
+  color?: string;
+  carrier?: string;
+}
+
 export interface CreateTicketRequest {
   customerId: string;
   deviceId?: string;
+  device?: CreateTicketDeviceData;
   assignedToId?: string;
   priority?: TicketPriority;
   summary: string;
   description?: string;
   dueDate?: string;
+  repairs?: TicketRepairItem[];
 }
 
 export interface UpdateTicketRequest {
@@ -183,6 +246,7 @@ export interface LineItemResponse {
   description: string;
   quantity: number;
   unitPrice: string;
+  discount: string;
   total: string;
   createdAt: string;
 }

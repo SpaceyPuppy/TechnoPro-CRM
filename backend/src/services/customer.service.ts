@@ -47,12 +47,26 @@ export async function getCustomerById(id: string) {
   return results[0] ?? null;
 }
 
+function buildDisplayName(data: {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+}): string {
+  if (data.firstName || data.lastName) {
+    return [data.firstName, data.lastName].filter(Boolean).join(" ");
+  }
+  return data.name ?? "";
+}
+
 export async function createCustomer(data: CreateCustomerRequest) {
   const db = getDb();
   const id = generateId();
   await db.insert(schema.customers).values({
     id,
-    name: data.name,
+    name: buildDisplayName(data),
+    firstName: data.firstName ?? null,
+    lastName: data.lastName ?? null,
+    company: data.company ?? null,
     email: data.email ?? null,
     phone: data.phone ?? null,
     notes: data.notes ?? null,
@@ -65,15 +79,25 @@ export async function updateCustomer(id: string, data: UpdateCustomerRequest) {
   const existing = await getCustomerById(id);
   if (!existing) return null;
 
-  await db
-    .update(schema.customers)
-    .set({
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.email !== undefined && { email: data.email }),
-      ...(data.phone !== undefined && { phone: data.phone }),
-      ...(data.notes !== undefined && { notes: data.notes }),
-    })
-    .where(eq(schema.customers.id, id));
+  const updates: Record<string, unknown> = {};
+  if (data.firstName !== undefined || data.lastName !== undefined) {
+    updates.firstName = data.firstName ?? existing.firstName;
+    updates.lastName = data.lastName ?? existing.lastName;
+    updates.name = buildDisplayName({
+      firstName: (updates.firstName as string | null) ?? undefined,
+      lastName: (updates.lastName as string | null) ?? undefined,
+    });
+  } else if (data.name !== undefined) {
+    updates.name = data.name;
+  }
+  if (data.company !== undefined) updates.company = data.company;
+  if (data.email !== undefined) updates.email = data.email;
+  if (data.phone !== undefined) updates.phone = data.phone;
+  if (data.notes !== undefined) updates.notes = data.notes;
+
+  if (Object.keys(updates).length > 0) {
+    await db.update(schema.customers).set(updates).where(eq(schema.customers.id, id));
+  }
 
   return getCustomerById(id);
 }

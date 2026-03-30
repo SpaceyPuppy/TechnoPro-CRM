@@ -44,6 +44,7 @@ export const lineItems = mysqlTable("line_items", {
   description: varchar("description", { length: 500 }).notNull(),
   quantity: int("quantity").notNull().default(1),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  discount: decimal("discount", { precision: 5, scale: 2 }).notNull().default("0.00"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),

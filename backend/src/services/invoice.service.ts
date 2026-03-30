@@ -165,12 +165,16 @@ export async function updateInvoiceStatus(id: string, status: "draft" | "open" |
 
 // --- Line items ---
 
-export async function addLineItem(invoiceId: string, data: CreateLineItemRequest) {
+export async function addLineItem(
+  invoiceId: string,
+  data: CreateLineItemRequest & { discount?: string },
+) {
   const db = getDb();
   const id = generateId();
   const quantity = data.quantity ?? 1;
   const unitPrice = parseFloat(data.unitPrice);
-  const total = (quantity * unitPrice).toFixed(2);
+  const discount = parseFloat(data.discount ?? "0");
+  const total = (quantity * unitPrice * (1 - discount / 100)).toFixed(2);
 
   await db.insert(schema.lineItems).values({
     id,
@@ -180,11 +184,44 @@ export async function addLineItem(invoiceId: string, data: CreateLineItemRequest
     description: data.description,
     quantity,
     unitPrice: data.unitPrice,
+    discount: discount.toFixed(2),
     total,
   });
 
   await recalculateTotals(invoiceId);
   return getInvoiceById(invoiceId);
+}
+
+export async function createInvoiceWithItems(
+  ticketId: string,
+  repairs: Array<{
+    type: "service" | "part";
+    description: string;
+    unitPrice: string;
+    quantity?: number;
+    discount?: string;
+    inventoryItemId?: string;
+  }>,
+) {
+  const db = getDb();
+  const id = generateId();
+  const invoiceNumber = await nextInvoiceNumber();
+
+  await db.insert(schema.invoices).values({
+    id,
+    invoiceNumber,
+    ticketId,
+    subtotal: "0.00",
+    tax: "0.00",
+    total: "0.00",
+    status: "draft",
+  });
+
+  for (const repair of repairs) {
+    await addLineItem(id, repair);
+  }
+
+  return getInvoiceById(id);
 }
 
 export async function updateLineItem(
