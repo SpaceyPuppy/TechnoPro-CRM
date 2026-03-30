@@ -17,6 +17,7 @@ import '../../features/invoices/invoice_detail_screen.dart';
 import '../../features/invoices/invoice_form_screen.dart';
 import '../../shared/widgets/adaptive_split_view.dart';
 import '../../shared/widgets/app_shell.dart';
+import '../../features/dashboard/dashboard_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.read(authProvider.notifier);
@@ -32,7 +33,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoginRoute = state.matchedLocation == '/login';
 
       if (!auth.isAuthenticated && !isLoginRoute) return '/login';
-      if (auth.isAuthenticated && isLoginRoute) return '/tickets';
+      if (auth.isAuthenticated && isLoginRoute) return '/dashboard';
 
       return null;
     },
@@ -45,6 +46,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [
+          GoRoute(
+            path: '/dashboard',
+            builder: (_, __) => const DashboardScreen(),
+          ),
           GoRoute(
             path: '/tickets',
             builder: (_, __) => AdaptiveSplitView(

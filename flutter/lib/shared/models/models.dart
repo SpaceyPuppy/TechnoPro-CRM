@@ -455,6 +455,96 @@ class InvoiceModel {
   bool get canEdit => status == 'draft';
 }
 
+// --- Dashboard ---
+
+class DashboardTicketCount {
+  final String status;
+  final int count;
+
+  DashboardTicketCount({required this.status, required this.count});
+
+  factory DashboardTicketCount.fromJson(Map<String, dynamic> j) =>
+      DashboardTicketCount(
+        status: j['status'] as String,
+        count: j['count'] as int,
+      );
+}
+
+class DashboardRecentEvent {
+  final String id;
+  final String ticketId;
+  final String ticketNumber;
+  final String ticketSummary;
+  final String eventType;
+  final String? content;
+  final String createdAt;
+
+  DashboardRecentEvent({
+    required this.id,
+    required this.ticketId,
+    required this.ticketNumber,
+    required this.ticketSummary,
+    required this.eventType,
+    this.content,
+    required this.createdAt,
+  });
+
+  factory DashboardRecentEvent.fromJson(Map<String, dynamic> j) =>
+      DashboardRecentEvent(
+        id: j['id'] as String,
+        ticketId: j['ticketId'] as String,
+        ticketNumber: j['ticketNumber'] as String,
+        ticketSummary: j['ticketSummary'] as String,
+        eventType: j['eventType'] as String,
+        content: j['content'] as String?,
+        createdAt: j['createdAt'] as String,
+      );
+}
+
+class DashboardStats {
+  final List<DashboardTicketCount> ticketCounts;
+  final int overdueCount;
+  final int todayNewTickets;
+  final String todayRevenue;
+  final List<DashboardRecentEvent> recentEvents;
+  final List<TicketModel>? myTickets;
+
+  DashboardStats({
+    required this.ticketCounts,
+    required this.overdueCount,
+    required this.todayNewTickets,
+    required this.todayRevenue,
+    required this.recentEvents,
+    this.myTickets,
+  });
+
+  factory DashboardStats.fromJson(Map<String, dynamic> j) => DashboardStats(
+        ticketCounts: (j['ticketCounts'] as List)
+            .map((e) => DashboardTicketCount.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        overdueCount: j['overdueCount'] as int,
+        todayNewTickets: j['todayNewTickets'] as int,
+        todayRevenue: j['todayRevenue'] as String,
+        recentEvents: (j['recentEvents'] as List)
+            .map((e) => DashboardRecentEvent.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        myTickets: j['myTickets'] != null
+            ? (j['myTickets'] as List)
+                .map((e) => TicketModel.fromJson(e as Map<String, dynamic>))
+                .toList()
+            : null,
+      );
+
+  int get activeCount => ticketCounts
+      .where((c) => c.status != 'closed' && c.status != 'cancelled')
+      .fold(0, (sum, c) => sum + c.count);
+
+  int countForStatus(String status) => ticketCounts
+      .firstWhere((c) => c.status == status,
+          orElse: () => DashboardTicketCount(status: status, count: 0))
+      .count;
+}
+
 // --- Pagination ---
 
 class PaginatedResponse<T> {
