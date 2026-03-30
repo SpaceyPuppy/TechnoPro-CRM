@@ -14,6 +14,10 @@ String get apiBaseUrl => _baseUrl;
 /// The interceptor reads this synchronously, avoiding async storage race conditions.
 final tokenProvider = StateProvider<String?>((ref) => null);
 
+/// True while the server is reachable; flips to false on connection-level errors
+/// and resets to true on the next successful response. Drives the offline banner.
+final serverReachableProvider = StateProvider<bool>((ref) => true);
+
 final apiClientProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(
     baseUrl: _baseUrl,
@@ -30,7 +34,17 @@ final apiClientProvider = Provider<Dio>((ref) {
       }
       handler.next(options);
     },
+    onResponse: (response, handler) {
+      ref.read(serverReachableProvider.notifier).state = true;
+      handler.next(response);
+    },
     onError: (error, handler) {
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        ref.read(serverReachableProvider.notifier).state = false;
+      }
       handler.next(error);
     },
   ));

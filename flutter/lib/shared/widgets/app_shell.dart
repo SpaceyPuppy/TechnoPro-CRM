@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/providers/layout_provider.dart';
 
@@ -10,6 +11,7 @@ class AppShell extends ConsumerWidget {
   final Widget child;
 
   static const _destinations = [
+    (icon: Icons.dashboard_outlined, label: 'Dashboard', path: '/dashboard'),
     (icon: Icons.confirmation_number_outlined, label: 'Tickets', path: '/tickets'),
     (icon: Icons.people_outline, label: 'Customers', path: '/customers'),
     (icon: Icons.inventory_2_outlined, label: 'Inventory', path: '/inventory'),
@@ -18,11 +20,19 @@ class AppShell extends ConsumerWidget {
 
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/customers')) return 1;
-    if (location.startsWith('/inventory')) return 2;
-    if (location.startsWith('/invoices')) return 3;
-    return 0;
+    if (location.startsWith('/tickets'))   return 1;
+    if (location.startsWith('/customers')) return 2;
+    if (location.startsWith('/inventory')) return 3;
+    if (location.startsWith('/invoices'))  return 4;
+    return 0; // '/dashboard'
   }
+
+  Widget _wrapWithBanner(Widget content, bool isReachable) => Column(
+        children: [
+          if (!isReachable) const _OfflineBanner(),
+          Expanded(child: content),
+        ],
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,18 +41,19 @@ class AppShell extends ConsumerWidget {
     final width = MediaQuery.sizeOf(context).width;
     final isTouch = ref.watch(touchModeProvider);
     final tier = layoutTier(width, isTouch);
+    final isReachable = ref.watch(serverReachableProvider);
 
     return switch (tier) {
-      LayoutTier.desktop => _buildDesktop(context, ref, selectedIndex, user),
-      LayoutTier.tablet => _buildTablet(context, ref, selectedIndex, user),
-      LayoutTier.phone => _buildPhone(context, ref, selectedIndex, user),
+      LayoutTier.desktop => _buildDesktop(context, ref, selectedIndex, user, isReachable),
+      LayoutTier.tablet => _buildTablet(context, ref, selectedIndex, user, isReachable),
+      LayoutTier.phone => _buildPhone(context, ref, selectedIndex, user, isReachable),
     };
   }
 
   // --- Desktop: extended NavigationRail (sidebar-style) ---
 
   Widget _buildDesktop(
-      BuildContext context, WidgetRef ref, int selectedIndex, dynamic user) {
+      BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -131,7 +142,7 @@ class AppShell extends ConsumerWidget {
                 .toList(),
           ),
           VerticalDivider(width: 1, color: colorScheme.outlineVariant),
-          Expanded(child: child),
+          _wrapWithBanner(child, isReachable),
         ],
       ),
     );
@@ -140,7 +151,7 @@ class AppShell extends ConsumerWidget {
   // --- Tablet: icon+label NavigationRail ---
 
   Widget _buildTablet(
-      BuildContext context, WidgetRef ref, int selectedIndex, dynamic user) {
+      BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -188,7 +199,7 @@ class AppShell extends ConsumerWidget {
                 .toList(),
           ),
           VerticalDivider(width: 1, color: colorScheme.outlineVariant),
-          Expanded(child: child),
+          _wrapWithBanner(child, isReachable),
         ],
       ),
     );
@@ -197,7 +208,7 @@ class AppShell extends ConsumerWidget {
   // --- Phone: AppBar + BottomNavigationBar ---
 
   Widget _buildPhone(
-      BuildContext context, WidgetRef ref, int selectedIndex, dynamic user) {
+      BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -224,7 +235,7 @@ class AppShell extends ConsumerWidget {
           ),
         ],
       ),
-      body: child,
+      body: _wrapWithBanner(child, isReachable),
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (i) => context.go(_destinations[i].path),
@@ -234,6 +245,39 @@ class AppShell extends ConsumerWidget {
                   label: d.label,
                 ))
             .toList(),
+      ),
+    );
+  }
+}
+
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: colorScheme.errorContainer,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.cloud_off_outlined,
+                  size: 16, color: colorScheme.onErrorContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Cannot reach server — check your connection',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

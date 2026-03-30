@@ -90,8 +90,8 @@ Update this table as each machine gets set up.
 | 2 | Web MVP — login, customer pages, ticket pages | Complete |
 | 3 | Inventory, line items, invoices, payments, POS basics | Complete |
 | 4 | Ticket events, attachments, file upload, tech dashboard, email hooks | Complete |
-| 4.5 | Visual polish — colour scheme, typography, empty states, toasts, skeletons | Not started |
-| 5 | Flutter app — login, tickets, customers, inventory, photo capture, tablet UI | In progress |
+| 4.5 | Visual polish — colour scheme, typography, empty states, toasts, skeletons | Complete |
+| 5 | Flutter app — login, tickets, customers, inventory, photo capture, tablet UI | Complete |
 | 6 | Configurable fields, GST/tax settings, signatures, warranties, deposits, tags | Not started |
 | 7 | Reporting, exports, audit logs, roles hardening | Not started |
 
@@ -107,12 +107,11 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 
 ## Current State & Resumption Notes
 
-**Last updated:** 2026-03-16
-**Last completed stage:** Stage 4 (all committed, verified working)
-**Next stage:** Stage 5 — Flutter app
-**After Stage 5:** Stage 4.5 — Visual polish
+**Last updated:** 2026-03-30
+**Last completed stage:** Stage 5 (all committed, verified working)
+**Next stage:** Stage 6 — Configurable fields, GST/tax, signatures, warranties, deposits, tags
 
-**Surface fully set up (2026-03-16):** Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0, VS 2026 Build Tools — `flutter doctor` all green. ATL component added to VS Build Tools (needed for flutter_secure_storage_windows). Backend running, DB migrated and seeded. Stage 5 scaffold complete and building.
+**Surface fully set up (2026-03-16):** Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0, VS 2026 Build Tools — `flutter doctor` all green. ATL component added to VS Build Tools (needed for flutter_secure_storage_windows). Backend running, DB migrated and seeded.
 
 ### What's done
 
@@ -121,6 +120,8 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 - **Stage 2 (Complete):** Web MVP — React 19, React Router v7, TanStack Query, Zustand, Tailwind v4, shadcn-style components. Login, customers, tickets (full CRUD + status + notes + history).
 - **Stage 3 (Complete):** Inventory CRUD, invoices (standalone + ticket-linked), line items, payments, auto-status progression (draft→open→paid). INV-00001 sequential numbering.
 - **Stage 4 (Complete):** File attachments on tickets (@fastify/multipart + @fastify/static, 10MB, UUID-prefixed filenames). Live dashboard (stats, overdue, revenue, recent activity, "My Tickets" for tech/counter roles). GET /api/v1/users for assignment dropdowns. Assigned To field on ticket forms.
+- **Stage 4.5 (Complete):** Visual polish — brand colour scheme, Inter font, toast notifications (sonner), skeleton loading states, empty states across all pages.
+- **Stage 5 (Complete):** Flutter app — login, tickets, customers, inventory, invoices/line items/payments, ticket attachments with camera (Android) / file picker (Windows). Adaptive split view, three-tier layout (desktop tables vs cards), touch detection, Inter font. Dashboard screen (stats cards, status breakdown, My Tickets for technician/counter, recent activity). Global offline connectivity banner in AppShell.
 
 ### Tech stack decisions (web)
 
@@ -158,7 +159,14 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 
 ### What's next
 
-Stage 5 in progress. Flutter scaffold done, building confirmed. Next: run the app (`flutter run -d windows`), test login + navigation, then iterate on UX (camera/photo capture, tablet master-detail split view, offline indicators).
+Stage 6. Key objectives:
+- Configurable fields (custom ticket fields, device fields)
+- GST/tax settings — percentage configurable in Settings, applied to invoices (critical for AU businesses)
+- Signatures on tickets (customer sign-off)
+- Warranties on line items/tickets
+- Deposits
+- Tags on tickets/customers
+- Drift SQLite offline sync for Flutter (replacing cache-only Stage 5 approach)
 
 ### How to get running on a new machine
 
