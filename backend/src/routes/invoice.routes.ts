@@ -4,6 +4,7 @@ import {
   getInvoiceById,
   createInvoice,
   updateInvoiceStatus,
+  updateQuoteStatus,
   addLineItem,
   updateLineItem,
   removeLineItem,
@@ -22,10 +23,15 @@ function invoiceToResponse(inv: NonNullable<Awaited<ReturnType<typeof getInvoice
     id: inv.id,
     invoiceNumber: inv.invoiceNumber,
     ticketId: inv.ticketId,
+    type: inv.type,
+    quoteStatus: inv.quoteStatus,
+    convertedTicketId: inv.convertedTicketId,
     subtotal: inv.subtotal,
-    tax: inv.tax,
+    taxRate: inv.taxRate,
+    taxAmount: inv.taxAmount,
     total: inv.total,
     status: inv.status,
+    notes: inv.notes,
     amountPaid: inv.amountPaid,
     balance: inv.balance,
     createdAt: inv.createdAt.toISOString(),
@@ -38,6 +44,7 @@ function invoiceToResponse(inv: NonNullable<Awaited<ReturnType<typeof getInvoice
       description: li.description,
       quantity: li.quantity,
       unitPrice: li.unitPrice,
+      discount: li.discount,
       total: li.total,
       createdAt: li.createdAt.toISOString(),
     })),
@@ -46,6 +53,7 @@ function invoiceToResponse(inv: NonNullable<Awaited<ReturnType<typeof getInvoice
       invoiceId: p.invoiceId,
       amount: p.amount,
       method: p.method,
+      type: p.type,
       reference: p.reference,
       paidAt: p.paidAt.toISOString(),
       createdAt: p.createdAt.toISOString(),
@@ -58,8 +66,11 @@ function listInvoiceToResponse(inv: Awaited<ReturnType<typeof listInvoices>>["ro
     id: inv.id,
     invoiceNumber: inv.invoiceNumber,
     ticketId: inv.ticketId,
+    type: inv.type,
+    quoteStatus: inv.quoteStatus,
     subtotal: inv.subtotal,
-    tax: inv.tax,
+    taxRate: inv.taxRate,
+    taxAmount: inv.taxAmount,
     total: inv.total,
     status: inv.status,
     amountPaid: inv.amountPaid,
@@ -74,6 +85,7 @@ const createInvoiceSchema = {
     type: "object",
     properties: {
       ticketId: { type: "string", minLength: 36, maxLength: 36 },
+      type: { type: "string", enum: ["invoice", "quote"] },
     },
     additionalProperties: false,
   },
@@ -90,6 +102,17 @@ const statusSchema = {
   },
 } as const;
 
+const quoteStatusSchema = {
+  body: {
+    type: "object",
+    required: ["quoteStatus"],
+    properties: {
+      quoteStatus: { type: "string", enum: ["draft", "sent", "accepted", "declined"] },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
 const lineItemSchema = {
   body: {
     type: "object",
@@ -99,6 +122,7 @@ const lineItemSchema = {
       description: { type: "string", minLength: 1, maxLength: 500 },
       quantity: { type: "integer", minimum: 1 },
       unitPrice: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
+      discount: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       inventoryItemId: { type: "string", minLength: 36, maxLength: 36 },
     },
     additionalProperties: false,
@@ -124,6 +148,7 @@ const paymentSchema = {
     properties: {
       amount: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       method: { type: "string", enum: ["cash", "card", "eftpos", "bank_transfer", "other"] },
+      type: { type: "string", enum: ["deposit", "payment", "refund"] },
       reference: { type: "string", maxLength: 255 },
       paidAt: { type: "string", format: "date-time" },
     },
@@ -134,9 +159,9 @@ const paymentSchema = {
 export async function invoiceRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
-  // List invoices
+  // List invoices/quotes
   app.get<{
-    Querystring: { page?: number; pageSize?: number; status?: string; ticketId?: string };
+    Querystring: { page?: number; pageSize?: number; status?: string; ticketId?: string; type?: string };
   }>("/invoices", async (request, reply) => {
     const { page, pageSize } = parsePagination(request.query);
     const { rows, totalCount } = await listInvoices({
@@ -144,6 +169,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
       pageSize,
       status: request.query.status,
       ticketId: request.query.ticketId,
+      type: request.query.type as "invoice" | "quote" | undefined,
     });
     return reply.send({
       data: rows.map(listInvoiceToResponse),
@@ -151,7 +177,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
     });
   });
 
-  // Get invoice by ID (includes line items + payments)
+  // Get invoice/quote by ID
   app.get<{ Params: { id: string } }>("/invoices/:id", async (request, reply) => {
     const inv = await getInvoiceById(request.params.id);
     if (!inv) {
@@ -160,8 +186,8 @@ export async function invoiceRoutes(app: FastifyInstance) {
     return reply.send({ data: invoiceToResponse(inv) });
   });
 
-  // Create invoice
-  app.post<{ Body: CreateInvoiceRequest }>(
+  // Create invoice or quote
+  app.post<{ Body: CreateInvoiceRequest & { type?: "invoice" | "quote" } }>(
     "/invoices",
     { schema: createInvoiceSchema },
     async (request, reply) => {
@@ -178,6 +204,19 @@ export async function invoiceRoutes(app: FastifyInstance) {
       const inv = await updateInvoiceStatus(request.params.id, request.body.status);
       if (!inv) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Invoice not found" } });
+      }
+      return reply.send({ data: invoiceToResponse(inv) });
+    },
+  );
+
+  // Update quote status
+  app.patch<{ Params: { id: string }; Body: { quoteStatus: "draft" | "sent" | "accepted" | "declined" } }>(
+    "/invoices/:id/quote-status",
+    { schema: quoteStatusSchema },
+    async (request, reply) => {
+      const inv = await updateQuoteStatus(request.params.id, request.body.quoteStatus);
+      if (!inv) {
+        return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Quote not found" } });
       }
       return reply.send({ data: invoiceToResponse(inv) });
     },
@@ -225,12 +264,16 @@ export async function invoiceRoutes(app: FastifyInstance) {
     },
   );
 
-  // Add payment
-  app.post<{ Params: { id: string }; Body: CreatePaymentRequest }>(
+  // Add payment (supports type: deposit | payment | refund)
+  app.post<{ Params: { id: string }; Body: CreatePaymentRequest & { type?: string } }>(
     "/invoices/:id/payments",
     { schema: paymentSchema },
     async (request, reply) => {
-      const inv = await addPayment(request.params.id, request.body, request.user.id);
+      const inv = await addPayment(
+        request.params.id,
+        request.body as CreatePaymentRequest & { type?: "deposit" | "payment" | "refund" },
+        request.user.id,
+      );
       if (!inv) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Invoice not found" } });
       }

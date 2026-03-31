@@ -421,6 +421,7 @@ class PaymentModel {
   final String invoiceId;
   final String amount;
   final String method;
+  final String type; // deposit | payment | refund
   final String? reference;
   final String paidAt;
   final String createdAt;
@@ -430,6 +431,7 @@ class PaymentModel {
     required this.invoiceId,
     required this.amount,
     required this.method,
+    this.type = 'payment',
     this.reference,
     required this.paidAt,
     required this.createdAt,
@@ -440,10 +442,14 @@ class PaymentModel {
         invoiceId: j['invoiceId'] as String,
         amount: j['amount'] as String,
         method: j['method'] as String,
+        type: j['type'] as String? ?? 'payment',
         reference: j['reference'] as String?,
         paidAt: j['paidAt'] as String,
         createdAt: j['createdAt'] as String,
       );
+
+  bool get isDeposit => type == 'deposit';
+  bool get isRefund => type == 'refund';
 }
 
 // --- Invoices ---
@@ -452,10 +458,15 @@ class InvoiceModel {
   final String id;
   final String invoiceNumber;
   final String? ticketId;
+  final String type; // invoice | quote
+  final String? quoteStatus; // draft | sent | accepted | declined
+  final String? convertedTicketId;
   final String subtotal;
-  final String tax;
+  final String taxRate;
+  final String taxAmount;
   final String total;
   final String status;
+  final String? notes;
   final String amountPaid;
   final String balance;
   final String createdAt;
@@ -467,10 +478,15 @@ class InvoiceModel {
     required this.id,
     required this.invoiceNumber,
     this.ticketId,
+    this.type = 'invoice',
+    this.quoteStatus,
+    this.convertedTicketId,
     required this.subtotal,
-    required this.tax,
+    this.taxRate = '0.00',
+    this.taxAmount = '0.00',
     required this.total,
     required this.status,
+    this.notes,
     required this.amountPaid,
     required this.balance,
     required this.createdAt,
@@ -483,10 +499,15 @@ class InvoiceModel {
         id: j['id'] as String,
         invoiceNumber: j['invoiceNumber'] as String,
         ticketId: j['ticketId'] as String?,
+        type: j['type'] as String? ?? 'invoice',
+        quoteStatus: j['quoteStatus'] as String?,
+        convertedTicketId: j['convertedTicketId'] as String?,
         subtotal: j['subtotal'] as String,
-        tax: j['tax'] as String,
+        taxRate: j['taxRate'] as String? ?? '0.00',
+        taxAmount: j['taxAmount'] as String? ?? '0.00',
         total: j['total'] as String,
         status: j['status'] as String,
+        notes: j['notes'] as String?,
         amountPaid: j['amountPaid'] as String,
         balance: j['balance'] as String,
         createdAt: j['createdAt'] as String,
@@ -499,6 +520,12 @@ class InvoiceModel {
             .toList(),
       );
 
+  bool get isQuote => type == 'quote';
+  bool get isInvoice => type == 'invoice';
+  bool get isPaid => status == 'paid';
+  bool get isVoid => status == 'void';
+  bool get canEdit => status == 'draft';
+
   String get statusLabel => switch (status) {
         'draft' => 'Draft',
         'open' => 'Open',
@@ -507,9 +534,49 @@ class InvoiceModel {
         _ => status,
       };
 
-  bool get isPaid => status == 'paid';
-  bool get isVoid => status == 'void';
-  bool get canEdit => status == 'draft';
+  String get quoteStatusLabel => switch (quoteStatus) {
+        'draft' => 'Draft',
+        'sent' => 'Sent',
+        'accepted' => 'Accepted',
+        'declined' => 'Declined',
+        _ => 'Draft',
+      };
+
+  // Deposits are payments with type=deposit
+  List<PaymentModel> get deposits => payments.where((p) => p.isDeposit).toList();
+  List<PaymentModel> get regularPayments => payments.where((p) => !p.isDeposit).toList();
+}
+
+// --- App Settings ---
+
+class AppSettings {
+  final String businessName;
+  final String businessAbn;
+  final String businessAddress;
+  final String businessPhone;
+  final String businessEmail;
+  final String gstRate;
+  final String invoiceNotes;
+
+  AppSettings({
+    required this.businessName,
+    required this.businessAbn,
+    required this.businessAddress,
+    required this.businessPhone,
+    required this.businessEmail,
+    required this.gstRate,
+    required this.invoiceNotes,
+  });
+
+  factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
+        businessName: j['business_name'] as String? ?? '',
+        businessAbn: j['business_abn'] as String? ?? '',
+        businessAddress: j['business_address'] as String? ?? '',
+        businessPhone: j['business_phone'] as String? ?? '',
+        businessEmail: j['business_email'] as String? ?? '',
+        gstRate: j['gst_rate'] as String? ?? '10.00',
+        invoiceNotes: j['invoice_notes'] as String? ?? '',
+      );
 }
 
 // --- Dashboard ---

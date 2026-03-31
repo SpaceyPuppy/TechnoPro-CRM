@@ -7,13 +7,22 @@ export const invoices = mysqlTable("invoices", {
   id: char("id", { length: 36 }).primaryKey(),
   invoiceNumber: varchar("invoice_number", { length: 20 }).notNull().unique(),
   ticketId: char("ticket_id", { length: 36 }).references(() => tickets.id),
+  type: varchar("type", { length: 10 })
+    .notNull()
+    .default("invoice")
+    .$type<"invoice" | "quote">(),
+  quoteStatus: varchar("quote_status", { length: 20 })
+    .$type<"draft" | "sent" | "accepted" | "declined">(),
+  convertedTicketId: char("converted_ticket_id", { length: 36 }).references(() => tickets.id),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull().default("0.00"),
-  tax: decimal("tax", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).notNull().default("0.00"),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull().default("0.00"),
   status: varchar("status", { length: 20 })
     .notNull()
     .default("draft")
     .$type<"draft" | "open" | "paid" | "void">(),
+  notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
@@ -27,6 +36,10 @@ export const payments = mysqlTable("payments", {
   method: varchar("method", { length: 30 })
     .notNull()
     .$type<"cash" | "card" | "eftpos" | "bank_transfer" | "other">(),
+  type: varchar("type", { length: 20 })
+    .notNull()
+    .default("payment")
+    .$type<"deposit" | "payment" | "refund">(),
   reference: varchar("reference", { length: 255 }),
   createdByUserId: char("created_by_user_id", { length: 36 }).references(() => users.id),
   paidAt: timestamp("paid_at").notNull().defaultNow(),

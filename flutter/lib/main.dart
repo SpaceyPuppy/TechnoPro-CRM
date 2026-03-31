@@ -17,28 +17,11 @@ class TechnoProApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final baseTextTheme = ThemeData(useMaterial3: true).textTheme;
 
     return MaterialApp.router(
-      title: 'TechnoPro CRM',
+      title: 'First Choice Phone Repair',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
-        useMaterial3: true,
-        textTheme: GoogleFonts.interTextTheme(baseTextTheme),
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          scrolledUnderElevation: 1,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: Color(0xFFE2E8F0)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      ),
-      // Allow mouse-drag scrolling on desktop
+      theme: _buildTheme(),
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {
           PointerDeviceKind.mouse,
@@ -50,10 +33,114 @@ class TechnoProApp extends ConsumerWidget {
       builder: (context, child) => _TouchDetector(child: child!),
     );
   }
+
+  ThemeData _buildTheme() {
+    const primary = Color(0xFF1D4ED8);
+    const primaryContainer = Color(0xFFDBEAFE);
+    const surface = Color(0xFFF8FAFC);
+    const surfaceContainer = Color(0xFFFFFFFF);
+    const outline = Color(0xFFCBD5E1);
+
+    final base = ThemeData(useMaterial3: true);
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.light,
+    ).copyWith(
+      primary: primary,
+      primaryContainer: primaryContainer,
+      surface: surface,
+      surfaceContainerLowest: const Color(0xFFFFFFFF),
+      surfaceContainerLow: const Color(0xFFF1F5F9),
+      surfaceContainer: const Color(0xFFE2E8F0),
+      surfaceContainerHigh: const Color(0xFFCBD5E1),
+      outline: const Color(0xFF94A3B8),
+      outlineVariant: outline,
+      onSurfaceVariant: const Color(0xFF475569),
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: surface,
+      textTheme: GoogleFonts.interTextTheme(base.textTheme),
+      appBarTheme: AppBarTheme(
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: surfaceContainer,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF0F172A),
+        ),
+        iconTheme: const IconThemeData(color: Color(0xFF475569)),
+        shape: const Border(
+          bottom: BorderSide(color: outline),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: surfaceContainer,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: outline),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: outline,
+        space: 1,
+        thickness: 1,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surfaceContainer,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: outline),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: outline),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        isDense: true,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primary,
+          side: const BorderSide(color: outline),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        side: BorderSide.none,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 2,
+      ),
+    );
+  }
 }
 
-/// Listens for pointer-device kind on Windows/desktop and updates [touchModeProvider].
-/// On Android/iOS this is a no-op (always touch).
 class _TouchDetector extends ConsumerWidget {
   const _TouchDetector({required this.child});
   final Widget child;

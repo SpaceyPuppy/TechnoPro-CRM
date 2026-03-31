@@ -90,33 +90,36 @@ class _StatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final crossAxisCount = tier == LayoutTier.desktop ? 4 : 2;
-    final colorScheme = Theme.of(context).colorScheme;
     final currencyFmt = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
     final cards = [
       _StatCardData(
-        icon: Icons.confirmation_number_outlined,
+        icon: Icons.confirmation_number_rounded,
         label: 'Active Tickets',
         value: stats.activeCount.toString(),
-        color: null,
+        iconColor: const Color(0xFF3B82F6),
+        iconBg: const Color(0xFFEFF6FF),
       ),
       _StatCardData(
-        icon: Icons.warning_amber_outlined,
+        icon: Icons.warning_amber_rounded,
         label: 'Overdue',
         value: stats.overdueCount.toString(),
-        color: stats.overdueCount > 0 ? colorScheme.error : null,
+        iconColor: const Color(0xFFEF4444),
+        iconBg: const Color(0xFFFEF2F2),
       ),
       _StatCardData(
-        icon: Icons.calendar_today_outlined,
+        icon: Icons.add_circle_rounded,
         label: 'New Today',
         value: stats.todayNewTickets.toString(),
-        color: null,
+        iconColor: const Color(0xFF10B981),
+        iconBg: const Color(0xFFECFDF5),
       ),
       _StatCardData(
-        icon: Icons.payments_outlined,
+        icon: Icons.payments_rounded,
         label: "Today's Revenue",
         value: currencyFmt.format(double.tryParse(stats.todayRevenue) ?? 0.0),
-        color: null,
+        iconColor: const Color(0xFF8B5CF6),
+        iconBg: const Color(0xFFF5F3FF),
       ),
     ];
 
@@ -126,7 +129,7 @@ class _StatsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: tier == LayoutTier.desktop ? 2.2 : 1.6,
+      childAspectRatio: tier == LayoutTier.desktop ? 2.8 : 2.2,
       children: cards.map((c) => _StatCard(data: c)).toList(),
     );
   }
@@ -136,13 +139,15 @@ class _StatCardData {
   final IconData icon;
   final String label;
   final String value;
-  final Color? color;
+  final Color iconColor;
+  final Color iconBg;
 
   const _StatCardData({
     required this.icon,
     required this.label,
     required this.value,
-    this.color,
+    required this.iconColor,
+    required this.iconBg,
   });
 }
 
@@ -153,38 +158,53 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: data.iconBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(data.icon, color: data.iconColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(data.icon, size: 18, color: colorScheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    data.label,
-                    style: textTheme.labelMedium?.copyWith(color: colorScheme.outline),
-                    overflow: TextOverflow.ellipsis,
+                Text(
+                  data.label,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: const Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  data.value,
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                    height: 1.1,
                   ),
                 ),
               ],
             ),
-            Text(
-              data.value,
-              style: textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: data.color,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

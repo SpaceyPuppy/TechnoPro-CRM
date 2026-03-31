@@ -267,14 +267,22 @@ export interface UpdateLineItemRequest {
 
 // --- Invoices ---
 
+export type InvoiceType = "invoice" | "quote";
+export type QuoteStatus = "draft" | "sent" | "accepted" | "declined";
+
 export interface InvoiceResponse {
   id: string;
   invoiceNumber: string;
   ticketId: string | null;
+  type: InvoiceType;
+  quoteStatus: QuoteStatus | null;
+  convertedTicketId: string | null;
   subtotal: string;
-  tax: string;
+  taxRate: string;
+  taxAmount: string;
   total: string;
   status: import("./enums.js").InvoiceStatus;
+  notes: string | null;
   amountPaid: string;
   balance: string;
   createdAt: string;
@@ -288,15 +296,19 @@ export interface InvoiceDetailResponse extends InvoiceResponse {
 
 export interface CreateInvoiceRequest {
   ticketId?: string;
+  type?: InvoiceType;
 }
 
 // --- Payments ---
+
+export type PaymentType = "deposit" | "payment" | "refund";
 
 export interface PaymentResponse {
   id: string;
   invoiceId: string;
   amount: string;
   method: import("./enums.js").PaymentMethod;
+  type: PaymentType;
   reference: string | null;
   paidAt: string;
   createdAt: string;
@@ -305,8 +317,21 @@ export interface PaymentResponse {
 export interface CreatePaymentRequest {
   amount: string;
   method: import("./enums.js").PaymentMethod;
+  type?: PaymentType;
   reference?: string;
   paidAt?: string;
+}
+
+// --- App Settings ---
+
+export interface AppSettings {
+  business_name: string;
+  business_abn: string;
+  business_address: string;
+  business_phone: string;
+  business_email: string;
+  gst_rate: string;
+  invoice_notes: string;
 }
 
 // --- Attachments ---

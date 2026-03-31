@@ -1,6 +1,7 @@
 import { eq, sql, desc, and } from "drizzle-orm";
 import { getDb, schema } from "../db/index";
 import { generateId } from "../utils/id";
+import { getSetting } from "./settings.service.js";
 import type {
   CreateInvoiceRequest,
   CreateLineItemRequest,
@@ -8,22 +9,39 @@ import type {
   CreatePaymentRequest,
 } from "@technopro/shared";
 
-// --- Invoice number generation ---
+// --- Number generation ---
 
 async function nextInvoiceNumber(): Promise<string> {
   const db = getDb();
   const result = await db
     .select({ invoiceNumber: schema.invoices.invoiceNumber })
     .from(schema.invoices)
+    .where(eq(schema.invoices.type, "invoice"))
     .orderBy(desc(schema.invoices.createdAt))
     .limit(1);
   if (result.length === 0) return "INV-00001";
   const last = result[0]!.invoiceNumber;
+  if (!last.startsWith("INV-")) return "INV-00001";
   const num = parseInt(last.replace("INV-", ""), 10) + 1;
   return `INV-${String(num).padStart(5, "0")}`;
 }
 
-// --- Totals helpers ---
+async function nextQuoteNumber(): Promise<string> {
+  const db = getDb();
+  const result = await db
+    .select({ invoiceNumber: schema.invoices.invoiceNumber })
+    .from(schema.invoices)
+    .where(eq(schema.invoices.type, "quote"))
+    .orderBy(desc(schema.invoices.createdAt))
+    .limit(1);
+  if (result.length === 0) return "QTE-00001";
+  const last = result[0]!.invoiceNumber;
+  if (!last.startsWith("QTE-")) return "QTE-00001";
+  const num = parseInt(last.replace("QTE-", ""), 10) + 1;
+  return `QTE-${String(num).padStart(5, "0")}`;
+}
+
+// --- Totals ---
 
 async function recalculateTotals(invoiceId: string) {
   const db = getDb();
@@ -33,14 +51,22 @@ async function recalculateTotals(invoiceId: string) {
     .where(eq(schema.lineItems.invoiceId, invoiceId));
 
   const subtotal = items.reduce((sum, i) => sum + parseFloat(i.total), 0);
-  const tax = 0; // Stage 6: subtotal * (taxRate / 100) from settings
-  const total = subtotal + tax;
+
+  // Fetch current taxRate stored on the invoice (set at creation time from settings)
+  const inv = await db
+    .select({ taxRate: schema.invoices.taxRate })
+    .from(schema.invoices)
+    .where(eq(schema.invoices.id, invoiceId))
+    .limit(1);
+  const taxRate = parseFloat(inv[0]?.taxRate ?? "0");
+  const taxAmount = (subtotal * taxRate) / 100;
+  const total = subtotal + taxAmount;
 
   await db
     .update(schema.invoices)
     .set({
       subtotal: subtotal.toFixed(2),
-      tax: tax.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
     })
     .where(eq(schema.invoices.id, invoiceId));
@@ -52,7 +78,6 @@ async function getAmountPaid(invoiceId: string): Promise<number> {
     .select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
     .from(schema.payments)
     .where(eq(schema.payments.invoiceId, invoiceId));
-  // mysql2 may return SUM as a string — coerce to number explicitly
   return Number(result[0]?.total ?? 0);
 }
 
@@ -63,6 +88,7 @@ export async function listInvoices(options: {
   pageSize: number;
   status?: string;
   ticketId?: string;
+  type?: "invoice" | "quote";
 }) {
   const db = getDb();
   const { page, pageSize } = options;
@@ -71,6 +97,7 @@ export async function listInvoices(options: {
   const filters = [];
   if (options.status) filters.push(eq(schema.invoices.status, options.status as "draft" | "open" | "paid" | "void"));
   if (options.ticketId) filters.push(eq(schema.invoices.ticketId, options.ticketId));
+  if (options.type) filters.push(eq(schema.invoices.type, options.type));
 
   const condition = filters.length > 0 ? and(...filters) : undefined;
 
@@ -88,7 +115,6 @@ export async function listInvoices(options: {
       .where(condition),
   ]);
 
-  // Attach amountPaid and balance to each invoice
   const enriched = await Promise.all(
     rows.map(async (inv) => {
       const amountPaid = await getAmountPaid(inv.id);
@@ -97,7 +123,7 @@ export async function listInvoices(options: {
     }),
   );
 
-  return { rows: enriched, totalCount: countResult[0]?.count ?? 0 };
+  return { rows: enriched, totalCount: Number(countResult[0]?.count ?? 0) };
 }
 
 export async function getInvoiceById(id: string) {
@@ -127,26 +153,25 @@ export async function getInvoiceById(id: string) {
   const amountPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   const balance = parseFloat(inv.total) - amountPaid;
 
-  return {
-    ...inv,
-    amountPaid: amountPaid.toFixed(2),
-    balance: balance.toFixed(2),
-    lineItems,
-    payments,
-  };
+  return { ...inv, amountPaid: amountPaid.toFixed(2), balance: balance.toFixed(2), lineItems, payments };
 }
 
-export async function createInvoice(data: CreateInvoiceRequest) {
+export async function createInvoice(data: CreateInvoiceRequest & { type?: "invoice" | "quote" }) {
   const db = getDb();
   const id = generateId();
-  const invoiceNumber = await nextInvoiceNumber();
+  const isQuote = data.type === "quote";
+  const invoiceNumber = isQuote ? await nextQuoteNumber() : await nextInvoiceNumber();
+  const taxRate = await getSetting("gst_rate");
 
   await db.insert(schema.invoices).values({
     id,
     invoiceNumber,
     ticketId: data.ticketId ?? null,
+    type: isQuote ? "quote" : "invoice",
+    quoteStatus: isQuote ? "draft" : null,
     subtotal: "0.00",
-    tax: "0.00",
+    taxRate,
+    taxAmount: "0.00",
     total: "0.00",
     status: "draft",
   });
@@ -158,8 +183,18 @@ export async function updateInvoiceStatus(id: string, status: "draft" | "open" |
   const db = getDb();
   const existing = await getInvoiceById(id);
   if (!existing) return null;
-
   await db.update(schema.invoices).set({ status }).where(eq(schema.invoices.id, id));
+  return getInvoiceById(id);
+}
+
+export async function updateQuoteStatus(
+  id: string,
+  quoteStatus: "draft" | "sent" | "accepted" | "declined",
+) {
+  const db = getDb();
+  const existing = await getInvoiceById(id);
+  if (!existing || existing.type !== "quote") return null;
+  await db.update(schema.invoices).set({ quoteStatus }).where(eq(schema.invoices.id, id));
   return getInvoiceById(id);
 }
 
@@ -195,7 +230,7 @@ export async function addLineItem(
 export async function createInvoiceWithItems(
   ticketId: string,
   repairs: Array<{
-    type: "service" | "part";
+    type?: "service" | "part" | "labour";
     description: string;
     unitPrice: string;
     quantity?: number;
@@ -206,19 +241,29 @@ export async function createInvoiceWithItems(
   const db = getDb();
   const id = generateId();
   const invoiceNumber = await nextInvoiceNumber();
+  const taxRate = await getSetting("gst_rate");
 
   await db.insert(schema.invoices).values({
     id,
     invoiceNumber,
     ticketId,
+    type: "invoice",
     subtotal: "0.00",
-    tax: "0.00",
+    taxRate,
+    taxAmount: "0.00",
     total: "0.00",
     status: "draft",
   });
 
   for (const repair of repairs) {
-    await addLineItem(id, repair);
+    await addLineItem(id, {
+      type: (repair.type === "labour" ? "service" : repair.type) ?? "service",
+      description: repair.description,
+      unitPrice: repair.unitPrice,
+      quantity: repair.quantity,
+      discount: repair.discount,
+      inventoryItemId: repair.inventoryItemId,
+    });
   }
 
   return getInvoiceById(id);
@@ -248,7 +293,7 @@ export async function updateLineItem(
     .set({
       ...(data.description !== undefined ? { description: data.description } : {}),
       quantity,
-      unitPrice: (data.unitPrice ?? existing[0].unitPrice),
+      unitPrice: data.unitPrice ?? existing[0].unitPrice,
       total,
     })
     .where(eq(schema.lineItems.id, lineItemId));
@@ -275,7 +320,11 @@ export async function removeLineItem(invoiceId: string, lineItemId: string) {
 
 // --- Payments ---
 
-export async function addPayment(invoiceId: string, data: CreatePaymentRequest, userId: string) {
+export async function addPayment(
+  invoiceId: string,
+  data: CreatePaymentRequest & { type?: "deposit" | "payment" | "refund" },
+  userId: string,
+) {
   const db = getDb();
 
   const invoice = await getInvoiceById(invoiceId);
@@ -287,25 +336,27 @@ export async function addPayment(invoiceId: string, data: CreatePaymentRequest, 
     invoiceId,
     amount: data.amount,
     method: data.method,
+    type: data.type ?? "payment",
     reference: data.reference ?? null,
     createdByUserId: userId,
     paidAt: data.paidAt ? new Date(data.paidAt) : new Date(),
   });
 
-  // Auto-mark as paid if fully settled
-  const amountPaid = parseFloat(invoice.amountPaid) + parseFloat(data.amount);
-  const total = parseFloat(invoice.total);
-  if (amountPaid >= total && invoice.status !== "void") {
-    await db
-      .update(schema.invoices)
-      .set({ status: "paid" })
-      .where(eq(schema.invoices.id, invoiceId));
-  } else if (invoice.status === "draft") {
-    // Move draft to open when first payment is recorded
-    await db
-      .update(schema.invoices)
-      .set({ status: "open" })
-      .where(eq(schema.invoices.id, invoiceId));
+  // Auto-update invoice status (skip for deposits — they don't settle the invoice)
+  if ((data.type ?? "payment") !== "deposit") {
+    const amountPaid = parseFloat(invoice.amountPaid) + parseFloat(data.amount);
+    const total = parseFloat(invoice.total);
+    if (amountPaid >= total && invoice.status !== "void") {
+      await db
+        .update(schema.invoices)
+        .set({ status: "paid" })
+        .where(eq(schema.invoices.id, invoiceId));
+    } else if (invoice.status === "draft") {
+      await db
+        .update(schema.invoices)
+        .set({ status: "open" })
+        .where(eq(schema.invoices.id, invoiceId));
+    }
   }
 
   return getInvoiceById(invoiceId);

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "../db/index";
 import { generateId } from "../utils/id";
+import { getAllSettings, updateSettings } from "../services/settings.service.js";
 import type {
   CreateDeviceModelRequest,
   UpdateDeviceModelRequest,
@@ -43,6 +44,40 @@ const updateSchema = {
 
 export async function settingsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
+
+  // ── App settings (business details + GST) ──────────────────────────────────
+
+  app.get("/settings", async (_request, reply) => {
+    const settings = await getAllSettings();
+    return reply.send({ data: settings });
+  });
+
+  app.patch<{ Body: Record<string, string> }>(
+    "/settings",
+    {
+      schema: {
+        body: {
+          type: "object",
+          additionalProperties: { type: "string" },
+        },
+      },
+    },
+    async (request, reply) => {
+      // Only allow known keys to prevent arbitrary key injection
+      const allowed = new Set([
+        "business_name", "business_abn", "business_address",
+        "business_phone", "business_email", "gst_rate", "invoice_notes",
+      ]);
+      const filtered = Object.fromEntries(
+        Object.entries(request.body).filter(([k]) => allowed.has(k))
+      );
+      await updateSettings(filtered);
+      const settings = await getAllSettings();
+      return reply.send({ data: settings });
+    },
+  );
+
+  // ── Device models ───────────────────────────────────────────────────────────
 
   // List all device models
   app.get("/settings/device-models", async (_request, reply) => {

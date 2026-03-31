@@ -175,45 +175,62 @@ class _DesktopTicketRow extends StatelessWidget {
     final dateStr = DateFormat('d MMM yy')
         .format(DateTime.parse(ticket.createdAt).toLocal());
 
+    final priorityColor = switch (ticket.priority) {
+      TicketPriority.urgent => const Color(0xFFEF4444),
+      TicketPriority.high   => const Color(0xFFF97316),
+      TicketPriority.normal => const Color(0xFF3B82F6),
+      TicketPriority.low    => const Color(0xFF94A3B8),
+    };
+
     return Material(
-      color: isSelected ? colorScheme.primaryContainer.withAlpha(160) : Colors.transparent,
+      color: isSelected ? colorScheme.primaryContainer.withValues(alpha: 0.4) : Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(children: [
-            SizedBox(
-              width: 88,
-              child: Text(ticket.ticketNumber,
-                  style: textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                      color: colorScheme.onSurfaceVariant)),
-            ),
-            Expanded(
-              flex: 3,
-              child: Text(ticket.summary,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyMedium),
-            ),
-            SizedBox(
-              width: 80,
-              child: Text(
-                ticket.customer?.name ?? '—',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Container(width: 3, color: priorityColor),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(children: [
+                    SizedBox(
+                      width: 88,
+                      child: Text(ticket.ticketNumber,
+                          style: textTheme.bodySmall?.copyWith(
+                              fontFamily: 'monospace',
+                              color: colorScheme.onSurfaceVariant)),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(ticket.summary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodyMedium),
+                    ),
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        ticket.customer?.name ?? '—',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant),
+                      ),
+                    ),
+                    SizedBox(width: 112, child: _StatusChip(status: ticket.status)),
+                    SizedBox(width: 80, child: _PriorityBadge(priority: ticket.priority)),
+                    SizedBox(
+                      width: 88,
+                      child: Text(dateStr,
+                          style: textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.outline)),
+                    ),
+                  ]),
+                ),
               ),
-            ),
-            SizedBox(width: 112, child: _StatusChip(status: ticket.status)),
-            SizedBox(width: 80, child: _PriorityBadge(priority: ticket.priority)),
-            SizedBox(
-              width: 88,
-              child: Text(dateStr,
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.outline)),
-            ),
-          ]),
+            ],
+          ),
         ),
       ),
     );
@@ -231,52 +248,95 @@ class _TicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final priorityColor = _priorityColor(ticket.priority);
+    final bgColor = isSelected
+        ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+        : colorScheme.surface;
+
     return Card(
-      color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
-      child: ListTile(
+      color: bgColor,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
-        leading: _PriorityDot(priority: ticket.priority),
-        title: Text(ticket.summary, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text('${ticket.ticketNumber} · ${ticket.status.label}'),
-        trailing: _StatusChip(status: ticket.status),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Container(width: 4, color: priorityColor),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              ticket.summary,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Text(
+                                  ticket.ticketNumber,
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (ticket.customer != null) ...[
+                                  Text(' · ',
+                                      style: textTheme.labelSmall
+                                          ?.copyWith(color: colorScheme.outline)),
+                                  Text(
+                                    ticket.customer!.name,
+                                    style: textTheme.labelSmall
+                                        ?.copyWith(color: colorScheme.onSurfaceVariant),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _StatusChip(status: ticket.status),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
-}
 
-// --- Shared chips/dots used by both table and cards ---
-
-class _PriorityDot extends StatelessWidget {
-  const _PriorityDot({required this.priority});
-  final TicketPriority priority;
-
-  Color get _color => switch (priority) {
-        TicketPriority.urgent => Colors.red,
-        TicketPriority.high => Colors.orange,
-        TicketPriority.normal => const Color(0xFF2563EB),
-        TicketPriority.low => Colors.grey,
+  static Color _priorityColor(TicketPriority p) => switch (p) {
+        TicketPriority.urgent => const Color(0xFFEF4444),
+        TicketPriority.high   => const Color(0xFFF97316),
+        TicketPriority.normal => const Color(0xFF3B82F6),
+        TicketPriority.low    => const Color(0xFF94A3B8),
       };
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 12,
-      height: 12,
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(color: _color, shape: BoxShape.circle),
-    );
-  }
 }
+
+// --- Shared chips/badges ---
 
 class _PriorityBadge extends StatelessWidget {
   const _PriorityBadge({required this.priority});
   final TicketPriority priority;
 
   Color get _color => switch (priority) {
-        TicketPriority.urgent => Colors.red,
-        TicketPriority.high => Colors.orange,
-        TicketPriority.normal => const Color(0xFF2563EB),
-        TicketPriority.low => Colors.grey,
+        TicketPriority.urgent => const Color(0xFFEF4444),
+        TicketPriority.high   => const Color(0xFFF97316),
+        TicketPriority.normal => const Color(0xFF3B82F6),
+        TicketPriority.low    => const Color(0xFF94A3B8),
       };
 
   @override
@@ -285,16 +345,18 @@ class _PriorityBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 7,
+          height: 7,
           decoration: BoxDecoration(color: _color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(priority.label,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: _color)),
+        Text(
+          priority.label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: _color,
+                fontWeight: FontWeight.w500,
+              ),
+        ),
       ],
     );
   }
@@ -304,22 +366,38 @@ class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.status});
   final TicketStatus status;
 
-  Color get _color => switch (status) {
-        TicketStatus.open => const Color(0xFF2563EB),
-        TicketStatus.inProgress => Colors.orange,
-        TicketStatus.waitingParts || TicketStatus.waitingCustomer => Colors.purple,
-        TicketStatus.resolved => Colors.green,
-        TicketStatus.closed || TicketStatus.cancelled => Colors.grey,
+  ({Color bg, Color text}) get _colors => switch (status) {
+        TicketStatus.open =>
+          (bg: const Color(0xFFDBEAFE), text: const Color(0xFF1D4ED8)),
+        TicketStatus.inProgress =>
+          (bg: const Color(0xFFFEF3C7), text: const Color(0xFFD97706)),
+        TicketStatus.waitingParts ||
+        TicketStatus.waitingCustomer =>
+          (bg: const Color(0xFFEDE9FE), text: const Color(0xFF7C3AED)),
+        TicketStatus.resolved =>
+          (bg: const Color(0xFFDCFCE7), text: const Color(0xFF16A34A)),
+        TicketStatus.closed ||
+        TicketStatus.cancelled =>
+          (bg: const Color(0xFFF1F5F9), text: const Color(0xFF64748B)),
       };
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(status.label, style: const TextStyle(fontSize: 11)),
-      backgroundColor: _color.withAlpha(30),
-      side: BorderSide(color: _color.withAlpha(80)),
-      padding: EdgeInsets.zero,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+    final c = _colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status.label,
+        style: TextStyle(
+          color: c.text,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

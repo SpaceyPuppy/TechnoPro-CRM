@@ -107,9 +107,9 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 
 ## Current State & Resumption Notes
 
-**Last updated:** 2026-03-30
-**Last completed stage:** Stage 5 (all committed, verified working)
-**Next stage:** Stage 6 — Configurable fields, GST/tax, signatures, warranties, deposits, tags
+**Last updated:** 2026-03-31
+**Last completed stage:** Stage 5.5 (ticket intake form redesign — customer search, device capture, pattern lock, repairs section)
+**Current stage:** Stage 6 — Visual overhaul, GST/tax, PDF invoices/quotes, Quotes module, Deposits
 
 **Surface fully set up (2026-03-16):** Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0, VS 2026 Build Tools — `flutter doctor` all green. ATL component added to VS Build Tools (needed for flutter_secure_storage_windows). Backend running, DB migrated and seeded.
 
@@ -122,6 +122,7 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 - **Stage 4 (Complete):** File attachments on tickets (@fastify/multipart + @fastify/static, 10MB, UUID-prefixed filenames). Live dashboard (stats, overdue, revenue, recent activity, "My Tickets" for tech/counter roles). GET /api/v1/users for assignment dropdowns. Assigned To field on ticket forms.
 - **Stage 4.5 (Complete):** Visual polish — brand colour scheme, Inter font, toast notifications (sonner), skeleton loading states, empty states across all pages.
 - **Stage 5 (Complete):** Flutter app — login, tickets, customers, inventory, invoices/line items/payments, ticket attachments with camera (Android) / file picker (Windows). Adaptive split view, three-tier layout (desktop tables vs cards), touch detection, Inter font. Dashboard screen (stats cards, status breakdown, My Tickets for technician/counter, recent activity). Global offline connectivity banner in AppShell.
+- **Stage 5.5 (Complete):** Redesigned ticket intake form — inline customer search/create, device section (model typeahead, serial/IMEI, password/pattern lock, storage/color/carrier), repairs section (inventory search, qty/discount, custom items, subtotal). New PatternLockWidget (3×3 gesture grid). Device Models settings screen. Backend: firstName/lastName/company on customers, device fields, device_models table, discount on line_items, atomic ticket+device+invoice creation. Settings nav item + router routes.
 
 ### Tech stack decisions (web)
 
@@ -157,16 +158,45 @@ Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". 
 | Technician | tech1@technopro.local | tech123 |
 | Counter | counter@technopro.local | counter123 |
 
-### What's next
+### Business identity
 
-Stage 6. Key objectives:
-- Configurable fields (custom ticket fields, device fields)
-- GST/tax settings — percentage configurable in Settings, applied to invoices (critical for AU businesses)
-- Signatures on tickets (customer sign-off)
-- Warranties on line items/tickets
-- Deposits
+- **Real business name:** First Choice Phone Repair (codename "TechnoPro" is project-internal only)
+- **Logo:** `flutter/assets/image/logo.png` — use in sidebar header and PDF templates
+- **Quote terminology:** "Quote" (not "Estimate"), numbered `QTE-00001`
+- **SMTP:** Deferred to Stage 7 — Microsoft 365 first, then Google + generic SMTP
+
+### Stage 6 — In progress
+
+Sub-stages and status:
+
+| Sub-stage | Focus | Status |
+|-----------|-------|--------|
+| 6a | Visual overhaul — dark sidebar, theme, chips, stat tiles | In progress |
+| 6b | GST + business settings (app_settings table, backend routes, Flutter settings screen) | Not started |
+| 6c | PDF invoices + quotes (pdf + printing packages) | Not started |
+| 6d | Quotes — extend invoices with type column, Finance hub, convert-to-ticket | Not started |
+| 6e | Deposits — payment type column | Not started |
+
+**Key Stage 6 decisions:**
+- Quotes = extend invoices with `type: invoice | quote` column (Option A). Same line items. Quote status: draft → sent → accepted → declined. "Convert to Ticket" on accepted quotes.
+- Quote numbers: `QTE-00001` separate sequence
+- PDF share: open device email client with PDF attached. Direct send via SMTP deferred to Stage 7.
+- Visual scope: Flutter first, web app follows in Stage 6 or early Stage 7.
+- Mobile nav: 5-slot bottom bar — Dashboard, Tickets, Customers, Invoices, More(→Inventory+Settings). Tablet/desktop: full NavigationRail with all 6 destinations.
+- Dark sidebar: `#0F172A` bg, white labels, `#1E3A8A` active bg, `#93C5FD` active icon/text.
+- Configurable fields: deferred to Stage 7.
+- Drift offline sync: deferred to Stage 7 (was Stage 6 originally).
+
+### What's next (Stage 7 and beyond)
+
+- Configurable fields (custom ticket/device fields)
+- Drift SQLite offline sync for Flutter
+- 401 interceptor + auto-logout
+- Audit logs, roles hardening
+- SMTP email integration (Microsoft 365 first, then Google + generic SMTP)
+- Signatures on tickets
+- Warranties on line items
 - Tags on tickets/customers
-- Drift SQLite offline sync for Flutter (replacing cache-only Stage 5 approach)
 
 ### How to get running on a new machine
 
