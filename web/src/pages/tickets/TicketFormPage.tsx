@@ -65,8 +65,8 @@ export function TicketFormPage() {
   });
 
   const { data: customersData } = useQuery({
-    queryKey: ["customers", { pageSize: 100 }],
-    queryFn: () => customersApi.list({ pageSize: 100 }),
+    queryKey: ["customers", { pageSize: 1000 }],
+    queryFn: () => customersApi.list({ pageSize: 1000 }),
     enabled: !isEdit,
   });
 

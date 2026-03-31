@@ -51,55 +51,59 @@ class DeviceModelsScreen extends ConsumerWidget {
           final manufacturers = grouped.keys.toList()..sort();
 
           return ListView.builder(
+            physics: const BouncingScrollPhysics(),
             itemCount: manufacturers.length,
-            itemBuilder: (context, i) {
-              final mfr = manufacturers[i];
-              final items = grouped[mfr]!;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                    child: Text(
-                      mfr,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                  ),
-                  ...items.map(
-                    (model) => ListTile(
-                      title: Text(model.name),
-                      dense: true,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            onPressed: () =>
-                                _showEditDialog(context, ref, model),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.delete_outline,
-                                size: 18,
-                                color: Theme.of(context).colorScheme.error),
-                            onPressed: () =>
-                                _confirmDelete(context, ref, model),
-                          ),
-                        ],
+              itemBuilder: (context, i) {
+                final mfr = manufacturers[i];
+                final items = grouped[mfr]!;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                      child: Text(
+                        mfr,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                     ),
-                  ),
-                  if (i < manufacturers.length - 1)
-                    Divider(
-                      height: 1,
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ...items.map(
+                      (model) => ListTile(
+                        title: Text(model.name),
+                        dense: true,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              onPressed: () =>
+                                  _showEditDialog(context, ref, model),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete_outline,
+                                  size: 18,
+                                  color: Theme.of(context).colorScheme.error),
+                              onPressed: () =>
+                                  _confirmDelete(context, ref, model),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                ],
-              );
-            },
-          );
+                    ...(i < manufacturers.length - 1
+                        ? [
+                            Divider(
+                              height: 1,
+                              color: Theme.of(context).colorScheme.outlineVariant,
+                            )
+                          ]
+                        : []),
+                  ],
+                );
+              },
+            );
         },
       ),
     );
@@ -218,33 +222,35 @@ class _DeviceModelDialogState extends State<_DeviceModelDialog> {
     final isEdit = widget.initialName != null;
     return AlertDialog(
       title: Text(isEdit ? 'Edit Model' : 'Add Model'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _mfrCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Manufacturer *',
-              hintText: 'e.g. Apple',
-              border: OutlineInputBorder(),
-              isDense: true,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _mfrCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Manufacturer *',
+                hintText: 'e.g. Apple',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              autofocus: !isEdit,
+              textCapitalization: TextCapitalization.words,
             ),
-            autofocus: !isEdit,
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _nameCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Model Name *',
-              hintText: 'e.g. iPhone 15 Pro',
-              border: OutlineInputBorder(),
-              isDense: true,
+            const SizedBox(height: 12),
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Model Name *',
+                hintText: 'e.g. iPhone 15 Pro',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              autofocus: isEdit,
+              textCapitalization: TextCapitalization.words,
             ),
-            autofocus: isEdit,
-            textCapitalization: TextCapitalization.words,
-          ),
-        ],
+          ],
+        ),
       ),
       actions: [
         TextButton(

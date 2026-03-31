@@ -47,6 +47,20 @@ class AppShell extends ConsumerWidget {
 
   final Widget child;
 
+  String _moreLabel(int selectedIndex) {
+    if (selectedIndex >= 5 && selectedIndex < 5 + _moreItems.length) {
+      return _moreItems[selectedIndex - 5].label;
+    }
+    return 'More';
+  }
+
+  IconData _moreIcon(int selectedIndex) {
+    if (selectedIndex >= 5 && selectedIndex < 5 + _moreItems.length) {
+      return _moreItems[selectedIndex - 5].activeIcon;
+    }
+    return Icons.more_horiz;
+  }
+
   int _railIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/tickets'))   return 1;
@@ -62,8 +76,10 @@ class AppShell extends ConsumerWidget {
     if (loc.startsWith('/tickets'))   return 1;
     if (loc.startsWith('/customers')) return 2;
     if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 3;
-    // inventory / settings → highlight "More" (index 4)
-    if (loc.startsWith('/inventory') || loc.startsWith('/settings')) return 4;
+    // inventory → More tab, shows Inventory (index 5 = 4 base + 1st more item)
+    if (loc.startsWith('/inventory')) return 5;
+    // settings → More tab, shows Settings (index 6 = 4 base + 2nd more item)
+    if (loc.startsWith('/settings'))  return 6;
     return 0;
   }
 
@@ -131,8 +147,11 @@ class AppShell extends ConsumerWidget {
 
   Widget _buildPhone(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable) {
     final colorScheme = Theme.of(context).colorScheme;
-    // Clamp to 0-3 for the 4 real destinations; 4 = More (not a real tab)
-    final navIndex = selectedIndex > 3 ? 3 : selectedIndex;
+    // Map selectedIndex to navIndex for NavigationBar (0-4)
+    // selectedIndex 5-6 (More items) → navIndex 4 (More button)
+    final navIndex = selectedIndex > 4 ? 4 : selectedIndex;
+    final moreLabel = _moreLabel(selectedIndex);
+    final moreIcon = _moreIcon(selectedIndex);
 
     return Scaffold(
       appBar: AppBar(
@@ -165,9 +184,9 @@ class AppShell extends ConsumerWidget {
                 label: d.label,
               )),
           NavigationDestination(
-            icon: const Icon(Icons.more_horiz),
-            label: 'More',
-            selectedIcon: const Icon(Icons.more_horiz),
+            icon: Icon(moreIcon),
+            label: moreLabel,
+            selectedIcon: Icon(moreIcon),
           ),
         ],
       ),
@@ -217,6 +236,7 @@ class _DesktopSidebar extends StatelessWidget {
           // Nav items
           Expanded(
             child: ListView.builder(
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 8),
               itemCount: _railDestinations.length,
               itemBuilder: (context, i) {
@@ -367,6 +387,7 @@ class _TabletRail extends StatelessWidget {
           const SizedBox(height: 4),
           Expanded(
             child: ListView.builder(
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 6),
               itemCount: _railDestinations.length,
               itemBuilder: (context, i) {

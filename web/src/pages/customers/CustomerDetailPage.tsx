@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Loader2 } from "lucide-react";
 import { customersApi } from "@/api/customers";
 import { ticketsApi } from "@/api/tickets";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,11 @@ export function CustomerDetailPage() {
           onClick={handleDelete}
           disabled={deleteMutation.isPending}
         >
-          <Trash2 size={14} />
+          {deleteMutation.isPending ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Trash2 size={14} />
+          )}
           Delete
         </Button>
       </div>
@@ -102,7 +106,7 @@ export function CustomerDetailPage() {
         {!ticketsData || ticketsData.data.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tickets yet.</p>
         ) : (
-          <div className="rounded-lg border overflow-hidden">
+          <div className="rounded-lg border max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>

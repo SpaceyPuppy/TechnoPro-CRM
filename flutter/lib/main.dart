@@ -6,6 +6,35 @@ import 'package:google_fonts/google_fonts.dart';
 import 'core/providers/layout_provider.dart';
 import 'core/router/router.dart';
 
+class DesktopScrollBehavior extends ScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+      };
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    // Desktop keeps AlwaysScrollable; mobile uses Bouncing
+    return Platform.isAndroid || Platform.isIOS
+        ? const BouncingScrollPhysics()
+        : const AlwaysScrollableScrollPhysics();
+  }
+
+  @override
+  Widget buildScrollbar(
+      BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+
+  @override
+  Widget buildOverscrollIndicator(
+      BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: TechnoProApp()));
@@ -22,13 +51,7 @@ class TechnoProApp extends ConsumerWidget {
       title: 'First Choice Phone Repair',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      scrollBehavior: const MaterialScrollBehavior().copyWith(
-        dragDevices: {
-          PointerDeviceKind.mouse,
-          PointerDeviceKind.touch,
-          PointerDeviceKind.stylus,
-        },
-      ),
+      scrollBehavior: DesktopScrollBehavior(),
       routerConfig: router,
       builder: (context, child) => _TouchDetector(child: child!),
     );

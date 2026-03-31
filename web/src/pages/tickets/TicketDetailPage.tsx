@@ -285,7 +285,7 @@ export function TicketDetailPage() {
 
       <div>
         <h2 className="font-semibold mb-3">History</h2>
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-96 overflow-y-auto">
           {eventsData?.data.map((ev) => (
             <div key={ev.id} className="flex gap-3 text-sm">
               <div className="w-28 shrink-0 text-xs text-muted-foreground pt-0.5">

@@ -35,7 +35,7 @@ class DashboardScreen extends ConsumerWidget {
         data: (stats) => RefreshIndicator(
           onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
           child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16),
             child: Center(
               child: ConstrainedBox(
@@ -217,11 +217,14 @@ class _StatusBreakdownCard extends StatelessWidget {
 
   final DashboardStats stats;
 
-  static const _statusOrder = [
+  static const _mainStatuses = [
     TicketStatus.open,
     TicketStatus.inProgress,
     TicketStatus.waitingParts,
     TicketStatus.waitingCustomer,
+  ];
+
+  static const _secondaryStatuses = [
     TicketStatus.resolved,
     TicketStatus.closed,
     TicketStatus.cancelled,
@@ -230,7 +233,6 @@ class _StatusBreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
       child: Padding(
@@ -240,28 +242,98 @@ class _StatusBreakdownCard extends StatelessWidget {
           children: [
             Text('Tickets by Status',
                 style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 16),
+            // Main status cards (2x2 grid)
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 2.0,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              children: [
+                ..._mainStatuses.map((status) {
+                  final count = stats.countForStatus(status.value);
+                  return _CompactStatusCard(
+                    status: status,
+                    count: count,
+                  );
+                }),
+              ],
+            ),
             const SizedBox(height: 12),
-            ..._statusOrder.map((s) {
-              final count = stats.countForStatus(s.value);
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                        child: Text(s.label,
-                            style: textTheme.bodyMedium
-                                ?.copyWith(color: colorScheme.onSurfaceVariant))),
-                    Text(
-                      count.toString(),
-                      style: textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+            // Secondary statuses (3 across)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ..._secondaryStatuses.map((status) {
+                  final count = stats.countForStatus(status.value);
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: _CompactStatusCard(
+                        status: status,
+                        count: count,
+                      ),
                     ),
-                  ],
-                ),
-              );
-            }),
+                  );
+                }),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CompactStatusCard extends StatelessWidget {
+  const _CompactStatusCard({
+    required this.status,
+    required this.count,
+  });
+
+  final TicketStatus status;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: status.bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border(
+          left: BorderSide(
+            color: status.color,
+            width: 3,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            status.label,
+            style: textTheme.labelSmall?.copyWith(
+              color: status.color,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            count.toString(),
+            style: textTheme.titleSmall?.copyWith(
+              color: status.color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

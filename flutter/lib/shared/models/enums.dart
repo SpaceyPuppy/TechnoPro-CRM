@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum UserRole {
   technician('technician'),
   counter('counter'),
@@ -35,6 +37,32 @@ enum TicketStatus {
         TicketStatus.closed => 'Closed',
         TicketStatus.cancelled => 'Cancelled',
       };
+
+  // Primary color for the status
+  Color get color {
+    return switch (this) {
+      TicketStatus.open => const Color(0xFF3B82F6), // Blue
+      TicketStatus.inProgress => const Color(0xFF8B5CF6), // Purple
+      TicketStatus.waitingParts => const Color(0xFFF59E0B), // Amber
+      TicketStatus.waitingCustomer => const Color(0xFFEC4899), // Pink
+      TicketStatus.resolved => const Color(0xFF10B981), // Emerald
+      TicketStatus.closed => const Color(0xFF64748B), // Slate
+      TicketStatus.cancelled => const Color(0xFFEF4444), // Red
+    };
+  }
+
+  // Light background for the status card
+  Color get bgColor {
+    return switch (this) {
+      TicketStatus.open => const Color(0xFFEFF6FF), // Blue 50
+      TicketStatus.inProgress => const Color(0xFFFAF5FF), // Purple 50
+      TicketStatus.waitingParts => const Color(0xFFFEFCE8), // Amber 50
+      TicketStatus.waitingCustomer => const Color(0xFFFCE7F3), // Pink 50
+      TicketStatus.resolved => const Color(0xFFECFDF5), // Emerald 50
+      TicketStatus.closed => const Color(0xFFF1F5F9), // Slate 50
+      TicketStatus.cancelled => const Color(0xFFFEE2E2), // Red 50
+    };
+  }
 }
 
 enum TicketPriority {

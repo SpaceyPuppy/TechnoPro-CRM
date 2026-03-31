@@ -45,10 +45,6 @@ class CustomerListScreen extends ConsumerWidget {
                 return EmptyStateWidget(
                   icon: Icons.people_outline,
                   message: 'No customers yet',
-                  action: FloatingActionButton.small(
-                    onPressed: () => context.go('/customers/new'),
-                    child: const Icon(Icons.add),
-                  ),
                 );
               }
               if (tier == LayoutTier.desktop) {
@@ -63,6 +59,7 @@ class CustomerListScreen extends ConsumerWidget {
               return RefreshIndicator(
                 onRefresh: () async => ref.invalidate(customerListProvider),
                 child: ListView.separated(
+                  physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.all(8),
                   itemCount: customers.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
@@ -125,6 +122,7 @@ class _DesktopCustomerTable extends StatelessWidget {
         Divider(height: 1, color: colorScheme.outlineVariant),
         Expanded(
           child: ListView.separated(
+            physics: const BouncingScrollPhysics(),
             itemCount: customers.length,
             separatorBuilder: (_, __) =>
                 Divider(height: 1, color: colorScheme.outlineVariant),

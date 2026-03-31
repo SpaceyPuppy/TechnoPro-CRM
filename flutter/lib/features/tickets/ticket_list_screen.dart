@@ -60,10 +60,6 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                 return EmptyStateWidget(
                   icon: Icons.confirmation_number_outlined,
                   message: 'No tickets found',
-                  action: FloatingActionButton.small(
-                    onPressed: () => context.go('/tickets/new'),
-                    child: const Icon(Icons.add),
-                  ),
                 );
               }
               if (tier == LayoutTier.desktop) {
@@ -78,6 +74,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
               return RefreshIndicator(
                 onRefresh: () => ref.read(ticketListProvider.notifier).refresh(),
                 child: ListView.separated(
+                  physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.all(8),
                   itemCount: page.data.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
@@ -142,6 +139,7 @@ class _DesktopTicketTable extends StatelessWidget {
         Divider(height: 1, color: colorScheme.outlineVariant),
         Expanded(
           child: ListView.separated(
+            physics: const BouncingScrollPhysics(),
             itemCount: tickets.length,
             separatorBuilder: (_, __) =>
                 Divider(height: 1, color: colorScheme.outlineVariant),

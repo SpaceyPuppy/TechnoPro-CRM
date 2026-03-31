@@ -23,7 +23,7 @@ class RepairLineItem {
 
   Map<String, dynamic> toJson() => {
         if (inventoryItemId != null) 'inventoryItemId': inventoryItemId,
-        'type': 'labour',
+        'type': inventoryItemId != null ? 'part' : 'service',
         'description': description,
         'unitPrice': unitPrice.toStringAsFixed(2),
         'quantity': quantity,

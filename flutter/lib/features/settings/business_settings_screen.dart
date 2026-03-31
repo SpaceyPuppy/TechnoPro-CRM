@@ -111,6 +111,7 @@ class _BusinessSettingsScreenState
             ],
           ),
           body: ListView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
               _SectionLabel('Business Details'),
@@ -177,18 +178,15 @@ class _BusinessSettingsScreenState
                     ),
               ),
               const SizedBox(height: 10),
-              SizedBox(
-                width: 160,
-                child: TextField(
-                  controller: _gstCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'GST Rate',
-                    suffixText: '%',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+              TextField(
+                controller: _gstCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'GST Rate',
+                  suffixText: '%',
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 24),
               _SectionLabel('Invoice Defaults'),

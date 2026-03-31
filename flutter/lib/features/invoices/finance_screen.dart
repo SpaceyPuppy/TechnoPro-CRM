@@ -184,6 +184,7 @@ class _InvoiceTabState extends ConsumerState<_InvoiceTab>
                   return RefreshIndicator(
                     onRefresh: notifier.refresh,
                     child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.all(8),
                       itemCount: page.data.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 4),

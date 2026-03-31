@@ -23,63 +23,55 @@ flutter/           — Flutter app: Android, Windows, iOS, macOS (independent)
 docs/              — Architecture, API docs, ADRs
 ```
 
-## Domain Entities
+## Core entities
 
 User (roles: technician, counter, manager, admin), Customer, Device, Ticket, TicketEvent, TicketAttachment, InventoryItem, LineItem, Invoice, Payment, Settings.
 
 ## Security — CRITICAL
 
-This system handles sensitive customer and business data. Security is non-negotiable:
+Customer & business data — security is non-negotiable:
 
-- **No secrets in code or git** — all credentials, keys, and connection strings via environment variables only
-- **No `.env` files committed** — only `.env.example` with placeholder values
-- **Input validation at every API boundary** — never trust client input
-- **Parameterised queries only** — no string concatenation in SQL (Drizzle handles this, but be explicit in any raw queries)
-- **Auth on every endpoint** — no unprotected routes except health check
-- **Role-based access control enforced server-side** — never rely on client-side role checks alone
+- **No secrets in code/git** — env vars only, `.env.example` only in repo
+- **Input validation at all API boundaries** — parameterised queries (Drizzle), never trust client input
+- **Auth on every endpoint** — health check exempt only
+- **RBAC enforced server-side** — never client-side role checks alone
 - **No sensitive data in logs** — sanitise before logging
-- **Dependency auditing** — run `npm audit` regularly, no known vulnerable packages
-- **CORS, rate limiting, helmet headers** — configured from Stage 1
-- **File uploads validated** — type, size, and content checks before storage
-- Claude must flag any code that could introduce OWASP Top 10 vulnerabilities and fix immediately
+- **CORS, helmet, rate limiting** — configured from Stage 1
+- **File uploads validated** — type, size, content checks before storage
+- **Dependency auditing** — run `npm audit` regularly
+- **OWASP Top 10:** Claude must flag & fix vulnerabilities immediately
 
 ## Coding Conventions
 
-- Clean, idiomatic TypeScript/Dart with clear separation of concerns
-- Type definitions/interfaces for all API payloads
+- Idiomatic TypeScript/Dart, clear separation of concerns
+- Type definitions for all API payloads
 - Comments only for non-obvious logic
-- No secrets or credentials in code — use environment variables
+- No secrets in code — env vars only
 - Migrations for all schema changes
 - Minimal tests for core logic
 
 ## Tooling Decisions
 
-- **Package manager:** npm (familiar, cross-platform; can migrate to pnpm later if needed)
-- **Monorepo:** npm workspaces — backend/, web/, packages/shared/ as workspaces
-- **Web framework:** Fastify (built-in validation, typed routes, plugin encapsulation, async-safe)
-- **Database:** MySQL (universal hosting support including cPanel, white-label friendly)
-- **ORM:** Drizzle ORM (type-safe, pure TypeScript — no binary dependencies, SQL-like syntax)
-- **Linting/formatting:** Biome (single tool, fast, minimal config)
-- **Testing:** Vitest (Vite-native, fast, Jest-compatible API)
-- **Native apps:** Flutter/Dart — single codebase for Android, Windows, iOS, macOS with offline sync via local SQLite
-- **Local dev:** Docker Compose for MySQL + phpMyAdmin (consistent across machines)
-- **Password hashing:** bcryptjs (pure JS, no native bindings — portable to all hosts)
-- **IDs:** UUIDs as CHAR(36) in MySQL (readable in queries/logs)
-- **Docs:** Markdown + Mermaid diagrams, ADRs for architectural decisions
-- **Package manager (Windows):** Chocolatey — installed on all of Chris's machines, use it for installing dev tools
+- **Monorepo:** npm workspaces (backend/, web/, packages/shared/)
+- **Backend:** Fastify (typed routes, validation, async-safe), Drizzle ORM (type-safe, pure TS)
+- **Database:** MySQL 8 (universal hosting, cPanel)
+- **Frontend:** React 19, Tailwind v4, shadcn-style components
+- **Native:** Flutter/Dart (single codebase: Android, Windows, iOS, macOS)
+- **Dev:** Docker Compose (MySQL + phpMyAdmin), Vitest, Biome
+- **Auth:** JWT + bcryptjs, UUIDs as CHAR(36) (readable in logs)
+- **Docs:** Markdown + Mermaid, ADRs
+- **Windows tools:** Chocolatey for dev tool installation
 
 ## Developer Machines
 
-Chris develops on four Windows machines. At the start of each session, ask which machine he's on and tailor advice accordingly (e.g. whether Flutter is installed, whether the dev environment needs any setup).
+Chris uses four Windows machines. Ask which one at session start.
 
-| Machine | Node/Web env | Flutter | Notes |
-|---------|-------------|---------|-------|
-| Desktop (home) | Set up 2026-03-15 | Not installed | Main dev machine |
-| ThinkPad | Set up 2026-03-15 | Not installed | |
-| HP Spectre | Unknown | Not installed | |
-| Microsoft Surface | Set up 2026-03-16 | Ready 2026-03-16 | Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0 — all green. ATL component added manually to VS Build Tools (required by flutter_secure_storage_windows) |
-
-Update this table as each machine gets set up.
+| Machine | Node/Web | Flutter | Status |
+|---------|----------|---------|--------|
+| Desktop (home) | ✓ | ✗ | Main dev |
+| ThinkPad | ✓ | ✗ | |
+| HP Spectre | ? | ✗ | |
+| Surface | ✓ | ✓ | All green (2026-03-16) |
 
 ## Stage Plan
 
@@ -92,172 +84,89 @@ Update this table as each machine gets set up.
 | 4 | Ticket events, attachments, file upload, tech dashboard, email hooks | Complete |
 | 4.5 | Visual polish — colour scheme, typography, empty states, toasts, skeletons | Complete |
 | 5 | Flutter app — login, tickets, customers, inventory, photo capture, tablet UI | Complete |
-| 6 | Configurable fields, GST/tax settings, signatures, warranties, deposits, tags | Not started |
-| 7 | Reporting, exports, audit logs, roles hardening | Not started |
+| 5.5 | Ticket intake form redesign — customer search, device capture, repairs, pattern lock | Complete |
+| 6 | Visual overhaul, GST/tax, PDF invoices/quotes, Quotes module, Deposits | Complete |
+| 7 | Interface polish, CSV bulk import, scrolling fixes, 401 interceptor, audit logs, roles hardening | Not started |
 
-## How to Drive
 
-Tell Claude which stage to work on, e.g. "Start Stage 0" or "Continue Stage 1". Claude will:
-1. Restate objectives
-2. **Present stack/tool options with pros and cons — discuss and decide together before writing code**
-3. Propose/refine structure based on agreed choices
-4. Generate code and config
-5. Provide migrations, tests, example API calls
-6. Summarize changes and how to run locally
+## Current State
 
-## Current State & Resumption Notes
+**Updated:** 2026-03-31 | **Completed:** Stage 6 | **Current:** Stage 7
 
-**Last updated:** 2026-03-31
-**Last completed stage:** Stage 5.5 (ticket intake form redesign — customer search, device capture, pattern lock, repairs section)
-**Current stage:** Stage 6 — Visual overhaul, GST/tax, PDF invoices/quotes, Quotes module, Deposits
+**Surface:** Fully set up (2026-03-16) — Flutter 3.38.5, Docker, Android SDK 36.1.0, VS Build Tools + ATL component. Backend running, DB ready.
 
-**Surface fully set up (2026-03-16):** Flutter 3.38.5, Docker 29.2.1, Android SDK 36.1.0, VS 2026 Build Tools — `flutter doctor` all green. ATL component added to VS Build Tools (needed for flutter_secure_storage_windows). Backend running, DB migrated and seeded.
+### Stages completed (0–6)
 
-### What's done
+- **0–1:** Repo, tooling, backend API (Fastify, Drizzle, auth, MySQL, Docker).
+- **2–3:** Web MVP (React, TanStack Query, Tailwind) — customers, tickets, inventory, invoices, line items, payments.
+- **4–4.5:** File attachments, dashboard, visual polish (brand colours, Inter font, notifications, skeletons).
+- **5–5.5:** Flutter app (Riverpod, go_router, Dio) — tickets, customers, inventory, device capture, camera, signature grid. Ticket intake redesign with device & repair sections. Settings screen (device models, GST).
+- **6:** Visual overhaul (dark sidebar), GST/tax settings, PDF invoices/quotes, Quotes module, Deposits.
 
-- **Stage 0 (Complete):** Repo structure, npm workspaces, Biome config, Docker Compose, architecture docs, ADRs.
-- **Stage 1 (Complete):** Full backend API — Drizzle schema, auth, customer/ticket CRUD, health check, seed script, 11 Vitest tests.
-- **Stage 2 (Complete):** Web MVP — React 19, React Router v7, TanStack Query, Zustand, Tailwind v4, shadcn-style components. Login, customers, tickets (full CRUD + status + notes + history).
-- **Stage 3 (Complete):** Inventory CRUD, invoices (standalone + ticket-linked), line items, payments, auto-status progression (draft→open→paid). INV-00001 sequential numbering.
-- **Stage 4 (Complete):** File attachments on tickets (@fastify/multipart + @fastify/static, 10MB, UUID-prefixed filenames). Live dashboard (stats, overdue, revenue, recent activity, "My Tickets" for tech/counter roles). GET /api/v1/users for assignment dropdowns. Assigned To field on ticket forms.
-- **Stage 4.5 (Complete):** Visual polish — brand colour scheme, Inter font, toast notifications (sonner), skeleton loading states, empty states across all pages.
-- **Stage 5 (Complete):** Flutter app — login, tickets, customers, inventory, invoices/line items/payments, ticket attachments with camera (Android) / file picker (Windows). Adaptive split view, three-tier layout (desktop tables vs cards), touch detection, Inter font. Dashboard screen (stats cards, status breakdown, My Tickets for technician/counter, recent activity). Global offline connectivity banner in AppShell.
-- **Stage 5.5 (Complete):** Redesigned ticket intake form — inline customer search/create, device section (model typeahead, serial/IMEI, password/pattern lock, storage/color/carrier), repairs section (inventory search, qty/discount, custom items, subtotal). New PatternLockWidget (3×3 gesture grid). Device Models settings screen. Backend: firstName/lastName/company on customers, device fields, device_models table, discount on line_items, atomic ticket+device+invoice creation. Settings nav item + router routes.
+### Tech stack
 
-### Tech stack decisions (web)
+**Web:** React 19 + React Router v7, TanStack Query (staleTime 30s), Zustand (persist: `technopro-auth`), Tailwind v4, shadcn-style + CVA + Radix, react-hook-form + zod.
 
-- **Framework:** React 19 + React Router v7
-- **Data fetching:** TanStack Query (staleTime 30s, retry 1)
-- **State:** Zustand with persist (localStorage key: `technopro-auth`)
-- **Styling:** Tailwind v4 (`@tailwindcss/vite` plugin, `@theme inline` tokens, no config file)
-- **Components:** Hand-rolled shadcn-style with CVA + Radix primitives
-- **Forms:** react-hook-form + zod
+**Flutter:** Riverpod, go_router, Dio + interceptors, camera + file picker, cache-only offline (Drift deferred). UI: bottom nav (mobile) / NavigationRail (tablet/desktop), master-detail on wide screens.
 
-### Tech stack decisions (Flutter — Stage 5)
+### Known open items (deferred to Stage 7 and later)
 
-- **State:** Riverpod
-- **Navigation:** go_router (compatible with future offline/Drift layer)
-- **HTTP:** Dio with interceptors
-- **Offline:** Cache-only for Stage 5, full Drift SQLite sync in Stage 6
-- **Camera:** `camera` package (direct preview/control) + file picker fallback on Windows
-- **Scope:** Login, Tickets, Customers, Inventory — match web features as closely as possible. Bottom nav (mobile) / NavigationRail (tablet/desktop). Master-detail split view on wide screens.
+- **UX polish:** No loading spinner on customer delete button; no success toast after adding ticket note; customer select capped at 100
+- **UI/UX improvements:** Settings - Business Settings overflows on mobile (not scrollable), narrow fields; Device models list not scrollable; Modal views (customer, ticket) need scroll handling; Dashboard polish (other screens need refinement to match quality)
+- **Bulk data import:** CSV/XLSX import for device models, customers, inventory — most tools support this for faster setup
+- **Auth & security:** No 401 interceptor for auto-logout (expired token in one tab doesn't logout other tabs until next API call)
+- **Offline:** Drift SQLite offline sync for Flutter (deferred from Stage 6)
+- **Advanced features:** Configurable fields (custom ticket/device fields), audit logs, roles hardening, SMTP email integration
 
-### Known open items (deferred)
-
-- **Stage 2 polish:** No loading spinner on customer delete button; no success toast after adding ticket note; customer select capped at 100 (revisit Stage 6); no 401 interceptor for auto-logout (Stage 7)
-- **Stage 6:** GST/tax % in settings — critical for AU businesses, applied to invoices
-- **Stage 6:** Drift SQLite offline sync for Flutter
-- **Stage 7:** 401 interceptor, audit logs, roles hardening
-
-### Test credentials (seed script)
+### Test credentials (from seed script)
 
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | admin@technopro.local | admin123 |
 | Manager | manager@technopro.local | manager123 |
-| Technician | tech1@technopro.local | tech123 |
+| Tech | tech1@technopro.local | tech123 |
 | Counter | counter@technopro.local | counter123 |
 
 ### Business identity
 
-- **Real business name:** First Choice Phone Repair (codename "TechnoPro" is project-internal only)
-- **Logo:** `flutter/assets/image/logo.png` — use in sidebar header and PDF templates
-- **Quote terminology:** "Quote" (not "Estimate"), numbered `QTE-00001`
-- **SMTP:** Deferred to Stage 7 — Microsoft 365 first, then Google + generic SMTP
+**Real name:** First Choice Phone Repair. **Logo:** `flutter/assets/image/logo.png` (sidebar, PDFs). **Quotes:** `QTE-00001` format. **SMTP:** Stage 7 (Microsoft 365 first).
 
-### Stage 6 — In progress
+### Stage 6 — Complete (6a–6e)
 
-Sub-stages and status:
+Completed: dark sidebar, GST settings, PDF invoices/quotes, Quotes module (Finance hub, tabbed UI, convert-to-ticket), Deposits (payment type toggle).
 
-| Sub-stage | Focus | Status |
-|-----------|-------|--------|
-| 6a | Visual overhaul — dark sidebar, theme, chips, stat tiles | Complete |
-| 6b | GST + business settings (app_settings table, backend routes, Flutter settings screen) | Complete |
-| 6c | PDF invoices + quotes (pdf + printing packages) | Complete |
-| 6d | Quotes — Finance hub (/finance), tabbed Invoices/Quotes, quote status actions, convert-to-ticket | Complete |
-| 6e | Deposits — payment type toggle (Deposit/Payment/Refund), grouped payments display | Complete |
+**Key decisions:** Quotes extend invoices with `type: invoice | quote`. Quote status: draft → sent → accepted → declined. Quote numbers `QTE-00001`. Dark sidebar: `#0F172A` bg, `#1E3A8A` active, `#93C5FD` text. Mobile nav: 5-slot bottom bar; tablet: full NavigationRail. PDF shares via device email (SMTP deferred to Stage 7).
 
-**Key Stage 6 decisions:**
-- Quotes = extend invoices with `type: invoice | quote` column (Option A). Same line items. Quote status: draft → sent → accepted → declined. "Convert to Ticket" on accepted quotes.
-- Quote numbers: `QTE-00001` separate sequence
-- PDF share: open device email client with PDF attached. Direct send via SMTP deferred to Stage 7.
-- Visual scope: Flutter first, web app follows in Stage 6 or early Stage 7.
-- Mobile nav: 5-slot bottom bar — Dashboard, Tickets, Customers, Invoices, More(→Inventory+Settings). Tablet/desktop: full NavigationRail with all 6 destinations.
-- Dark sidebar: `#0F172A` bg, white labels, `#1E3A8A` active bg, `#93C5FD` active icon/text.
-- Configurable fields: deferred to Stage 7.
-- Drift offline sync: deferred to Stage 7 (was Stage 6 originally).
+### Stage 7+ roadmap
 
-### What's next (Stage 7 and beyond)
-
-- Configurable fields (custom ticket/device fields)
-- Drift SQLite offline sync for Flutter
-- 401 interceptor + auto-logout
+- UX polish: delete spinner, success toasts, scroll fixes (Settings, modals, Device models)
+- Bulk data import: CSV/XLSX for device models, customers, inventory
+- 401 interceptor + auto-logout (two-tab sync)
 - Audit logs, roles hardening
-- SMTP email integration (Microsoft 365 first, then Google + generic SMTP)
-- Signatures on tickets
-- Warranties on line items
-- Tags on tickets/customers
+- Drift SQLite offline sync for Flutter
+- Configurable fields, SMTP integration (Microsoft 365 first)
+- Signatures on tickets, warranties on line items, tags on tickets/customers
 
-### How to get running on a new machine
+### Quick setup (new machine)
 
-See `docs/environment-setup.md` for full step-by-step instructions. Quick version:
-1. Clone repo, `npm install`
-2. `cp backend/.env.example backend/.env` — set `DB_PASSWORD=technopro_dev` and `JWT_SECRET`
+See `docs/environment-setup.md` for full details.
+1. `npm install`
+2. `cp backend/.env.example backend/.env` — set `DB_PASSWORD=technopro_dev`, `JWT_SECRET`
 3. `docker compose up -d`
-4. `npm run db:push --workspace=backend`
-5. `npm run seed --workspace=backend`
-6. `npm run backend:dev`
-7. Verify: `curl http://localhost:3000/api/v1/health`
+4. `npm run db:push --workspace=backend` && `npm run seed --workspace=backend`
+5. `npm run backend:dev`
+6. Verify: `curl http://localhost:3000/api/v1/health`
 
-### Flutter dev environment setup (required for Stage 5+)
+### Flutter dev environment setup
 
-Required on every machine before working on the Flutter app:
+See `docs/environment-setup.md` for full steps. Quick: `choco install docker-desktop flutter androidstudio visualstudio2022buildtools -y`, then add ATL component for flutter_secure_storage_windows, then `flutter doctor` (all green needed for Flutter, Android, Windows desktop).
 
-**1. Flutter SDK + Android Studio + Docker Desktop** (via Chocolatey — preferred)
-```
-choco install docker-desktop flutter androidstudio -y
-```
-Reboot after. Then open Android Studio → Settings → SDK Manager → SDK Tools tab → check **Android SDK Command-line Tools** → Apply. Then: `flutter doctor --android-licenses`
+**Device status:** Surface fully set up 2026-03-16 (Flutter 3.38.5, Android SDK 36.1.0, VS Build Tools + ATL). Desktop, ThinkPad, HP Spectre — Flutter not installed yet.
 
-**2. Visual Studio C++ workload** (for Windows desktop builds)
-- VS 2022 Community: `choco install visualstudio2022community` with workload `Microsoft.VisualStudio.Workload.NativeDesktop`
-- Or if VS Build Tools already installed (check `choco list`): add `visualstudio2022-workload-vctools`
-- Note: VS 2026 Build Tools also satisfies this requirement (confirmed on Surface)
+### Known gotchas
 
-**3. Add ATL component** (required by flutter_secure_storage_windows — run in elevated PowerShell)
-```powershell
-& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify --installPath "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart
-```
-For VS 2022: replace `\18\` with `\2022\`.
-
-**4. Scaffold Flutter project** (first time only, from repo root)
-```
-cd flutter
-flutter create --org com.technopro --project-name technopro_crm --platforms android,windows .
-```
-
-**5. Install Flutter dependencies**
-```
-cd flutter
-flutter pub get
-```
-
-**6. Verify**
-```
-flutter doctor
-```
-Green ticks needed for: Flutter, Android toolchain, Windows desktop.
-
-**Device notes:**
-- Desktop (home) — Flutter not yet installed (as of 2026-03-16)
-- ThinkPad — Flutter not yet installed (as of 2026-03-16)
-- HP Spectre — Flutter not yet installed (as of 2026-03-16)
-- Microsoft Surface — Fully set up 2026-03-16, all green
-
-### Known issues / gotchas
-
-- **CORS:** `backend/.env` `CORS_ORIGIN` must list the Vite port. Default is `http://localhost:5173` but if port 5173 is in use Vite increments to 5174 — add both: `CORS_ORIGIN=http://localhost:5173,http://localhost:5174`
-- **Drizzle schema files:** removed `.js` extensions from imports (drizzle-kit CJS loader can't resolve them)
-- **PowerShell curl:** use single quotes for JSON bodies, not escaped double quotes
-- **drizzle-kit audit warnings:** 4 moderate esbuild vulnerabilities — dev tooling only, upstream issue, safe to ignore
-- **mysql2 aggregates:** SUM/MAX return as strings in JS — always wrap with `Number()`. Already handled in invoice and dashboard services.
+- **CORS:** `CORS_ORIGIN` in `backend/.env` must list both `http://localhost:5173` and `http://localhost:5174` (Vite increments if 5173 in use).
+- **Drizzle imports:** removed `.js` extensions from schema imports (drizzle-kit CJS loader issue).
+- **PowerShell curl:** use single quotes for JSON, not escaped double quotes.
+- **mysql2 aggregates:** SUM/MAX return strings — wrap with `Number()` (handled in invoice/dashboard services).
+- **drizzle-kit audit:** 4 moderate esbuild vulnerabilities (dev-only, upstream, safe).
