@@ -6,6 +6,19 @@ import 'package:google_fonts/google_fonts.dart';
 import 'core/providers/layout_provider.dart';
 import 'core/router/router.dart';
 
+class _SmoothDesktopScrollPhysics extends ClampingScrollPhysics {
+  const _SmoothDesktopScrollPhysics({ScrollPhysics? parent}) : super(parent: parent);
+
+  @override
+  _SmoothDesktopScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _SmoothDesktopScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  // Lower friction = faster/longer deceleration = smoother feel
+  @override
+  double frictionFactor(double overscrollFriction) => 0.02;
+}
+
 class DesktopScrollBehavior extends ScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
@@ -18,11 +31,11 @@ class DesktopScrollBehavior extends ScrollBehavior {
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
     // Android/iOS: Bouncing physics for elastic scroll feel
-    // Windows/macOS: ClampingScrollPhysics for smooth momentum + mouse/trackpad support
+    // Windows/macOS: Custom smooth scroll physics with adjusted friction for trackpad momentum
     if (Platform.isAndroid || Platform.isIOS) {
       return const BouncingScrollPhysics();
     }
-    return const ClampingScrollPhysics();
+    return const _SmoothDesktopScrollPhysics();
   }
 
   @override
