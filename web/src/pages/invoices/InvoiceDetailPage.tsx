@@ -26,6 +26,16 @@ function invoiceStatusVariant(status: string) {
   }
 }
 
+function quoteStatusVariant(status?: string) {
+  switch (status) {
+    case "draft": return "secondary" as const;
+    case "sent": return "info" as const;
+    case "accepted": return "success" as const;
+    case "declined": return "destructive" as const;
+    default: return "secondary" as const;
+  }
+}
+
 // --- Add Line Item Form ---
 function AddLineItemForm({ invoiceId, onDone }: { invoiceId: string; onDone: () => void }) {
   const qc = useQueryClient();
@@ -207,6 +217,26 @@ export function InvoiceDetailPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const quoteStatusMutation = useMutation({
+    mutationFn: (quoteStatus: "draft" | "sent" | "accepted" | "declined") =>
+      invoicesApi.updateQuoteStatus(id!, quoteStatus),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Quote updated");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const convertToTicketMutation = useMutation({
+    mutationFn: () => invoicesApi.convertQuoteToTicket(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Quote converted to ticket");
+      navigate("/tickets");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const removeItemMutation = useMutation({
     mutationFn: (lineItemId: string) => invoicesApi.removeLineItem(id!, lineItemId),
     onSuccess: () => {
@@ -233,9 +263,15 @@ export function InvoiceDetailPage() {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm font-medium">{inv.invoiceNumber}</span>
-            <Badge variant={invoiceStatusVariant(inv.status)}>
-              {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
-            </Badge>
+            {inv.type === "quote" ? (
+              <Badge variant={quoteStatusVariant(inv.quoteStatus)}>
+                {(inv.quoteStatus || "draft").charAt(0).toUpperCase() + (inv.quoteStatus || "draft").slice(1)}
+              </Badge>
+            ) : (
+              <Badge variant={invoiceStatusVariant(inv.status)}>
+                {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+              </Badge>
+            )}
           </div>
           {inv.ticketId && (
             <Link to={`/tickets/${inv.ticketId}`} className="text-xs text-muted-foreground hover:underline">
@@ -246,20 +282,47 @@ export function InvoiceDetailPage() {
 
         {/* Status actions */}
         <div className="flex gap-2">
-          {inv.status === "draft" && (
-            <Button size="sm" variant="outline" onClick={() => statusMutation.mutate("open")} disabled={statusMutation.isPending}>
-              Mark Open
-            </Button>
-          )}
-          {inv.status === "open" && (
-            <Button size="sm" variant="outline" onClick={() => statusMutation.mutate("paid")} disabled={statusMutation.isPending}>
-              Mark Paid
-            </Button>
-          )}
-          {inv.status !== "void" && inv.status !== "paid" && (
-            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => { if (confirm("Void this invoice?")) statusMutation.mutate("void"); }} disabled={statusMutation.isPending}>
-              Void
-            </Button>
+          {inv.type === "quote" ? (
+            <>
+              {inv.quoteStatus === "draft" && (
+                <Button size="sm" variant="outline" onClick={() => quoteStatusMutation.mutate("sent")} disabled={quoteStatusMutation.isPending}>
+                  Mark Sent
+                </Button>
+              )}
+              {inv.quoteStatus === "sent" && (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => quoteStatusMutation.mutate("accepted")} disabled={quoteStatusMutation.isPending}>
+                    Accept
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => quoteStatusMutation.mutate("declined")} disabled={quoteStatusMutation.isPending}>
+                    Decline
+                  </Button>
+                </>
+              )}
+              {inv.quoteStatus === "accepted" && (
+                <Button size="sm" variant="outline" onClick={() => convertToTicketMutation.mutate()} disabled={convertToTicketMutation.isPending}>
+                  Convert to Ticket
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              {inv.status === "draft" && (
+                <Button size="sm" variant="outline" onClick={() => statusMutation.mutate("open")} disabled={statusMutation.isPending}>
+                  Mark Open
+                </Button>
+              )}
+              {inv.status === "open" && (
+                <Button size="sm" variant="outline" onClick={() => statusMutation.mutate("paid")} disabled={statusMutation.isPending}>
+                  Mark Paid
+                </Button>
+              )}
+              {inv.status !== "void" && inv.status !== "paid" && (
+                <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => { if (confirm("Void this invoice?")) statusMutation.mutate("void"); }} disabled={statusMutation.isPending}>
+                  Void
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>

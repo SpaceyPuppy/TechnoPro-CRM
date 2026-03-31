@@ -17,7 +17,9 @@ export function InvoiceCreatePage() {
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const prefilledTicketId = searchParams.get("ticketId") ?? "";
+  const isQuote = searchParams.get("type") === "quote";
 
+  const [docType, setDocType] = useState<"invoice" | "quote">(isQuote ? "quote" : "invoice");
   const [mode, setMode] = useState<"standalone" | "ticket">(
     prefilledTicketId ? "ticket" : "standalone",
   );
@@ -37,11 +39,14 @@ export function InvoiceCreatePage() {
 
   const mutation = useMutation({
     mutationFn: () =>
-      invoicesApi.create({ ticketId: mode === "ticket" && ticketId ? ticketId : undefined }),
+      invoicesApi.create({
+        ticketId: mode === "ticket" && ticketId ? ticketId : undefined,
+        type: docType,
+      } as any),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       const from = mode === "ticket" && ticketId ? "ticket" : "";
-      navigate(`/invoices/${res.data.id}${from ? "?from=ticket" : ""}`);
+      navigate(`/${docType === "quote" ? "quotes" : "invoices"}/${res.data.id}${from ? "?from=ticket" : ""}`);
     },
   });
 
@@ -53,7 +58,7 @@ export function InvoiceCreatePage() {
             <ArrowLeft size={16} />
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold">New Invoice</h1>
+        <h1 className="text-2xl font-semibold">New {docType === "quote" ? "Quote" : "Invoice"}</h1>
       </div>
 
       <Card>
@@ -61,9 +66,33 @@ export function InvoiceCreatePage() {
           <CardTitle>Invoice Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Document Type</Label>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="radio"
+                  value="invoice"
+                  checked={docType === "invoice"}
+                  onChange={() => setDocType("invoice")}
+                />
+                Invoice
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="radio"
+                  value="quote"
+                  checked={docType === "quote"}
+                  onChange={() => setDocType("quote")}
+                />
+                Quote
+              </label>
+            </div>
+          </div>
+
           {!prefilledTicketId && (
             <div className="space-y-1.5">
-              <Label>Type</Label>
+              <Label>Link Type</Label>
               <div className="flex gap-3">
                 <label className="flex items-center gap-2 cursor-pointer text-sm">
                   <input
@@ -72,7 +101,7 @@ export function InvoiceCreatePage() {
                     checked={mode === "standalone"}
                     onChange={() => { setMode("standalone"); setTicketId(""); }}
                   />
-                  Standalone sale
+                  Standalone
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer text-sm">
                   <input
@@ -116,7 +145,7 @@ export function InvoiceCreatePage() {
               onClick={() => mutation.mutate()}
               disabled={mutation.isPending || (mode === "ticket" && !ticketId)}
             >
-              Create Invoice
+              Create {docType === "quote" ? "Quote" : "Invoice"}
             </Button>
             <Button
               variant="outline"

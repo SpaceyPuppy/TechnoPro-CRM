@@ -27,6 +27,10 @@ export const invoicesApi = {
     api.post<ApiResponse<InvoiceDetailResponse>>("/api/v1/invoices", body),
   updateStatus: (id: string, status: string) =>
     api.patch<ApiResponse<InvoiceDetailResponse>>(`/api/v1/invoices/${id}/status`, { status }),
+  updateQuoteStatus: (id: string, quoteStatus: "draft" | "sent" | "accepted" | "declined") =>
+    api.patch<ApiResponse<InvoiceDetailResponse>>(`/api/v1/invoices/${id}/quote-status`, { quoteStatus }),
+  convertQuoteToTicket: (id: string) =>
+    api.patch<ApiResponse<any>>(`/api/v1/invoices/${id}/convert-to-ticket`),
   addLineItem: (id: string, body: CreateLineItemRequest) =>
     api.post<ApiResponse<InvoiceDetailResponse>>(`/api/v1/invoices/${id}/line-items`, body),
   updateLineItem: (id: string, lineItemId: string, body: UpdateLineItemRequest) =>
