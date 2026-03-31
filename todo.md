@@ -31,12 +31,11 @@
 - [x] Quote detail view with lifecycle
 - [x] Quote creation (InvoiceCreatePage with type selector)
 
-## Stage 7 — In Progress 🔄
+## Stage 7 — Auth & Security ✅
 
-### Auth & Security
-- [x] 401 interceptor on web (web/src/api/client.ts — catches 401, auto-logout, redirect)
-- [ ] Two-tab sync via localStorage listener (web pending)
-- [ ] Flutter: 401 interceptor in Dio client (pending)
+- [x] 401 interceptor on web (web/src/api/client.ts — catches 401, auto-logout, redirect to /login)
+- [x] 401 interceptor on Flutter (api_client.dart — clears token, Dio error handler)
+- [ ] Two-tab localStorage sync (web) — deferred, low priority
 
 ## Stage 7 — Deferred (Low Priority)
 
