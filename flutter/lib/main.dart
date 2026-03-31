@@ -18,11 +18,11 @@ class DesktopScrollBehavior extends ScrollBehavior {
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
     // Android/iOS: Bouncing physics for elastic scroll feel
-    // Windows/macOS: AlwaysScrollableScrollPhysics for mouse wheel support
+    // Windows/macOS: ClampingScrollPhysics for smooth momentum + mouse/trackpad support
     if (Platform.isAndroid || Platform.isIOS) {
       return const BouncingScrollPhysics();
     }
-    return const AlwaysScrollableScrollPhysics();
+    return const ClampingScrollPhysics();
   }
 
   @override
