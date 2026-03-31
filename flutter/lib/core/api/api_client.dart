@@ -42,6 +42,12 @@ final apiClientProvider = Provider<Dio>((ref) {
       handler.next(response);
     },
     onError: (error, handler) {
+      // Handle 401 Unauthorized — logout user
+      if (error.response?.statusCode == 401) {
+        ref.read(tokenProvider.notifier).state = null;
+        // Optionally trigger app-level logout/navigation here if needed
+      }
+
       if (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.sendTimeout ||
