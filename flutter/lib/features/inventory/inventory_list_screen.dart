@@ -58,7 +58,6 @@ class InventoryListScreen extends ConsumerWidget {
               return RefreshIndicator(
                 onRefresh: () async => ref.invalidate(inventoryListProvider),
                 child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(8),
                   itemCount: items.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
@@ -121,7 +120,6 @@ class _DesktopInventoryTable extends StatelessWidget {
         Divider(height: 1, color: colorScheme.outlineVariant),
         Expanded(
           child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
             itemCount: items.length,
             separatorBuilder: (_, __) =>
                 Divider(height: 1, color: colorScheme.outlineVariant),

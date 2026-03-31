@@ -16,7 +16,11 @@ class DesktopScrollBehavior extends ScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
-    // All platforms use AlwaysScrollableScrollPhysics which handles mouse wheel on desktop
+    // Android/iOS: Bouncing physics for elastic scroll feel
+    // Windows/macOS: AlwaysScrollableScrollPhysics for mouse wheel support
+    if (Platform.isAndroid || Platform.isIOS) {
+      return const BouncingScrollPhysics();
+    }
     return const AlwaysScrollableScrollPhysics();
   }
 

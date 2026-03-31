@@ -118,7 +118,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                             : RefreshIndicator(
                                 onRefresh: () async => ref.invalidate(customerListProvider),
                                 child: ListView.separated(
-                                  physics: const AlwaysScrollableScrollPhysics(),
                                   padding: const EdgeInsets.all(8),
                                   itemCount: filtered.length,
                                   separatorBuilder: (_, __) => const SizedBox(height: 4),
@@ -184,7 +183,6 @@ class _DesktopCustomerTable extends StatelessWidget {
         Divider(height: 1, color: colorScheme.outlineVariant),
         Expanded(
           child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
             itemCount: customers.length,
             separatorBuilder: (_, __) =>
                 Divider(height: 1, color: colorScheme.outlineVariant),

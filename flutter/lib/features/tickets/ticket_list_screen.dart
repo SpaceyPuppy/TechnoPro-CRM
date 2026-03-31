@@ -117,7 +117,6 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                     return RefreshIndicator(
                       onRefresh: () => ref.read(ticketListProvider.notifier).refresh(),
                       child: ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.all(8),
                         itemCount: page.data.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 4),
@@ -185,7 +184,6 @@ class _DesktopTicketTable extends StatelessWidget {
         Divider(height: 1, color: colorScheme.outlineVariant),
         Expanded(
           child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
             itemCount: tickets.length,
             separatorBuilder: (_, __) =>
                 Divider(height: 1, color: colorScheme.outlineVariant),

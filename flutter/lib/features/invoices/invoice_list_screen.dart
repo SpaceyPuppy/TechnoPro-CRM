@@ -73,7 +73,6 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
               return RefreshIndicator(
                 onRefresh: () => ref.read(invoiceListProvider.notifier).refresh(),
                 child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(8),
                   itemCount: page.data.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
@@ -137,7 +136,6 @@ class _DesktopInvoiceTable extends StatelessWidget {
         Divider(height: 1, color: colorScheme.outlineVariant),
         Expanded(
           child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
             itemCount: invoices.length,
             separatorBuilder: (_, __) =>
                 Divider(height: 1, color: colorScheme.outlineVariant),
