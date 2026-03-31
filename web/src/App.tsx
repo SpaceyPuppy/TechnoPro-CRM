@@ -17,6 +17,9 @@ import { InventoryFormPage } from "@/pages/inventory/InventoryFormPage";
 import { FinancePage } from "@/pages/invoices/FinancePage";
 import { InvoiceDetailPage } from "@/pages/invoices/InvoiceDetailPage";
 import { InvoiceCreatePage } from "@/pages/invoices/InvoiceCreatePage";
+import { SettingsPage } from "@/pages/settings/SettingsPage";
+import { BusinessSettingsPage } from "@/pages/settings/BusinessSettingsPage";
+import { DeviceModelsPage } from "@/pages/settings/DeviceModelsPage";
 
 export function App() {
   return (
@@ -49,6 +52,9 @@ export function App() {
             <Route path="invoices/:id" element={<InvoiceDetailPage />} />
             <Route path="quotes/new" element={<InvoiceCreatePage />} />
             <Route path="quotes/:id" element={<InvoiceDetailPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="settings/business" element={<BusinessSettingsPage />} />
+            <Route path="settings/device-models" element={<DeviceModelsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

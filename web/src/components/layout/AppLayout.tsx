@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Users, Ticket, LayoutDashboard, LogOut, Package, FileText } from "lucide-react";
+import { Users, Ticket, LayoutDashboard, LogOut, Package, FileText, Settings } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -50,6 +50,10 @@ export function AppLayout() {
           <NavLink to="/inventory" className={navLinkClass}>
             <Package size={16} />
             Inventory
+          </NavLink>
+          <NavLink to="/settings" className={navLinkClass}>
+            <Settings size={16} />
+            Settings
           </NavLink>
         </nav>
         <Separator />
