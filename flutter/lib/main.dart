@@ -12,6 +12,7 @@ class DesktopScrollBehavior extends ScrollBehavior {
         PointerDeviceKind.touch,
         PointerDeviceKind.mouse,
         PointerDeviceKind.stylus,
+        PointerDeviceKind.trackpad,
       };
 
   @override
