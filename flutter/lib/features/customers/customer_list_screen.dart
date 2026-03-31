@@ -45,7 +45,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final customersAsync = ref.watch(customerListProvider);
     final width = MediaQuery.sizeOf(context).width;
     final isTouch = ref.watch(touchModeProvider);
