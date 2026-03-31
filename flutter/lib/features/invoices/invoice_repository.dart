@@ -47,6 +47,7 @@ class InvoiceRepository {
         balance: '0.00',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        syncedAt: DateTime.now(),
       ));
 
       // Queue for sync
@@ -88,6 +89,7 @@ class InvoiceRepository {
         balance: '0.00',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        syncedAt: DateTime.now(),
       ));
 
       return serverId;
