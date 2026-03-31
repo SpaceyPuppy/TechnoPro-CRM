@@ -1,4 +1,4 @@
-name: TechnoPro (alpha)
+name: technopro_crm
 description: "TechnoPro CRM + POS — Flutter client for Android and Windows."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -60,6 +60,11 @@ dependencies:
   uuid: ^4.5.1
   google_fonts: ^6.2.1
 
+  # Offline support
+  drift_flutter: ^0.2.3
+  connectivity_plus: ^6.1.4
+  path_provider: ^2.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -67,6 +72,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   riverpod_generator: ^2.6.3
   build_runner: ^2.4.15
+  drift_dev: ^2.22.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

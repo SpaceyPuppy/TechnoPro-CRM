@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../auth/logout_callback_provider.dart';
 
 const _kApiHost = String.fromEnvironment('API_HOST');
 
@@ -42,10 +43,9 @@ final apiClientProvider = Provider<Dio>((ref) {
       handler.next(response);
     },
     onError: (error, handler) {
-      // Handle 401 Unauthorized — logout user
+      // Handle 401 Unauthorized — trigger full logout
       if (error.response?.statusCode == 401) {
-        ref.read(tokenProvider.notifier).state = null;
-        // Optionally trigger app-level logout/navigation here if needed
+        ref.read(logoutCallbackProvider)?.call();
       }
 
       if (error.type == DioExceptionType.connectionError ||

@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/providers/layout_provider.dart';
 import 'core/router/router.dart';
+import 'core/sync/connectivity_service.dart';
+import 'core/sync/sync_service.dart';
 
 class _SmoothDesktopScrollPhysics extends ClampingScrollPhysics {
   const _SmoothDesktopScrollPhysics({ScrollPhysics? parent}) : super(parent: parent);
@@ -62,6 +64,10 @@ class TechnoProApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+
+    // Initialize connectivity listening and initial sync
+    ref.read(connectivityServiceProvider);
+    ref.read(syncServiceProvider).syncAll();
 
     return MaterialApp.router(
       title: 'First Choice Phone Repair',

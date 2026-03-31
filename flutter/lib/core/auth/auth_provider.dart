@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/models/models.dart';
 import '../api/api_client.dart';
 import 'auth_storage.dart';
+import 'logout_callback_provider.dart';
 
 class AuthState {
   final String? token;
@@ -54,6 +55,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } else {
       state = const AuthState();
     }
+    // Register logout callback for Dio 401 handler (avoids circular import)
+    _ref.read(logoutCallbackProvider.notifier).state = logout;
   }
 
   Future<void> login(String email, String password) async {
