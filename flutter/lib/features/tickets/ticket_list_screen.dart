@@ -21,6 +21,20 @@ class TicketListScreen extends ConsumerStatefulWidget {
 
 class _TicketListScreenState extends ConsumerState<TicketListScreen> {
   String? _statusFilter;
+  late TextEditingController _searchCtrl;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +51,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
             value: _statusFilter,
             onChanged: (s) {
               setState(() => _statusFilter = s);
-              ref.read(ticketListProvider.notifier).fetch(status: s);
+              ref.read(ticketListProvider.notifier).fetch(status: s, search: _searchQuery.isEmpty ? null : _searchQuery);
             },
           ),
           IconButton(
@@ -49,45 +63,77 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final tier = layoutTier(constraints.maxWidth, isTouch);
-          return listState.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => ErrorView(
-              message: e.toString(),
-              onRetry: () => ref.read(ticketListProvider.notifier).refresh(),
-            ),
-            data: (page) {
-              if (page.data.isEmpty) {
-                return EmptyStateWidget(
-                  icon: Icons.confirmation_number_outlined,
-                  message: 'No tickets found',
-                );
-              }
-              if (tier == LayoutTier.desktop) {
-                return _DesktopTicketTable(
-                  tickets: page.data,
-                  selectedId: widget.selectedId,
-                  onTap: (t) => widget.onSelect != null
-                      ? widget.onSelect!(t.id)
-                      : context.go('/tickets/${t.id}'),
-                );
-              }
-              return RefreshIndicator(
-                onRefresh: () => ref.read(ticketListProvider.notifier).refresh(),
-                child: ListView.separated(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(8),
-                  itemCount: page.data.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (context, i) => _TicketCard(
-                    ticket: page.data[i],
-                    isSelected: page.data[i].id == widget.selectedId,
-                    onTap: () => widget.onSelect != null
-                        ? widget.onSelect!(page.data[i].id)
-                        : context.go('/tickets/${page.data[i].id}'),
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: (v) {
+                    setState(() => _searchQuery = v);
+                    ref.read(ticketListProvider.notifier).fetch(status: _statusFilter, search: v.isEmpty ? null : v);
+                  },
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Search by ticket # or summary',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _searchQuery = '');
+                              ref.read(ticketListProvider.notifier).fetch(status: _statusFilter);
+                            },
+                          )
+                        : null,
                   ),
                 ),
-              );
-            },
+              ),
+              Expanded(
+                child: listState.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => ErrorView(
+                    message: e.toString(),
+                    onRetry: () => ref.read(ticketListProvider.notifier).refresh(),
+                  ),
+                  data: (page) {
+                    if (page.data.isEmpty) {
+                      return EmptyStateWidget(
+                        icon: Icons.confirmation_number_outlined,
+                        message: 'No tickets found',
+                      );
+                    }
+                    if (tier == LayoutTier.desktop) {
+                      return _DesktopTicketTable(
+                        tickets: page.data,
+                        selectedId: widget.selectedId,
+                        onTap: (t) => widget.onSelect != null
+                            ? widget.onSelect!(t.id)
+                            : context.go('/tickets/${t.id}'),
+                      );
+                    }
+                    return RefreshIndicator(
+                      onRefresh: () => ref.read(ticketListProvider.notifier).refresh(),
+                      child: ListView.separated(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.all(8),
+                        itemCount: page.data.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 4),
+                        itemBuilder: (context, i) => _TicketCard(
+                          ticket: page.data[i],
+                          isSelected: page.data[i].id == widget.selectedId,
+                          onTap: () => widget.onSelect != null
+                              ? widget.onSelect!(page.data[i].id)
+                              : context.go('/tickets/${page.data[i].id}'),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),

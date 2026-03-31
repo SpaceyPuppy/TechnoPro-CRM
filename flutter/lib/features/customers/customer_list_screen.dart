@@ -8,11 +8,41 @@ import '../../shared/widgets/empty_state_widget.dart';
 import '../../shared/widgets/error_view.dart';
 import 'customers_provider.dart';
 
-class CustomerListScreen extends ConsumerWidget {
+class CustomerListScreen extends ConsumerStatefulWidget {
   const CustomerListScreen({super.key, this.selectedId, this.onSelect});
 
   final String? selectedId;
   final void Function(String id)? onSelect;
+
+  @override
+  ConsumerState<CustomerListScreen> createState() => _CustomerListScreenState();
+}
+
+class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
+  late TextEditingController _searchCtrl;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<CustomerModel> _filterCustomers(List<CustomerModel> customers) {
+    if (_searchQuery.isEmpty) return customers;
+    final query = _searchQuery.toLowerCase();
+    return customers.where((c) {
+      return c.name.toLowerCase().contains(query) ||
+          (c.email?.toLowerCase().contains(query) ?? false) ||
+          (c.phone?.toLowerCase().contains(query) ?? false);
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,36 +71,68 @@ class CustomerListScreen extends ConsumerWidget {
               onRetry: () => ref.invalidate(customerListProvider),
             ),
             data: (customers) {
-              if (customers.isEmpty) {
+              final filtered = _filterCustomers(customers);
+              if (filtered.isEmpty && _searchQuery.isEmpty) {
                 return EmptyStateWidget(
                   icon: Icons.people_outline,
                   message: 'No customers yet',
                 );
               }
-              if (tier == LayoutTier.desktop) {
-                return _DesktopCustomerTable(
-                  customers: customers,
-                  selectedId: selectedId,
-                  onTap: (c) => onSelect != null
-                      ? onSelect!(c.id)
-                      : context.go('/customers/${c.id}'),
-                );
-              }
-              return RefreshIndicator(
-                onRefresh: () async => ref.invalidate(customerListProvider),
-                child: ListView.separated(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(8),
-                  itemCount: customers.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (context, i) => _CustomerCard(
-                    customer: customers[i],
-                    isSelected: customers[i].id == selectedId,
-                    onTap: () => onSelect != null
-                        ? onSelect!(customers[i].id)
-                        : context.go('/customers/${customers[i].id}'),
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        hintText: 'Search by name, email, or phone',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                      ),
+                    ),
                   ),
-                ),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? Center(
+                            child: Text('No customers match "$_searchQuery"'),
+                          )
+                        : tier == LayoutTier.desktop
+                            ? _DesktopCustomerTable(
+                                customers: filtered,
+                                selectedId: widget.selectedId,
+                                onTap: (c) => widget.onSelect != null
+                                    ? widget.onSelect!(c.id)
+                                    : context.go('/customers/${c.id}'),
+                              )
+                            : RefreshIndicator(
+                                onRefresh: () async => ref.invalidate(customerListProvider),
+                                child: ListView.separated(
+                                  physics: const BouncingScrollPhysics(),
+                                  padding: const EdgeInsets.all(8),
+                                  itemCount: filtered.length,
+                                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                                  itemBuilder: (context, i) => _CustomerCard(
+                                    customer: filtered[i],
+                                    isSelected: filtered[i].id == widget.selectedId,
+                                    onTap: () => widget.onSelect != null
+                                        ? widget.onSelect!(filtered[i].id)
+                                        : context.go('/customers/${filtered[i].id}'),
+                                  ),
+                                ),
+                              ),
+                  ),
+                ],
               );
             },
           );

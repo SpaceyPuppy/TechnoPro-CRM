@@ -35,3 +35,10 @@ final customerTicketsProvider =
   final page = PaginatedResponse.fromJson(res.data!, TicketModel.fromJson);
   return page.data;
 });
+
+// --- Customer delete ---
+
+final customerDeleteProvider = FutureProvider.family<void, String>((ref, id) async {
+  final dio = ref.read(apiClientProvider);
+  await dio.delete('/customers/$id');
+});

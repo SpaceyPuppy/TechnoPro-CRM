@@ -22,11 +22,17 @@ const STATUS_OPTIONS = [
 export function TicketsPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["tickets", { page, status }],
-    queryFn: () => ticketsApi.list({ page, pageSize: 20, status: status || undefined }),
+    queryKey: ["tickets", { page, status, search }],
+    queryFn: () => ticketsApi.list({
+      page,
+      pageSize: 20,
+      status: status || undefined,
+      search: search || undefined,
+    }),
   });
 
   return (
@@ -41,7 +47,17 @@ export function TicketsPage() {
         </Button>
       </div>
 
-      <div>
+      <div className="flex gap-3">
+        <input
+          type="text"
+          placeholder="Search by ticket # or summary..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          className="flex-1 text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        />
         <select
           value={status}
           onChange={(e) => {

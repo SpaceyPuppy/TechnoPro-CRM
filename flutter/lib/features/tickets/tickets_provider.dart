@@ -13,14 +13,17 @@ class TicketListNotifier extends StateNotifier<AsyncValue<PaginatedResponse<Tick
   final Dio _dio;
   int _page = 1;
   String? _statusFilter;
+  String? _searchQuery;
 
-  Future<void> fetch({int page = 1, String? status}) async {
+  Future<void> fetch({int page = 1, String? status, String? search}) async {
     _page = page;
     _statusFilter = status;
+    _searchQuery = search;
     state = const AsyncValue.loading();
     try {
       final params = <String, dynamic>{'page': page, 'pageSize': 20};
       if (status != null) params['status'] = status;
+      if (search != null) params['search'] = search;
       final res = await _dio.get<Map<String, dynamic>>('/tickets', queryParameters: params);
       final parsed = PaginatedResponse.fromJson(res.data!, TicketModel.fromJson);
       state = AsyncValue.data(parsed);
@@ -29,7 +32,7 @@ class TicketListNotifier extends StateNotifier<AsyncValue<PaginatedResponse<Tick
     }
   }
 
-  Future<void> refresh() => fetch(page: _page, status: _statusFilter);
+  Future<void> refresh() => fetch(page: _page, status: _statusFilter, search: _searchQuery);
 }
 
 final ticketListProvider =

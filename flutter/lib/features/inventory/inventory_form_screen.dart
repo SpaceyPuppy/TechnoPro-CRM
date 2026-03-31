@@ -75,6 +75,43 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
     }
   }
 
+  Future<void> _delete() async {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Item'),
+        content: Text('Delete ${_nameCtrl.text}? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              setState(() {
+                _saving = true;
+                _error = null;
+              });
+              try {
+                final dio = ref.read(apiClientProvider);
+                await dio.delete('/inventory/${widget.id}');
+                ref.invalidate(inventoryListProvider);
+                if (mounted) context.pop();
+              } catch (e) {
+                if (mounted) setState(() => _error = e.toString());
+              } finally {
+                if (mounted) setState(() => _saving = false);
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.id != null;
@@ -174,6 +211,17 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : Text(isEdit ? 'Save Changes' : 'Create Item'),
             ),
+            if (isEdit) ...[
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                onPressed: _saving ? null : _delete,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red.withAlpha(50),
+                  foregroundColor: Colors.red,
+                ),
+                child: const Text('Delete Item'),
+              ),
+            ],
           ],
         ),
       ),

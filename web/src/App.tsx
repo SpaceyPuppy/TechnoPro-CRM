@@ -14,7 +14,7 @@ import { TicketDetailPage } from "@/pages/tickets/TicketDetailPage";
 import { TicketFormPage } from "@/pages/tickets/TicketFormPage";
 import { InventoryPage } from "@/pages/inventory/InventoryPage";
 import { InventoryFormPage } from "@/pages/inventory/InventoryFormPage";
-import { InvoicesPage } from "@/pages/invoices/InvoicesPage";
+import { FinancePage } from "@/pages/invoices/FinancePage";
 import { InvoiceDetailPage } from "@/pages/invoices/InvoiceDetailPage";
 import { InvoiceCreatePage } from "@/pages/invoices/InvoiceCreatePage";
 
@@ -44,9 +44,11 @@ export function App() {
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="inventory/new" element={<InventoryFormPage />} />
             <Route path="inventory/:id/edit" element={<InventoryFormPage />} />
-            <Route path="invoices" element={<InvoicesPage />} />
+            <Route path="invoices" element={<FinancePage />} />
             <Route path="invoices/new" element={<InvoiceCreatePage />} />
             <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+            <Route path="quotes/new" element={<InvoiceCreatePage />} />
+            <Route path="quotes/:id" element={<InvoiceDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
