@@ -1,4 +1,4 @@
-name: technopro_crm
+name: TechnoPro (alpha)
 description: "TechnoPro CRM + POS — Flutter client for Android and Windows."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
