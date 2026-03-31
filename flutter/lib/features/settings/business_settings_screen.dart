@@ -111,7 +111,7 @@ class _BusinessSettingsScreenState
             ],
           ),
           body: ListView(
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
               _SectionLabel('Business Details'),

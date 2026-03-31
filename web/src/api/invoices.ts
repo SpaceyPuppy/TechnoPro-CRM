@@ -11,11 +11,13 @@ import type {
 } from "@technopro/shared";
 
 export const invoicesApi = {
-  list: (params: { page?: number; pageSize?: number; status?: string; ticketId?: string } = {}) => {
+  list: (params: { page?: number; pageSize?: number; status?: string; type?: string; quoteStatus?: string; ticketId?: string } = {}) => {
     const qs = new URLSearchParams();
     if (params.page) qs.set("page", String(params.page));
     if (params.pageSize) qs.set("pageSize", String(params.pageSize));
     if (params.status) qs.set("status", params.status);
+    if (params.type) qs.set("type", params.type);
+    if (params.quoteStatus) qs.set("quoteStatus", params.quoteStatus);
     if (params.ticketId) qs.set("ticketId", params.ticketId);
     return api.get<PaginatedResponse<InvoiceResponse>>(`/api/v1/invoices?${qs}`);
   },

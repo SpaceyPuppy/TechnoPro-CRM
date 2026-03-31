@@ -236,7 +236,7 @@ class _DesktopSidebar extends StatelessWidget {
           // Nav items
           Expanded(
             child: ListView.builder(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 8),
               itemCount: _railDestinations.length,
               itemBuilder: (context, i) {
@@ -387,7 +387,7 @@ class _TabletRail extends StatelessWidget {
           const SizedBox(height: 4),
           Expanded(
             child: ListView.builder(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 6),
               itemCount: _railDestinations.length,
               itemBuilder: (context, i) {

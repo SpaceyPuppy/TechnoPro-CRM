@@ -35,7 +35,7 @@ class DashboardScreen extends ConsumerWidget {
         data: (stats) => RefreshIndicator(
           onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
           child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             child: Center(
               child: ConstrainedBox(

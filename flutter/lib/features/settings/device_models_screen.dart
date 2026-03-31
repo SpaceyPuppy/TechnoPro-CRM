@@ -51,7 +51,7 @@ class DeviceModelsScreen extends ConsumerWidget {
           final manufacturers = grouped.keys.toList()..sort();
 
           return ListView.builder(
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(),
             itemCount: manufacturers.length,
               itemBuilder: (context, i) {
                 final mfr = manufacturers[i];

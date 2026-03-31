@@ -16,10 +16,8 @@ class DesktopScrollBehavior extends ScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
-    // Desktop keeps AlwaysScrollable; mobile uses Bouncing
-    return Platform.isAndroid || Platform.isIOS
-        ? const BouncingScrollPhysics()
-        : const AlwaysScrollableScrollPhysics();
+    // All platforms use AlwaysScrollableScrollPhysics which handles mouse wheel on desktop
+    return const AlwaysScrollableScrollPhysics();
   }
 
   @override

@@ -33,7 +33,7 @@ class TicketDetailScreen extends ConsumerWidget {
           ],
         ),
         body: ListView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
             _InfoCard(ticket: ticket),
