@@ -1,3 +1,5 @@
+import { useAuthStore } from "@/store/authStore";
+
 export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 export class ApiError extends Error {
@@ -9,6 +11,12 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+}
+
+function handleUnauthorized() {
+  const authStore = useAuthStore.getState();
+  authStore.clearAuth();
+  window.location.href = "/login";
 }
 
 function getToken(): string | null {
@@ -33,6 +41,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized();
+      // Don't throw, let the redirect happen
+      return undefined as T;
+    }
+
     const body = (await res.json().catch(() => ({}))) as {
       error?: { code?: string; message?: string };
     };
@@ -61,6 +75,11 @@ async function uploadFile<T>(path: string, file: File): Promise<T> {
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized();
+      return undefined as T;
+    }
+
     const body = (await res.json().catch(() => ({}))) as {
       error?: { code?: string; message?: string };
     };
