@@ -91,9 +91,19 @@ Chris uses four Windows machines. Ask which one at session start.
 
 ## Current State
 
-**Updated:** 2026-03-31 | **Completed:** Stage 6 | **Current:** Stage 7
+**Updated:** 2026-03-31 | **Completed:** Stage 6 | **Current:** Stage 7 (in progress)
 
 **Surface:** Fully set up (2026-03-16) — Flutter 3.38.5, Docker, Android SDK 36.1.0, VS Build Tools + ATL component. Backend running, DB ready.
+
+### Stage 7 Progress
+
+✅ **7a:** Scroll fixes (AlwaysScrollableScrollPhysics for Windows mouse wheel), UX polish (delete spinner, note toast), API host fallback  
+✅ **7b:** Flutter feature parity — customer/inventory delete, search on both platforms (web + Flutter)  
+✅ **Windows scroll fix:** Replaced BouncingScrollPhysics with AlwaysScrollableScrollPhysics  
+✅ **7c:** Web Finance hub with tabbed Invoices/Quotes, quote status actions (Sent/Accept/Decline/Convert to Ticket)  
+✅ **7d:** Web Settings module — Business Settings page (business details, GST, invoice notes), Device Models CRUD  
+🔄 **7e:** 401 interceptor for auto-logout on token expiry (web done, Flutter pending)  
+⏸️ **7f–7h:** Deferred (bulk import, audit logs, roles hardening)
 
 ### Stages completed (0–6)
 

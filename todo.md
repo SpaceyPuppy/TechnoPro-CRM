@@ -1,45 +1,56 @@
 # TechnoPro CRM — Todo / Notes
 
-**Current Stage:** Stage 7 (Interface polish, scrolling fixes, bulk import, 401 interceptor, audit logs)
+**Current Stage:** Stage 7 (in progress: 7a–7d complete, 7e WIP)
 
-## Stage 2 Polish (Deferred)
+## Stage 7 — Completed ✅
 
-- [ ] Delete customer button has no loading spinner (isPending disables it but no visual feedback)
-- [ ] No success confirmation after adding a note on a ticket
-- [ ] Customer select on New Ticket loads max 100 — will break at scale
-- [x] Status not refreshing on back navigation — fixed (broadened React Query invalidation)
+### UX / Loading States ✅
+- [x] Delete customer button has loading spinner (web)
+- [x] Success toast after adding note on ticket (already existed)
 
-## Stage 7 — Priority Issues
+### UI Scrolling & Layout ✅
+- [x] Flutter: AlwaysScrollableScrollPhysics for Windows mouse wheel
+- [x] Web: Scroll containers for ticket detail history, customer detail tickets table
+- [x] Settings screens fully scrollable (Flutter + Web)
 
-### UX / Loading States
-- [ ] Delete customer button has no loading spinner (isPending disables it but no visual feedback)
-- [ ] No success toast after adding a note on a ticket
+### Feature Parity ✅
+- [x] Flutter: Customer delete with confirmation dialog
+- [x] Flutter: Inventory delete with confirmation dialog
+- [x] Flutter: Customer search (name/email/phone)
+- [x] Web: Ticket search (ticket # or summary)
+- [x] Flutter: Ticket search (ticket # or summary)
 
-### UI Scrolling & Layout
-- [ ] Settings - Business Settings overflows on mobile (not scrollable), text fields too narrow
-- [ ] Device models list is not scrollable
-- [ ] Customer modal view not scrollable
-- [ ] Ticket modal view not scrollable
-- [ ] Audit all modal and overflow-prone views for scroll handling
+### Web Settings Module ✅
+- [x] Business Settings page (name, ABN, address, phone, email, GST rate, invoice notes)
+- [x] Device Models CRUD (add/edit/delete, grouped by manufacturer)
+- [x] Settings hub page
 
-### Interface Polish
-- [ ] Dashboard looks good — refine other screens to match quality level
-- [ ] General UX/UI polish across all screens
+### Web Finance Hub (Quotes) ✅
+- [x] Tabbed Finance page (Invoices + Quotes)
+- [x] Quote status actions (Draft → Sent → Accept/Decline → Convert to Ticket)
+- [x] Quote detail view with lifecycle
+- [x] Quote creation (InvoiceCreatePage with type selector)
 
-### Bulk Data Import
-- [ ] CSV/XLSX import for device models (bulk add, not one-by-one)
-- [ ] CSV/XLSX import for customers
-- [ ] CSV/XLSX import for inventory items
-- [ ] Possibly CSV export for same entities (like most CRM/POS tools)
+## Stage 7 — In Progress 🔄
 
 ### Auth & Security
-- [ ] 401 interceptor — auto-logout when token expires
-- [ ] Two tabs issue: logout in one tab, other tab still shows UI until next API call
-- [ ] Review roles hardening (Stage 7 original goal)
+- [x] 401 interceptor on web (web/src/api/client.ts — catches 401, auto-logout, redirect)
+- [ ] Two-tab sync via localStorage listener (web pending)
+- [ ] Flutter: 401 interceptor in Dio client (pending)
+
+## Stage 7 — Deferred (Low Priority)
+
+### Bulk Data Import
+- [ ] CSV/XLSX import: device models, customers, inventory
+- [ ] CSV export functionality
 
 ### Backend/Data
-- [ ] Audit logs (basic: user, action, timestamp, resource ID)
-- [ ] Consider offline sync (Drift SQLite) for Flutter — was deferred from Stage 6
+- [ ] Audit logs (user, action, timestamp, resource ID)
+- [ ] Drift SQLite offline sync (Flutter)
+
+### Roles Hardening
+- [ ] RBAC audit and enforcement
+- [ ] UI role-based action hiding (tech/counter roles)
 
 ## Historical Notes
 
