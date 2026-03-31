@@ -198,6 +198,70 @@ export async function updateQuoteStatus(
   return getInvoiceById(id);
 }
 
+// Convert an accepted quote to a new ticket and link the invoice back to it.
+// Returns { ticketId } on success, null if quote not found or not accepted.
+export async function convertQuoteToTicket(
+  quoteId: string,
+  userId: string,
+): Promise<{ ticketId: string; ticketNumber: string } | null> {
+  const db = getDb();
+  const quote = await getInvoiceById(quoteId);
+  if (!quote || quote.type !== "quote" || quote.quoteStatus !== "accepted") return null;
+  if (quote.convertedTicketId) {
+    // Already converted — return existing ticket
+    return { ticketId: quote.convertedTicketId, ticketNumber: "" };
+  }
+
+  const ticketId = generateId();
+
+  // Derive ticket number
+  const last = await db
+    .select({ ticketNumber: schema.tickets.ticketNumber })
+    .from(schema.tickets)
+    .orderBy(desc(schema.tickets.createdAt))
+    .limit(1);
+  const lastNum = last[0]?.ticketNumber;
+  let ticketNum = "TKT-00001";
+  if (lastNum?.startsWith("TKT-")) {
+    const n = parseInt(lastNum.replace("TKT-", ""), 10) + 1;
+    ticketNum = `TKT-${String(n).padStart(5, "0")}`;
+  }
+
+  // Derive customerId from existing ticket if linked, else fall back to null
+  // (Quotes may not be linked to a ticket — we create the ticket with no customer initially)
+  const sourceTicketId = quote.ticketId;
+  let customerId: string | null = null;
+  if (sourceTicketId) {
+    const [sourceTicket] = await db
+      .select({ customerId: schema.tickets.customerId })
+      .from(schema.tickets)
+      .where(eq(schema.tickets.id, sourceTicketId))
+      .limit(1);
+    customerId = sourceTicket?.customerId ?? null;
+  }
+
+  if (!customerId) return null; // cannot create ticket without a customer
+
+  const now = new Date();
+  await db.insert(schema.tickets).values({
+    id: ticketId,
+    ticketNumber: ticketNum,
+    customerId,
+    status: "open",
+    priority: "medium",
+    summary: `Quote ${quote.invoiceNumber}`,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await db
+    .update(schema.invoices)
+    .set({ convertedTicketId: ticketId, ticketId: ticketId })
+    .where(eq(schema.invoices.id, quoteId));
+
+  return { ticketId, ticketNumber: ticketNum };
+}
+
 // --- Line items ---
 
 export async function addLineItem(

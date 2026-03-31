@@ -5,6 +5,7 @@ import {
   createInvoice,
   updateInvoiceStatus,
   updateQuoteStatus,
+  convertQuoteToTicket,
   addLineItem,
   updateLineItem,
   removeLineItem,
@@ -219,6 +220,20 @@ export async function invoiceRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Quote not found" } });
       }
       return reply.send({ data: invoiceToResponse(inv) });
+    },
+  );
+
+  // Convert accepted quote to a new ticket
+  app.patch<{ Params: { id: string } }>(
+    "/invoices/:id/convert-to-ticket",
+    async (request, reply) => {
+      const result = await convertQuoteToTicket(request.params.id, request.user.id);
+      if (!result) {
+        return reply.code(400).send({
+          error: { code: "INVALID_STATE", message: "Quote must be accepted before converting to ticket" },
+        });
+      }
+      return reply.send({ data: result });
     },
   );
 

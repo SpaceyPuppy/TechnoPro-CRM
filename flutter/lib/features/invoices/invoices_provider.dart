@@ -7,11 +7,12 @@ import '../../shared/models/models.dart';
 
 class InvoiceListNotifier
     extends StateNotifier<AsyncValue<PaginatedResponse<InvoiceModel>>> {
-  InvoiceListNotifier(this._dio) : super(const AsyncValue.loading()) {
+  InvoiceListNotifier(this._dio, {this.typeFilter}) : super(const AsyncValue.loading()) {
     fetch();
   }
 
   final Dio _dio;
+  final String? typeFilter; // 'invoice' | 'quote' | null (all)
   int _page = 1;
   String? _statusFilter;
 
@@ -22,6 +23,7 @@ class InvoiceListNotifier
     try {
       final params = <String, dynamic>{'page': page, 'pageSize': 20};
       if (status != null) params['status'] = status;
+      if (typeFilter != null) params['type'] = typeFilter;
       final res =
           await _dio.get<Map<String, dynamic>>('/invoices', queryParameters: params);
       final parsed = PaginatedResponse.fromJson(res.data!, InvoiceModel.fromJson);
@@ -36,7 +38,12 @@ class InvoiceListNotifier
 
 final invoiceListProvider = StateNotifierProvider<InvoiceListNotifier,
     AsyncValue<PaginatedResponse<InvoiceModel>>>(
-  (ref) => InvoiceListNotifier(ref.read(apiClientProvider)),
+  (ref) => InvoiceListNotifier(ref.read(apiClientProvider), typeFilter: 'invoice'),
+);
+
+final quoteListProvider = StateNotifierProvider<InvoiceListNotifier,
+    AsyncValue<PaginatedResponse<InvoiceModel>>>(
+  (ref) => InvoiceListNotifier(ref.read(apiClientProvider), typeFilter: 'quote'),
 );
 
 // --- Invoice detail ---

@@ -171,11 +171,11 @@ Sub-stages and status:
 
 | Sub-stage | Focus | Status |
 |-----------|-------|--------|
-| 6a | Visual overhaul — dark sidebar, theme, chips, stat tiles | In progress |
-| 6b | GST + business settings (app_settings table, backend routes, Flutter settings screen) | Not started |
-| 6c | PDF invoices + quotes (pdf + printing packages) | Not started |
-| 6d | Quotes — extend invoices with type column, Finance hub, convert-to-ticket | Not started |
-| 6e | Deposits — payment type column | Not started |
+| 6a | Visual overhaul — dark sidebar, theme, chips, stat tiles | Complete |
+| 6b | GST + business settings (app_settings table, backend routes, Flutter settings screen) | Complete |
+| 6c | PDF invoices + quotes (pdf + printing packages) | Complete |
+| 6d | Quotes — Finance hub (/finance), tabbed Invoices/Quotes, quote status actions, convert-to-ticket | Complete |
+| 6e | Deposits — payment type toggle (Deposit/Payment/Refund), grouped payments display | Complete |
 
 **Key Stage 6 decisions:**
 - Quotes = extend invoices with `type: invoice | quote` column (Option A). Same line items. Quote status: draft → sent → accepted → declined. "Convert to Ticket" on accepted quotes.

@@ -6,10 +6,13 @@ import '../tickets/tickets_provider.dart';
 import 'invoices_provider.dart';
 
 class InvoiceFormScreen extends ConsumerStatefulWidget {
-  const InvoiceFormScreen({super.key, this.ticketId});
+  const InvoiceFormScreen({super.key, this.ticketId, this.isQuote = false});
 
   /// Pre-selected ticket when creating from ticket detail screen.
   final String? ticketId;
+
+  /// When true, creates a Quote instead of an Invoice.
+  final bool isQuote;
 
   @override
   ConsumerState<InvoiceFormScreen> createState() => _InvoiceFormScreenState();
@@ -35,11 +38,16 @@ class _InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
       final dio = ref.read(apiClientProvider);
       final res = await dio.post<Map<String, dynamic>>('/invoices', data: {
         if (_ticketId != null) 'ticketId': _ticketId,
+        if (widget.isQuote) 'type': 'quote',
       });
       final id = res.data!['data']['id'] as String;
-      ref.invalidate(invoiceListProvider);
+      if (widget.isQuote) {
+        ref.invalidate(quoteListProvider);
+      } else {
+        ref.invalidate(invoiceListProvider);
+      }
       if (_ticketId != null) ref.invalidate(ticketInvoiceProvider(_ticketId!));
-      if (mounted) context.go('/invoices/$id');
+      if (mounted) context.go('/finance/$id');
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
@@ -50,9 +58,10 @@ class _InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
   @override
   Widget build(BuildContext context) {
     final ticketsAsync = ref.watch(ticketListProvider);
+    final title = widget.isQuote ? 'New Quote' : 'New Invoice';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('New Invoice')),
+      appBar: AppBar(title: Text(title)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -85,7 +94,7 @@ class _InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
             child: _saving
                 ? const SizedBox(
                     height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Create Invoice'),
+                : Text('Create $title'),
           ),
         ],
       ),

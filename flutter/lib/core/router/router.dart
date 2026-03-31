@@ -12,9 +12,9 @@ import '../../features/customers/customer_form_screen.dart';
 import '../../features/inventory/inventory_list_screen.dart';
 import '../../features/inventory/inventory_detail_screen.dart';
 import '../../features/inventory/inventory_form_screen.dart';
-import '../../features/invoices/invoice_list_screen.dart';
 import '../../features/invoices/invoice_detail_screen.dart';
 import '../../features/invoices/invoice_form_screen.dart';
+import '../../features/invoices/finance_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/device_models_screen.dart';
 import '../../features/settings/business_settings_screen.dart';
@@ -133,18 +133,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
-            path: '/invoices',
+            path: '/finance',
             builder: (_, __) => AdaptiveSplitView(
               listBuilder: (selectedId, onSelect) =>
-                  InvoiceListScreen(selectedId: selectedId, onSelect: onSelect),
+                  FinanceScreen(selectedId: selectedId, onSelect: onSelect),
               detailBuilder: (id) => InvoiceDetailScreen(id: id),
-              emptyDetail: const Center(child: Text('Select an invoice', style: TextStyle(color: Colors.grey))),
+              emptyDetail: const Center(child: Text('Select an invoice or quote', style: TextStyle(color: Colors.grey))),
             ),
             routes: [
               GoRoute(
                 path: 'new',
                 builder: (_, state) => InvoiceFormScreen(
                   ticketId: state.uri.queryParameters['ticketId'],
+                  isQuote: state.uri.queryParameters['type'] == 'quote',
                 ),
               ),
               GoRoute(
@@ -153,6 +154,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                     InvoiceDetailScreen(id: state.pathParameters['id']!),
               ),
             ],
+          ),
+          // Legacy /invoices redirect for ticket-linked invoice creation
+          GoRoute(
+            path: '/invoices',
+            redirect: (_, state) => '/finance',
           ),
           GoRoute(
             path: '/settings',

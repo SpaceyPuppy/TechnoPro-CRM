@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:printing/printing.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
 import '../inventory/inventory_provider.dart';
+import '../settings/app_settings_provider.dart';
 import 'invoices_provider.dart';
+import 'pdf_invoice_service.dart';
+
+// Fetches the customer linked to a ticket (used for PDF header)
+final _ticketCustomerProvider =
+    FutureProvider.family<CustomerModel?, String>((ref, ticketId) async {
+  final dio = ref.read(apiClientProvider);
+  final res = await dio.get<Map<String, dynamic>>('/tickets/$ticketId');
+  final data = res.data!['data'] as Map<String, dynamic>;
+  if (data['customer'] == null) return null;
+  return CustomerModel.fromJson(data['customer'] as Map<String, dynamic>);
+});
 
 class InvoiceDetailScreen extends ConsumerWidget {
   const InvoiceDetailScreen({super.key, required this.id});
@@ -22,8 +36,13 @@ class InvoiceDetailScreen extends ConsumerWidget {
         appBar: AppBar(
           title: Text(invoice.invoiceNumber),
           actions: [
+            _PdfButton(invoice: invoice),
+            const SizedBox(width: 4),
             Chip(
-              label: Text(invoice.statusLabel, style: const TextStyle(fontSize: 11)),
+              label: Text(
+                invoice.isQuote ? invoice.quoteStatusLabel : invoice.statusLabel,
+                style: const TextStyle(fontSize: 11),
+              ),
               padding: EdgeInsets.zero,
               labelPadding: const EdgeInsets.symmetric(horizontal: 6),
             ),
@@ -47,6 +66,125 @@ class InvoiceDetailScreen extends ConsumerWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// PDF action button
+// ---------------------------------------------------------------------------
+
+class _PdfButton extends ConsumerStatefulWidget {
+  const _PdfButton({required this.invoice});
+  final InvoiceModel invoice;
+
+  @override
+  ConsumerState<_PdfButton> createState() => _PdfButtonState();
+}
+
+class _PdfButtonState extends ConsumerState<_PdfButton> {
+  bool _generating = false;
+
+  Future<void> _generate() async {
+    setState(() => _generating = true);
+    try {
+      final settingsAsync = ref.read(appSettingsProvider);
+      final settings = settingsAsync.valueOrNull;
+      if (settings == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settings not loaded — try again')),
+        );
+        return;
+      }
+
+      // Try to get customer from linked ticket
+      CustomerModel? customer;
+      if (widget.invoice.ticketId != null) {
+        customer = await ref.read(
+          _ticketCustomerProvider(widget.invoice.ticketId!).future,
+        );
+      }
+
+      final doc = await PdfInvoiceService.buildInvoicePdf(
+        widget.invoice,
+        settings,
+        customerName: customer?.displayName,
+        customerPhone: customer?.phone,
+        customerEmail: customer?.email,
+      );
+
+      final bytes = await doc.save();
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${widget.invoice.invoiceNumber}.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('PDF error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
+  }
+
+  Future<void> _print() async {
+    setState(() => _generating = true);
+    try {
+      final settingsAsync = ref.read(appSettingsProvider);
+      final settings = settingsAsync.valueOrNull;
+      if (settings == null) return;
+
+      CustomerModel? customer;
+      if (widget.invoice.ticketId != null) {
+        customer = await ref.read(
+          _ticketCustomerProvider(widget.invoice.ticketId!).future,
+        );
+      }
+
+      final doc = await PdfInvoiceService.buildInvoicePdf(
+        widget.invoice,
+        settings,
+        customerName: customer?.displayName,
+        customerPhone: customer?.phone,
+        customerEmail: customer?.email,
+      );
+
+      await Printing.layoutPdf(onLayout: (_) async => doc.save());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Print error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_generating) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12),
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.picture_as_pdf_outlined),
+      tooltip: 'PDF',
+      onSelected: (v) {
+        if (v == 'share') _generate();
+        if (v == 'print') _print();
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'share', child: Text('Share / Email PDF')),
+        PopupMenuItem(value: 'print', child: Text('Print')),
+      ],
+    );
+  }
+}
+
 // --- Summary card ---
 
 class _SummaryCard extends StatelessWidget {
@@ -62,11 +200,26 @@ class _SummaryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _Row('Subtotal', '\$${invoice.subtotal}'),
-            _Row('Tax', '\$${invoice.tax}'),
+            _Row('GST', '\$${invoice.taxAmount}'),
             const Divider(height: 16),
             _Row('Total', '\$${invoice.total}', bold: true),
-            _Row('Paid', '\$${invoice.amountPaid}'),
-            _Row('Balance', '\$${invoice.balance}', bold: double.tryParse(invoice.balance) != 0),
+            if (invoice.deposits.isNotEmpty) ...[
+              _Row(
+                'Deposits',
+                '-\$${invoice.deposits.fold(0.0, (s, p) => s + (double.tryParse(p.amount) ?? 0)).toStringAsFixed(2)}',
+                color: Colors.teal,
+              ),
+            ],
+            if (invoice.regularPayments.isNotEmpty)
+              _Row(
+                'Payments',
+                '-\$${invoice.regularPayments.fold(0.0, (s, p) => s + (double.tryParse(p.amount) ?? 0)).toStringAsFixed(2)}',
+              ),
+            if (invoice.payments.isNotEmpty) ...[
+              const Divider(height: 12),
+              _Row('Balance', '\$${invoice.balance}',
+                  bold: (double.tryParse(invoice.balance) ?? 0) > 0),
+            ],
           ],
         ),
       ),
@@ -75,10 +228,11 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row(this.label, this.value, {this.bold = false});
+  const _Row(this.label, this.value, {this.bold = false, this.color});
   final String label;
   final String value;
   final bool bold;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -96,8 +250,11 @@ class _Row extends StatelessWidget {
           ),
           Text(value,
               style: bold
-                  ? Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)
-                  : null),
+                  ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold, color: color)
+                  : color != null
+                      ? TextStyle(color: color)
+                      : null),
         ],
       ),
     );
@@ -125,8 +282,83 @@ class _StatusActions extends ConsumerWidget {
     }
   }
 
+  Future<void> _setQuoteStatus(BuildContext context, WidgetRef ref, String newStatus) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.patch('/invoices/${invoice.id}/quote-status', data: {'quoteStatus': newStatus});
+      ref.invalidate(quoteListProvider);
+      onChanged();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Future<void> _convertToTicket(BuildContext context, WidgetRef ref) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      final res = await dio.patch<Map<String, dynamic>>(
+          '/invoices/${invoice.id}/convert-to-ticket');
+      final ticketId = res.data!['data']['ticketId'] as String;
+      ref.invalidate(quoteListProvider);
+      onChanged();
+      if (context.mounted) {
+        context.go('/tickets/$ticketId');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Quote actions
+    if (invoice.isQuote) {
+      final qs = invoice.quoteStatus ?? 'draft';
+      if (qs == 'declined') return const SizedBox.shrink();
+
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (qs == 'draft')
+            FilledButton.tonal(
+              onPressed: () => _setQuoteStatus(context, ref, 'sent'),
+              child: const Text('Mark as Sent'),
+            ),
+          if (qs == 'sent') ...[
+            FilledButton(
+              onPressed: () => _setQuoteStatus(context, ref, 'accepted'),
+              child: const Text('Mark Accepted'),
+            ),
+            OutlinedButton(
+              onPressed: () => _setQuoteStatus(context, ref, 'declined'),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Decline'),
+            ),
+          ],
+          if (qs == 'accepted' && invoice.convertedTicketId == null)
+            FilledButton.icon(
+              icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+              label: const Text('Convert to Ticket'),
+              onPressed: () => _convertToTicket(context, ref),
+            ),
+          if (qs == 'accepted' && invoice.convertedTicketId != null)
+            OutlinedButton.icon(
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('View Ticket'),
+              onPressed: () => context.go('/tickets/${invoice.convertedTicketId}'),
+            ),
+        ],
+      );
+    }
+
+    // Invoice actions
     if (invoice.isPaid || invoice.isVoid) return const SizedBox.shrink();
 
     return Wrap(
@@ -434,15 +666,18 @@ class _PaymentsSection extends ConsumerWidget {
         const SizedBox(height: 8),
         if (invoice.payments.isEmpty)
           const Text('No payments recorded', style: TextStyle(color: Colors.grey))
-        else
-          ...invoice.payments.map((p) => ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.payment, size: 20),
-                title: Text('\$${p.amount} · ${_methodLabel(p.method)}'),
-                subtitle: Text(p.reference != null ? '${p.reference} · ${p.paidAt}' : p.paidAt),
-                trailing: const Icon(Icons.check_circle, color: Colors.green, size: 18),
-              )),
+        else ...[
+          if (invoice.deposits.isNotEmpty) ...[
+            _PaymentGroupHeader('Deposits', Colors.teal),
+            ...invoice.deposits.map((p) => _PaymentTile(payment: p, methodLabel: _methodLabel(p.method))),
+            const SizedBox(height: 8),
+          ],
+          if (invoice.regularPayments.isNotEmpty) ...[
+            if (invoice.deposits.isNotEmpty)
+              _PaymentGroupHeader('Payments', null),
+            ...invoice.regularPayments.map((p) => _PaymentTile(payment: p, methodLabel: _methodLabel(p.method))),
+          ],
+        ],
       ],
     );
   }
@@ -471,6 +706,64 @@ class _PaymentsSection extends ConsumerWidget {
   }
 }
 
+// --- Payment group helpers ---
+
+class _PaymentGroupHeader extends StatelessWidget {
+  const _PaymentGroupHeader(this.label, this.color);
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color ?? Theme.of(context).colorScheme.outline,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+      ),
+    );
+  }
+}
+
+class _PaymentTile extends StatelessWidget {
+  const _PaymentTile({required this.payment, required this.methodLabel});
+  final PaymentModel payment;
+  final String methodLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDeposit = payment.isDeposit;
+    final isRefund = payment.isRefund;
+    final icon = isDeposit
+        ? Icons.savings_outlined
+        : isRefund
+            ? Icons.undo
+            : Icons.payment;
+    final color = isDeposit
+        ? Colors.teal
+        : isRefund
+            ? Colors.orange
+            : Colors.green;
+    final typeTag = isDeposit ? ' · Deposit' : isRefund ? ' · Refund' : '';
+
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, size: 20, color: color),
+      title: Text('\$${payment.amount} · $methodLabel$typeTag'),
+      subtitle: Text(
+          payment.reference != null
+              ? '${payment.reference} · ${payment.paidAt}'
+              : payment.paidAt),
+      trailing: Icon(Icons.check_circle, color: color, size: 18),
+    );
+  }
+}
+
 // --- Add payment bottom sheet ---
 
 class _AddPaymentSheet extends ConsumerStatefulWidget {
@@ -489,6 +782,7 @@ class _AddPaymentSheetState extends ConsumerState<_AddPaymentSheet> {
   final _amountCtrl = TextEditingController();
   final _referenceCtrl = TextEditingController();
   String _method = 'cash';
+  String _type = 'payment'; // deposit | payment | refund
   bool _saving = false;
 
   @override
@@ -518,6 +812,7 @@ class _AddPaymentSheetState extends ConsumerState<_AddPaymentSheet> {
       await dio.post('/invoices/${widget.invoiceId}/payments', data: {
         'amount': _formatAmount(_amountCtrl.text.trim()),
         'method': _method,
+        'type': _type,
         if (_referenceCtrl.text.isNotEmpty) 'reference': _referenceCtrl.text.trim(),
       });
       widget.onAdded();
@@ -546,6 +841,16 @@ class _AddPaymentSheetState extends ConsumerState<_AddPaymentSheet> {
           children: [
             Text('Record Payment', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'deposit', label: Text('Deposit')),
+                ButtonSegment(value: 'payment', label: Text('Payment')),
+                ButtonSegment(value: 'refund', label: Text('Refund')),
+              ],
+              selected: {_type},
+              onSelectionChanged: (s) => setState(() => _type = s.first),
+            ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _amountCtrl,
               decoration: const InputDecoration(
@@ -587,7 +892,7 @@ class _AddPaymentSheetState extends ConsumerState<_AddPaymentSheet> {
               onPressed: _saving ? null : _save,
               child: _saving
                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Record Payment'),
+                  : Text(_type == 'deposit' ? 'Record Deposit' : _type == 'refund' ? 'Record Refund' : 'Record Payment'),
             ),
           ],
         ),

@@ -14,7 +14,7 @@ const _railDestinations = <_Dest>[
   (icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number,  label: 'Tickets',    path: '/tickets'),
   (icon: Icons.people_outline,              activeIcon: Icons.people,               label: 'Customers',  path: '/customers'),
   (icon: Icons.inventory_2_outlined,        activeIcon: Icons.inventory_2,          label: 'Inventory',  path: '/inventory'),
-  (icon: Icons.receipt_outlined,            activeIcon: Icons.receipt,              label: 'Invoices',   path: '/invoices'),
+  (icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Finance', path: '/finance'),
   (icon: Icons.settings_outlined,           activeIcon: Icons.settings,             label: 'Settings',   path: '/settings'),
 ];
 
@@ -22,7 +22,7 @@ const _phoneDestinations = <_Dest>[
   (icon: Icons.dashboard_outlined,          activeIcon: Icons.dashboard,            label: 'Dashboard',  path: '/dashboard'),
   (icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number,  label: 'Tickets',    path: '/tickets'),
   (icon: Icons.people_outline,              activeIcon: Icons.people,               label: 'Customers',  path: '/customers'),
-  (icon: Icons.receipt_outlined,            activeIcon: Icons.receipt,              label: 'Invoices',   path: '/invoices'),
+  (icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Finance', path: '/finance'),
 ];
 
 const _moreItems = <_Dest>[
@@ -52,7 +52,7 @@ class AppShell extends ConsumerWidget {
     if (loc.startsWith('/tickets'))   return 1;
     if (loc.startsWith('/customers')) return 2;
     if (loc.startsWith('/inventory')) return 3;
-    if (loc.startsWith('/invoices'))  return 4;
+    if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 4;
     if (loc.startsWith('/settings'))  return 5;
     return 0;
   }
@@ -61,7 +61,7 @@ class AppShell extends ConsumerWidget {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/tickets'))   return 1;
     if (loc.startsWith('/customers')) return 2;
-    if (loc.startsWith('/invoices'))  return 4;
+    if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 3;
     // inventory / settings → highlight "More" (index 4)
     if (loc.startsWith('/inventory') || loc.startsWith('/settings')) return 4;
     return 0;

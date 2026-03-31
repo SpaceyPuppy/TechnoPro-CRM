@@ -242,7 +242,7 @@ class _InvoiceSection extends ConsumerWidget {
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('Create Invoice'),
                       onPressed: () =>
-                          context.go('/invoices/new?ticketId=$ticketId'),
+                          context.go('/finance/new?ticketId=$ticketId'),
                     )
                   : const SizedBox.shrink(),
             ),
@@ -268,7 +268,7 @@ class _InvoiceSection extends ConsumerWidget {
                       labelPadding:
                           const EdgeInsets.symmetric(horizontal: 6),
                     ),
-                    onTap: () => context.go('/invoices/${invoice.id}'),
+                    onTap: () => context.go('/finance/${invoice.id}'),
                   ),
                 ),
         ),
