@@ -88,14 +88,128 @@ class SyncQueue extends Table {
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
 }
 
+@DataClassName('DeviceDb')
+class Devices extends Table {
+  TextColumn get id => text()();
+  TextColumn get customerId => text()();
+  TextColumn get type => text().nullable()();
+  TextColumn get brand => text().nullable()();
+  TextColumn get model => text().nullable()();
+  TextColumn get serial => text().nullable()();
+  TextColumn get imei => text().nullable()();
+  TextColumn get password => text().nullable()();
+  TextColumn get patternLock => text().nullable()();
+  TextColumn get storage => text().nullable()();
+  TextColumn get color => text().nullable()();
+  TextColumn get carrier => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get syncedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('InvoiceDb')
+class Invoices extends Table {
+  TextColumn get id => text()();
+  TextColumn get invoiceNumber => text()();
+  TextColumn get ticketId => text().nullable()();
+  TextColumn get type => text().withDefault(const Constant('invoice'))();
+  TextColumn get quoteStatus => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('draft'))();
+  TextColumn get subtotal => text().withDefault(const Constant('0.00'))();
+  TextColumn get taxRate => text().withDefault(const Constant('0.00'))();
+  TextColumn get taxAmount => text().withDefault(const Constant('0.00'))();
+  TextColumn get total => text().withDefault(const Constant('0.00'))();
+  TextColumn get notes => text().nullable()();
+  TextColumn get amountPaid => text().withDefault(const Constant('0.00'))();
+  TextColumn get balance => text().withDefault(const Constant('0.00'))();
+  BoolColumn get isLocalDraft => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get syncedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('LineItemDb')
+class LineItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get invoiceId => text()();
+  TextColumn get inventoryItemId => text().nullable()();
+  TextColumn get type => text().withDefault(const Constant('service'))();
+  TextColumn get description => text()();
+  IntColumn get quantity => integer().withDefault(const Constant(1))();
+  TextColumn get unitPrice => text().withDefault(const Constant('0.00'))();
+  TextColumn get discount => text().withDefault(const Constant('0.00'))();
+  TextColumn get total => text().withDefault(const Constant('0.00'))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('PaymentDb')
+class Payments extends Table {
+  TextColumn get id => text()();
+  TextColumn get invoiceId => text()();
+  TextColumn get amount => text()();
+  TextColumn get method => text().withDefault(const Constant('cash'))();
+  TextColumn get type => text().withDefault(const Constant('payment'))();
+  TextColumn get reference => text().nullable()();
+  DateTimeColumn get paidAt => dateTime()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('AppSettingsDb')
+class AppSettingsTable extends Table {
+  TextColumn get id => text().withDefault(const Constant('singleton'))();
+  TextColumn get businessName => text().withDefault(const Constant(''))();
+  TextColumn get businessAbn => text().withDefault(const Constant(''))();
+  TextColumn get businessAddress => text().withDefault(const Constant(''))();
+  TextColumn get businessPhone => text().withDefault(const Constant(''))();
+  TextColumn get businessEmail => text().withDefault(const Constant(''))();
+  TextColumn get gstRate => text().withDefault(const Constant('10.00'))();
+  TextColumn get invoiceNotes => text().withDefault(const Constant(''))();
+  DateTimeColumn get syncedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // --- Database ---
 
-@DriftDatabase(tables: [Customers, Tickets, TicketEvents, InventoryItems, SyncQueue])
+@DriftDatabase(tables: [
+  Customers, Tickets, TicketEvents, InventoryItems, SyncQueue,
+  Devices, Invoices, LineItems, Payments, AppSettingsTable,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(devices);
+        await m.createTable(invoices);
+        await m.createTable(lineItems);
+        await m.createTable(payments);
+        await m.createTable(appSettingsTable);
+      }
+    },
+  );
 
   // --- Customer queries ---
 
@@ -204,6 +318,96 @@ class AppDatabase extends _$AppDatabase {
       (delete(syncQueue)..where((t) => t.id.equals(id))).go();
 
   Future<void> clearSyncQueue() => delete(syncQueue).go();
+
+  Future<List<SyncQueueDb>> getSyncQueueByEntity(String entity) =>
+      (select(syncQueue)..where((t) => t.entity.equals(entity))).get();
+
+  // --- Device queries ---
+
+  Future<List<DeviceDb>> getAllDevices() => select(devices).get();
+
+  Future<DeviceDb?> getDeviceById(String id) =>
+      (select(devices)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertDevice(DeviceDb device) async {
+    await into(devices).insertOnConflictUpdate(device);
+  }
+
+  Future<void> upsertDevices(List<DeviceDb> devices_) async {
+    await batch((batch) {
+      batch.insertAllOnConflictUpdate(devices, devices_);
+    });
+  }
+
+  Future<int> deleteDevice(String id) =>
+      (delete(devices)..where((t) => t.id.equals(id))).go();
+
+  // --- Invoice queries ---
+
+  Future<List<InvoiceDb>> getAllInvoices() => select(invoices).get();
+
+  Stream<List<InvoiceDb>> watchAllInvoices() => select(invoices).watch();
+
+  Future<InvoiceDb?> getInvoiceById(String id) =>
+      (select(invoices)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertInvoice(InvoiceDb invoice) async {
+    await into(invoices).insertOnConflictUpdate(invoice);
+  }
+
+  Future<void> upsertInvoices(List<InvoiceDb> invoices_) async {
+    await batch((batch) {
+      batch.insertAllOnConflictUpdate(invoices, invoices_);
+    });
+  }
+
+  Stream<List<LineItemDb>> watchInvoiceLineItems(String invoiceId) =>
+      (select(lineItems)..where((t) => t.invoiceId.equals(invoiceId))).watch();
+
+  Stream<List<PaymentDb>> watchInvoicePayments(String invoiceId) =>
+      (select(payments)..where((t) => t.invoiceId.equals(invoiceId))).watch();
+
+  Future<int> deleteInvoice(String id) =>
+      (delete(invoices)..where((t) => t.id.equals(id))).go();
+
+  // --- Line Item queries ---
+
+  Future<void> upsertLineItem(LineItemDb item) async {
+    await into(lineItems).insert(item);
+  }
+
+  Future<void> upsertLineItems(List<LineItemDb> items) async {
+    await batch((batch) {
+      batch.insertAllOnConflictUpdate(lineItems, items);
+    });
+  }
+
+  Future<int> deleteLineItem(String id) =>
+      (delete(lineItems)..where((t) => t.id.equals(id))).go();
+
+  // --- Payment queries ---
+
+  Future<void> upsertPayment(PaymentDb payment) async {
+    await into(payments).insert(payment);
+  }
+
+  Future<void> upsertPayments(List<PaymentDb> payments_) async {
+    await batch((batch) {
+      batch.insertAllOnConflictUpdate(payments, payments_);
+    });
+  }
+
+  Future<int> deletePayment(String id) =>
+      (delete(payments)..where((t) => t.id.equals(id))).go();
+
+  // --- AppSettings queries ---
+
+  Future<AppSettingsDb?> getAppSettings() =>
+      (select(appSettingsTable)..where((t) => t.id.equals('singleton'))).getSingleOrNull();
+
+  Future<void> upsertAppSettings(AppSettingsDb settings) async {
+    await into(appSettingsTable).insertOnConflictUpdate(settings);
+  }
 }
 
 QueryExecutor _openConnection() {

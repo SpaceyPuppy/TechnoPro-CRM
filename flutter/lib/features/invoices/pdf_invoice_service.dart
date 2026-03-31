@@ -32,10 +32,10 @@ class PdfInvoiceService {
       // Proceed without logo if asset missing
     }
 
-    // Load a font that supports the full Latin character set
-    final ttfRegular = await PdfGoogleFonts.interRegular();
-    final ttfMedium = await PdfGoogleFonts.interMedium();
-    final ttfBold = await PdfGoogleFonts.interBold();
+    // Load Inter fonts from bundled assets (avoids network dependency)
+    final ttfRegular = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Regular.ttf'));
+    final ttfMedium = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Medium.ttf'));
+    final ttfBold = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Bold.ttf'));
 
     final theme = pw.ThemeData.withFont(
       base: ttfRegular,

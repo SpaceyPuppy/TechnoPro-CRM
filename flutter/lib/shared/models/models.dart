@@ -577,6 +577,27 @@ class AppSettings {
         gstRate: j['gst_rate'] as String? ?? '10.00',
         invoiceNotes: j['invoice_notes'] as String? ?? '',
       );
+
+  factory AppSettings.empty() => AppSettings(
+        businessName: '',
+        businessAbn: '',
+        businessAddress: '',
+        businessPhone: '',
+        businessEmail: '',
+        gstRate: '10.00',
+        invoiceNotes: '',
+      );
+
+  // For parsing from local database (AppSettingsDb)
+  factory AppSettings.fromMap(Map<String, dynamic> m) => AppSettings(
+        businessName: m['businessName'] as String? ?? '',
+        businessAbn: m['businessAbn'] as String? ?? '',
+        businessAddress: m['businessAddress'] as String? ?? '',
+        businessPhone: m['businessPhone'] as String? ?? '',
+        businessEmail: m['businessEmail'] as String? ?? '',
+        gstRate: m['gstRate'] as String? ?? '10.00',
+        invoiceNotes: m['invoiceNotes'] as String? ?? '',
+      );
 }
 
 // --- Dashboard ---
