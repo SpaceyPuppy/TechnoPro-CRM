@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/api/api_client.dart';
 import '../tickets/tickets_provider.dart';
+import 'invoice_repository.dart';
 import 'invoices_provider.dart';
 
 class InvoiceFormScreen extends ConsumerStatefulWidget {
@@ -35,12 +35,8 @@ class _InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
       _error = null;
     });
     try {
-      final dio = ref.read(apiClientProvider);
-      final res = await dio.post<Map<String, dynamic>>('/invoices', data: {
-        if (_ticketId != null) 'ticketId': _ticketId,
-        if (widget.isQuote) 'type': 'quote',
-      });
-      final id = res.data!['data']['id'] as String;
+      final invoiceRepo = ref.read(invoiceRepositoryProvider);
+      final id = await invoiceRepo.create(ticketId: _ticketId, isQuote: widget.isQuote);
       if (widget.isQuote) {
         ref.invalidate(quoteListProvider);
       } else {

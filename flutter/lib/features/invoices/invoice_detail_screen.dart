@@ -7,6 +7,7 @@ import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
 import '../inventory/inventory_provider.dart';
 import '../settings/app_settings_provider.dart';
+import 'invoice_repository.dart';
 import 'invoices_provider.dart';
 import 'pdf_invoice_service.dart';
 
@@ -417,8 +418,8 @@ class _LineItemsSection extends ConsumerWidget {
                 canDelete: invoice.canEdit,
                 onDelete: () async {
                   try {
-                    final dio = ref.read(apiClientProvider);
-                    await dio.delete('/invoices/${invoice.id}/line-items/${li.id}');
+                    final invoiceRepo = ref.read(invoiceRepositoryProvider);
+                    await invoiceRepo.deleteLineItem(invoice.id, li.id);
                     ref.invalidate(invoiceListProvider);
                     onChanged();
                   } catch (e) {
@@ -517,14 +518,15 @@ class _AddLineItemSheetState extends ConsumerState<_AddLineItemSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final dio = ref.read(apiClientProvider);
-      await dio.post('/invoices/${widget.invoiceId}/line-items', data: {
-        'type': _type,
-        'description': _descCtrl.text.trim(),
-        'unitPrice': _formatPrice(_priceCtrl.text.trim()),
-        'quantity': int.tryParse(_qtyCtrl.text) ?? 1,
-        if (_inventoryItemId != null) 'inventoryItemId': _inventoryItemId,
-      });
+      final invoiceRepo = ref.read(invoiceRepositoryProvider);
+      await invoiceRepo.addLineItem(
+        widget.invoiceId,
+        description: _descCtrl.text.trim(),
+        type: _type,
+        quantity: int.tryParse(_qtyCtrl.text) ?? 1,
+        unitPrice: _formatPrice(_priceCtrl.text.trim()),
+        inventoryItemId: _inventoryItemId,
+      );
       widget.onAdded();
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -808,13 +810,14 @@ class _AddPaymentSheetState extends ConsumerState<_AddPaymentSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final dio = ref.read(apiClientProvider);
-      await dio.post('/invoices/${widget.invoiceId}/payments', data: {
-        'amount': _formatAmount(_amountCtrl.text.trim()),
-        'method': _method,
-        'type': _type,
-        if (_referenceCtrl.text.isNotEmpty) 'reference': _referenceCtrl.text.trim(),
-      });
+      final invoiceRepo = ref.read(invoiceRepositoryProvider);
+      await invoiceRepo.addPayment(
+        widget.invoiceId,
+        amount: _formatAmount(_amountCtrl.text.trim()),
+        method: _method,
+        type: _type,
+        reference: _referenceCtrl.text.isNotEmpty ? _referenceCtrl.text.trim() : null,
+      );
       widget.onAdded();
       if (mounted) Navigator.pop(context);
     } catch (e) {

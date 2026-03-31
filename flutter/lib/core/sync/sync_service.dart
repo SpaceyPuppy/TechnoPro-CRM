@@ -24,6 +24,9 @@ class SyncService {
         _syncTickets(),
         _syncTicketEvents(),
         _syncInventory(),
+        _syncDevices(),
+        _syncInvoices(),
+        _syncAppSettings(),
       ], eagerError: false);
       _ref.read(syncStatusProvider.notifier).setSyncComplete();
     } catch (e) {
@@ -200,6 +203,143 @@ class SyncService {
     } catch (e) {
       print('Inventory sync error: $e');
       _ref.read(syncStatusProvider.notifier).setSyncing(false);
+    }
+  }
+
+  /// Syncs devices from the API and upserts them into the local DB.
+  Future<void> _syncDevices() async {
+    try {
+      final dio = _ref.read(apiClientProvider);
+      final response = await dio.get<Map<String, dynamic>>('/devices?limit=1000');
+      final data = response.data?['data'] as List<dynamic>? ?? [];
+
+      final devices = data
+          .map((j) {
+            final d = j as Map<String, dynamic>;
+            return DeviceDb(
+              id: d['id'] as String,
+              customerId: d['customerId'] as String,
+              type: d['type'] as String?,
+              brand: d['brand'] as String?,
+              model: d['model'] as String?,
+              serial: d['serial'] as String?,
+              imei: d['imei'] as String?,
+              password: d['password'] as String?,
+              patternLock: d['patternLock'] as String?,
+              storage: d['storage'] as String?,
+              color: d['color'] as String?,
+              carrier: d['carrier'] as String?,
+              notes: d['notes'] as String?,
+              createdAt: DateTime.parse(d['createdAt'] as String),
+              updatedAt: DateTime.parse(d['updatedAt'] as String),
+              syncedAt: DateTime.now(),
+            );
+          })
+          .toList();
+
+      await _ref.read(databaseProvider).upsertDevices(devices);
+    } catch (e) {
+      print('Device sync error: $e');
+    }
+  }
+
+  /// Syncs invoices, line items, and payments from the API.
+  Future<void> _syncInvoices() async {
+    try {
+      final dio = _ref.read(apiClientProvider);
+      final response = await dio.get<Map<String, dynamic>>('/invoices?limit=1000&status=*');
+      final data = response.data?['data'] as List<dynamic>? ?? [];
+
+      final invoices = <InvoiceDb>[];
+      final lineItems = <LineItemDb>[];
+      final payments = <PaymentDb>[];
+
+      for (final item in data) {
+        final inv = item as Map<String, dynamic>;
+        invoices.add(InvoiceDb(
+          id: inv['id'] as String,
+          invoiceNumber: inv['invoiceNumber'] as String,
+          ticketId: inv['ticketId'] as String?,
+          type: inv['type'] as String? ?? 'invoice',
+          quoteStatus: inv['quoteStatus'] as String?,
+          status: inv['status'] as String? ?? 'draft',
+          subtotal: inv['subtotal'] as String? ?? '0.00',
+          taxRate: inv['taxRate'] as String? ?? '0.00',
+          taxAmount: inv['taxAmount'] as String? ?? '0.00',
+          total: inv['total'] as String? ?? '0.00',
+          notes: inv['notes'] as String?,
+          amountPaid: inv['amountPaid'] as String? ?? '0.00',
+          balance: inv['balance'] as String? ?? '0.00',
+          isLocalDraft: false,
+          createdAt: DateTime.parse(inv['createdAt'] as String),
+          updatedAt: DateTime.parse(inv['updatedAt'] as String),
+          syncedAt: DateTime.now(),
+        ));
+
+        // Parse line items
+        final items = inv['lineItems'] as List<dynamic>? ?? [];
+        for (final li in items) {
+          final line = li as Map<String, dynamic>;
+          lineItems.add(LineItemDb(
+            id: line['id'] as String,
+            invoiceId: inv['id'] as String,
+            inventoryItemId: line['inventoryItemId'] as String?,
+            type: line['type'] as String? ?? 'service',
+            description: line['description'] as String,
+            quantity: line['quantity'] as int? ?? 1,
+            unitPrice: line['unitPrice'] as String? ?? '0.00',
+            discount: line['discount'] as String? ?? '0.00',
+            total: line['total'] as String? ?? '0.00',
+            createdAt: DateTime.parse(line['createdAt'] as String),
+          ));
+        }
+
+        // Parse payments
+        final pays = inv['payments'] as List<dynamic>? ?? [];
+        for (final p in pays) {
+          final pay = p as Map<String, dynamic>;
+          payments.add(PaymentDb(
+            id: pay['id'] as String,
+            invoiceId: inv['id'] as String,
+            amount: pay['amount'] as String,
+            method: pay['method'] as String? ?? 'cash',
+            type: pay['type'] as String? ?? 'payment',
+            reference: pay['reference'] as String?,
+            paidAt: DateTime.parse(pay['paidAt'] as String),
+            createdAt: DateTime.parse(pay['createdAt'] as String),
+          ));
+        }
+      }
+
+      if (invoices.isNotEmpty) await _ref.read(databaseProvider).upsertInvoices(invoices);
+      if (lineItems.isNotEmpty) await _ref.read(databaseProvider).upsertLineItems(lineItems);
+      if (payments.isNotEmpty) await _ref.read(databaseProvider).upsertPayments(payments);
+    } catch (e) {
+      print('Invoice sync error: $e');
+    }
+  }
+
+  /// Syncs app settings (business info, GST rate, etc.) from the API.
+  Future<void> _syncAppSettings() async {
+    try {
+      final dio = _ref.read(apiClientProvider);
+      final response = await dio.get<Map<String, dynamic>>('/settings');
+      final data = response.data?['data'] as Map<String, dynamic>?;
+      if (data == null) return;
+
+      await _ref.read(databaseProvider).upsertAppSettings(AppSettingsDb(
+        id: 'singleton',
+        businessName: data['businessName'] as String? ?? '',
+        businessAbn: data['businessAbn'] as String? ?? '',
+        businessAddress: data['businessAddress'] as String? ?? '',
+        businessPhone: data['businessPhone'] as String? ?? '',
+        businessEmail: data['businessEmail'] as String? ?? '',
+        gstRate: data['gstRate'] as String? ?? '10.00',
+        invoiceNotes: data['invoiceNotes'] as String? ?? '',
+        syncedAt: DateTime.now(),
+      ));
+    } catch (e) {
+      print('AppSettings sync error: $e');
     }
   }
 }

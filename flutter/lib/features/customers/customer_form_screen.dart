@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/api/api_client.dart';
 import '../../shared/widgets/error_view.dart';
+import 'customer_repository.dart';
 import 'customers_provider.dart';
 
 class CustomerFormScreen extends ConsumerStatefulWidget {
@@ -41,17 +41,17 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
       _error = null;
     });
     try {
-      final dio = ref.read(apiClientProvider);
       final body = {
         'name': _nameCtrl.text.trim(),
         if (_emailCtrl.text.isNotEmpty) 'email': _emailCtrl.text.trim(),
         if (_phoneCtrl.text.isNotEmpty) 'phone': _phoneCtrl.text.trim(),
         if (_notesCtrl.text.isNotEmpty) 'notes': _notesCtrl.text.trim(),
       };
+      final customerRepo = ref.read(customerRepositoryProvider);
       if (widget.id == null) {
-        await dio.post('/customers', data: body);
+        await customerRepo.create(body);
       } else {
-        await dio.patch('/customers/${widget.id}', data: body);
+        await customerRepo.update(widget.id!, body);
       }
       ref.invalidate(customerListProvider);
       if (widget.id != null) ref.invalidate(customerDetailProvider(widget.id!));

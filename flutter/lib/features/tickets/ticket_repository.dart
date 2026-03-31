@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/app_database.dart';
 import '../../core/db/database_provider.dart';
@@ -28,16 +30,95 @@ class TicketRepository {
   Stream<List<TicketEventDb>> watchEvents(String ticketId) =>
       _ref.read(databaseProvider).watchTicketEvents(ticketId);
 
-  /// Creates a new ticket. If offline, queues the mutation; if online, POSTs immediately.
+  /// Creates a new ticket. If offline, queues the mutation with device handling.
+  /// If device data is provided and offline, creates a local device record first.
   Future<String> create(Map<String, dynamic> payload) async {
     if (!_ref.read(serverReachableProvider)) {
-      // Queue for later
-      return _ref.read(queueManagerProvider).queueCreate('ticket', payload);
+      // Offline path: handle device creation if device data is in payload
+      final db = _ref.read(databaseProvider);
+      final qm = _ref.read(queueManagerProvider);
+      final customerId = payload['customerId'] as String;
+      String? deviceId;
+
+      // If device data is in payload, create a local device
+      if (payload.containsKey('device') && payload['device'] != null) {
+        final deviceData = payload['device'] as Map<String, dynamic>;
+        deviceId = 'local_${const Uuid().v4()}';
+
+        // Create local device record
+        await db.upsertDevice(DeviceDb(
+          id: deviceId,
+          customerId: customerId,
+          type: deviceData['type'] as String?,
+          brand: deviceData['brand'] as String?,
+          model: deviceData['model'] as String?,
+          serial: deviceData['serial'] as String?,
+          imei: deviceData['imei'] as String?,
+          password: deviceData['password'] as String?,
+          patternLock: deviceData['patternLock'] as String?,
+          storage: deviceData['storage'] as String?,
+          color: deviceData['color'] as String?,
+          carrier: deviceData['carrier'] as String?,
+          notes: deviceData['notes'] as String?,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ));
+
+        // Queue device creation (must sync before ticket references it)
+        await qm.queueCreate('device', deviceData);
+
+        // Update payload to reference local device ID instead of nested object
+        payload['deviceId'] = deviceId;
+        payload.remove('device');
+      }
+
+      // Create local ticket
+      final ticketLocalId = 'local_${const Uuid().v4()}';
+      await db.upsertTicket(TicketDb(
+        id: ticketLocalId,
+        ticketNumber: 'DRAFT',
+        customerId: customerId,
+        deviceId: deviceId,
+        assignedToId: payload['assignedToId'] as String?,
+        status: payload['status'] as String? ?? 'open',
+        priority: payload['priority'] as String? ?? 'medium',
+        summary: payload['summary'] as String? ?? '',
+        description: payload['description'] as String?,
+        diagnosis: payload['diagnosis'] as String?,
+        resolution: payload['resolution'] as String?,
+        dueDate: payload['dueDate'] as String?,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      // Queue ticket creation
+      await qm.queueCreate('ticket', payload);
+
+      return ticketLocalId;
     } else {
-      // POST to API immediately
+      // Online path: POST to API immediately
       final dio = _ref.read(apiClientProvider);
       final response = await dio.post<Map<String, dynamic>>('/tickets', data: payload);
       final ticketId = (response.data?['data']?['id'] ?? response.data?['id']) as String;
+
+      // Upsert to local DB for caching
+      await _ref.read(databaseProvider).upsertTicket(TicketDb(
+        id: ticketId,
+        ticketNumber: 'TKT-${ticketId.substring(0, 5).toUpperCase()}',
+        customerId: payload['customerId'] as String,
+        deviceId: response.data?['data']?['deviceId'] as String?,
+        assignedToId: payload['assignedToId'] as String?,
+        status: payload['status'] as String? ?? 'open',
+        priority: payload['priority'] as String? ?? 'medium',
+        summary: payload['summary'] as String? ?? '',
+        description: payload['description'] as String?,
+        diagnosis: payload['diagnosis'] as String?,
+        resolution: payload['resolution'] as String?,
+        dueDate: payload['dueDate'] as String?,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
       return ticketId;
     }
   }
