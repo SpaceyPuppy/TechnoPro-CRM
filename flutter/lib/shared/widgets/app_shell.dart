@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/providers/layout_provider.dart';
+import '../../core/sync/offline_mode_provider.dart' show OfflineMode, offlineModeProvider;
 
 // ── Destination definitions ──────────────────────────────────────────────────
 
@@ -83,12 +84,16 @@ class AppShell extends ConsumerWidget {
     return 0;
   }
 
-  Widget _wrapWithBanner(Widget content, bool isReachable) => Column(
-        children: [
-          if (!isReachable) const _OfflineBanner(),
-          Expanded(child: content),
-        ],
-      );
+  Widget _wrapWithBanner(Widget content, bool isReachable, WidgetRef ref) {
+    final offlineMode = ref.watch(offlineModeProvider);
+    final showBanner = !isReachable || offlineMode.isEnabled;
+    return Column(
+      children: [
+        if (showBanner) _OfflineBanner(isReachable: isReachable, offlineMode: offlineMode),
+        Expanded(child: content),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -118,7 +123,7 @@ class AppShell extends ConsumerWidget {
             onLogout: () => ref.read(authProvider.notifier).logout(),
           ),
           const VerticalDivider(width: 1, thickness: 1, color: _sidebarBorder),
-          Expanded(child: _wrapWithBanner(child, isReachable)),
+          Expanded(child: _wrapWithBanner(child, isReachable, ref)),
         ],
       ),
     );
@@ -137,7 +142,7 @@ class AppShell extends ConsumerWidget {
             onLogout: () => ref.read(authProvider.notifier).logout(),
           ),
           const VerticalDivider(width: 1, thickness: 1, color: _sidebarBorder),
-          Expanded(child: _wrapWithBanner(child, isReachable)),
+          Expanded(child: _wrapWithBanner(child, isReachable, ref)),
         ],
       ),
     );
@@ -165,7 +170,7 @@ class AppShell extends ConsumerWidget {
           ),
         ],
       ),
-      body: _wrapWithBanner(child, isReachable),
+      body: _wrapWithBanner(child, isReachable, ref),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navIndex,
         onDestinationSelected: (i) {
@@ -476,27 +481,50 @@ void showMoreSheet(BuildContext context) {
 // ── Offline banner ────────────────────────────────────────────────────────────
 
 class _OfflineBanner extends StatelessWidget {
-  const _OfflineBanner();
+  final bool isReachable;
+  final OfflineMode offlineMode;
+
+  const _OfflineBanner({
+    required this.isReachable,
+    required this.offlineMode,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
+    // Determine banner color and message based on state
+    final (bannerColor, bannerMessage, bannerIcon) = switch ((isReachable, offlineMode.isEnabled)) {
+      (false, _) => (
+        colorScheme.errorContainer,
+        'Cannot reach server — check your connection',
+        Icons.cloud_off_outlined,
+      ),
+      (true, true) => (
+        const Color(0xFF1E40AF), // Dark blue
+        '📌 Offline Mode Enabled — working from cache',
+        Icons.cloud_done_outlined,
+      ),
+      _ => (colorScheme.errorContainer, '', Icons.check),
+    };
+
     return Material(
-      color: colorScheme.errorContainer,
+      color: bannerColor,
       child: SafeArea(
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
-              Icon(Icons.cloud_off_outlined,
-                  size: 16, color: colorScheme.onErrorContainer),
+              Icon(bannerIcon,
+                  size: 16,
+                  color: isReachable ? Colors.white : colorScheme.onErrorContainer),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Cannot reach server — check your connection',
+                  bannerMessage,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: colorScheme.onErrorContainer,
+                        color: isReachable ? Colors.white : colorScheme.onErrorContainer,
                       ),
                 ),
               ),

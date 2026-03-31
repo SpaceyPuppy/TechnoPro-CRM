@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/api/api_client.dart';
+import '../../core/sync/offline_mode_provider.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/sync/sync_status_provider.dart';
 
@@ -12,6 +13,7 @@ class OfflineSyncScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final syncStatus = ref.watch(syncStatusProvider);
     final isOnline = ref.watch(serverReachableProvider);
+    final offlineMode = ref.watch(offlineModeProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Offline & Sync')),
@@ -151,6 +153,91 @@ class OfflineSyncScreen extends ConsumerWidget {
                         ),
                     ],
                   ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Offline Mode Section
+          Text(
+            'Offline Mode',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Prepare for offline work',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                            Text(
+                              offlineMode.isEnabled
+                                  ? 'Working offline mode enabled'
+                                  : 'Toggle to sync all data and prepare for offline',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: offlineMode.isEnabled,
+                        onChanged: offlineMode.isPreparing || syncStatus.isSyncing
+                            ? null
+                            : (value) async {
+                                if (value) {
+                                  // Enable offline mode: sync all data first
+                                  ref.read(offlineModeProvider.notifier).setPreparing(true);
+                                  await ref.read(syncServiceProvider).syncAll();
+                                  ref.read(offlineModeProvider.notifier).setEnabled(true);
+                                  ref.read(offlineModeProvider.notifier).setPreparationComplete();
+                                } else {
+                                  // Disable offline mode
+                                  ref.read(offlineModeProvider.notifier).setEnabled(false);
+                                }
+                              },
+                      ),
+                    ],
+                  ),
+                  if (offlineMode.isPreparing) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Preparing for offline...',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
