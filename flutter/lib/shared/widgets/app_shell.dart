@@ -346,7 +346,9 @@ class _TabletRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
+      width: 72,
+      child: Container(
       color: _sidebarBg,
       child: Column(
         children: [
@@ -407,6 +409,7 @@ class _TabletRail extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

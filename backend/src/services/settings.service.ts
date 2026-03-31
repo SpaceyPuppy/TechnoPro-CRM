@@ -1,4 +1,4 @@
-import { db } from "../db/index.js";
+import { getDb } from "../db/index.js";
 import { appSettings } from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
 
@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
 };
 
 export async function getAllSettings(): Promise<Record<string, string>> {
+  const db = getDb();
   const rows = await db.select().from(appSettings);
   const result: Record<string, string> = { ...DEFAULT_SETTINGS };
   for (const row of rows) {
@@ -22,6 +23,7 @@ export async function getAllSettings(): Promise<Record<string, string>> {
 }
 
 export async function getSetting(key: string): Promise<string> {
+  const db = getDb();
   const rows = await db
     .select()
     .from(appSettings)
@@ -31,6 +33,7 @@ export async function getSetting(key: string): Promise<string> {
 }
 
 export async function updateSettings(updates: Record<string, string>): Promise<void> {
+  const db = getDb();
   for (const [key, value] of Object.entries(updates)) {
     await db
       .insert(appSettings)
