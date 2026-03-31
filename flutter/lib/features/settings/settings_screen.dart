@@ -28,6 +28,15 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => context.go('/settings/device-models'),
           ),
           const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.cloud_off_outlined,
+                color: Theme.of(context).colorScheme.primary),
+            title: const Text('Offline & Sync'),
+            subtitle: const Text('Connection status, sync, and offline mode'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go('/settings/offline-sync'),
+          ),
+          const Divider(height: 1),
         ],
       ),
     );

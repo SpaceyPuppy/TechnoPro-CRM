@@ -1,7 +1,9 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
+import 'queue_manager.dart';
 import 'sync_service.dart';
+import 'sync_status_provider.dart';
 
 class ConnectivityService {
   ConnectivityService(this._ref) {
@@ -21,9 +23,9 @@ class ConnectivityService {
       _ref.read(serverReachableProvider.notifier).state = isOnline;
 
       if (isOnline) {
-        // Trigger a full sync when coming back online
-        _ref.read(syncServiceProvider).syncAll();
-        // TODO: Phase B — also drain sync queue here
+        _onReconnect();
+      } else {
+        _updatePendingMutationCount();
       }
     });
 
@@ -32,7 +34,21 @@ class ConnectivityService {
       final isOnline = results.isNotEmpty &&
           !results.contains(ConnectivityResult.none);
       _ref.read(serverReachableProvider.notifier).state = isOnline;
+      _updatePendingMutationCount();
     });
+  }
+
+  Future<void> _onReconnect() async {
+    // Drain sync queue first (queued mutations)
+    await _ref.read(queueManagerProvider).drainQueue();
+    _updatePendingMutationCount();
+    // Then pull fresh data from server
+    await _ref.read(syncServiceProvider).syncAll();
+  }
+
+  Future<void> _updatePendingMutationCount() async {
+    final pending = await _ref.read(queueManagerProvider).getPendingMutations();
+    _ref.read(syncStatusProvider.notifier).setPendingMutationCount(pending.length);
   }
 }
 

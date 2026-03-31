@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api/api_client.dart';
 import '../../core/db/app_database.dart';
 import '../../core/db/database_provider.dart';
+import '../../core/sync/queue_manager.dart';
 import '../../core/sync/sync_service.dart';
 
 class InventoryRepository {
@@ -19,16 +21,51 @@ class InventoryRepository {
   Future<InventoryItemDb?> getById(String id) =>
       _ref.read(databaseProvider).getInventoryById(id);
 
-  /// Phase B: Queue an update mutation.
-  Future<void> update(String id, Map<String, dynamic> updates) async {
-    // TODO: Phase B — queue if offline, or PATCH to API if online
-    throw UnimplementedError('Mutations deferred to Phase B');
+  /// Creates a new inventory item. If offline, queues; if online, POSTs immediately.
+  Future<String> create(Map<String, dynamic> payload) async {
+    if (!_ref.read(serverReachableProvider)) {
+      return _ref.read(queueManagerProvider).queueCreate('inventory', payload);
+    } else {
+      final dio = _ref.read(apiClientProvider);
+      final response = await dio.post<Map<String, dynamic>>('/inventory', data: payload);
+      return (response.data?['data']?['id'] ?? response.data?['id']) as String;
+    }
   }
 
-  /// Phase B: Queue a delete mutation.
+  /// Updates an inventory item. If offline, queues; if online, PATCHes immediately.
+  Future<void> update(String id, Map<String, dynamic> payload) async {
+    if (!_ref.read(serverReachableProvider)) {
+      await _ref.read(queueManagerProvider).queueUpdate('inventory', id, payload);
+    } else {
+      await _ref.read(apiClientProvider).patch('/inventory/$id', data: payload);
+    }
+    // Optimistically update local DB
+    final db = _ref.read(databaseProvider);
+    final current = await db.getInventoryById(id);
+    if (current != null) {
+      final updated = current.copyWith(
+        sku: payload['sku'] ?? current.sku,
+        name: payload['name'] ?? current.name,
+        description: payload['description'] ?? current.description,
+        stockQty: payload['stockQty'] ?? current.stockQty,
+        cost: payload['cost'] ?? current.cost,
+        price: payload['price'] ?? current.price,
+        barcode: payload['barcode'] ?? current.barcode,
+        updatedAt: DateTime.now(),
+      );
+      await db.upsertInventoryItem(updated);
+    }
+  }
+
+  /// Deletes an inventory item. If offline, queues; if online, DELETEs immediately.
   Future<void> delete(String id) async {
-    // TODO: Phase B — queue if offline, or DELETE to API if online
-    throw UnimplementedError('Mutations deferred to Phase B');
+    if (!_ref.read(serverReachableProvider)) {
+      await _ref.read(queueManagerProvider).queueDelete('inventory', id);
+    } else {
+      await _ref.read(apiClientProvider).delete('/inventory/$id');
+    }
+    // Optimistically delete from local DB
+    await _ref.read(databaseProvider).deleteInventoryItem(id);
   }
 }
 

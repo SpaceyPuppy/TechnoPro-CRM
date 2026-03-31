@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api/api_client.dart';
 import '../../core/db/app_database.dart';
 import '../../core/db/database_provider.dart';
+import '../../core/sync/queue_manager.dart';
 import '../../core/sync/sync_service.dart';
 
 class CustomerRepository {
@@ -19,16 +21,51 @@ class CustomerRepository {
   Future<CustomerDb?> getById(String id) =>
       _ref.read(databaseProvider).getCustomerById(id);
 
-  /// Phase B: Queue an update mutation.
-  Future<void> update(String id, Map<String, dynamic> updates) async {
-    // TODO: Phase B — queue if offline, or PATCH to API if online
-    throw UnimplementedError('Mutations deferred to Phase B');
+  /// Creates a new customer. If offline, queues; if online, POSTs immediately.
+  Future<String> create(Map<String, dynamic> payload) async {
+    if (!_ref.read(serverReachableProvider)) {
+      return _ref.read(queueManagerProvider).queueCreate('customer', payload);
+    } else {
+      final dio = _ref.read(apiClientProvider);
+      final response = await dio.post<Map<String, dynamic>>('/customers', data: payload);
+      return (response.data?['data']?['id'] ?? response.data?['id']) as String;
+    }
   }
 
-  /// Phase B: Queue a delete mutation.
+  /// Updates a customer. If offline, queues; if online, PATCHes immediately.
+  Future<void> update(String id, Map<String, dynamic> payload) async {
+    if (!_ref.read(serverReachableProvider)) {
+      await _ref.read(queueManagerProvider).queueUpdate('customer', id, payload);
+    } else {
+      await _ref.read(apiClientProvider).patch('/customers/$id', data: payload);
+    }
+    // Optimistically update local DB
+    final db = _ref.read(databaseProvider);
+    final current = await db.getCustomerById(id);
+    if (current != null) {
+      final updated = current.copyWith(
+        name: payload['name'] ?? current.name,
+        firstName: payload['firstName'] ?? current.firstName,
+        lastName: payload['lastName'] ?? current.lastName,
+        company: payload['company'] ?? current.company,
+        email: payload['email'] ?? current.email,
+        phone: payload['phone'] ?? current.phone,
+        notes: payload['notes'] ?? current.notes,
+        updatedAt: DateTime.now(),
+      );
+      await db.upsertCustomer(updated);
+    }
+  }
+
+  /// Deletes a customer. If offline, queues; if online, DELETEs immediately.
   Future<void> delete(String id) async {
-    // TODO: Phase B — queue if offline, or DELETE to API if online
-    throw UnimplementedError('Mutations deferred to Phase B');
+    if (!_ref.read(serverReachableProvider)) {
+      await _ref.read(queueManagerProvider).queueDelete('customer', id);
+    } else {
+      await _ref.read(apiClientProvider).delete('/customers/$id');
+    }
+    // Optimistically delete from local DB
+    await _ref.read(databaseProvider).deleteCustomer(id);
   }
 }
 

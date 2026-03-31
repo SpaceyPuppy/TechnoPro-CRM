@@ -18,6 +18,7 @@ import '../../features/invoices/finance_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/device_models_screen.dart';
 import '../../features/settings/business_settings_screen.dart';
+import '../../features/settings/offline_sync_screen.dart';
 import '../../shared/widgets/side_panel.dart';
 import '../../shared/widgets/app_shell.dart';
 import '../../features/dashboard/dashboard_screen.dart';
@@ -167,6 +168,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'device-models',
                 builder: (_, __) => const DeviceModelsScreen(),
+              ),
+              GoRoute(
+                path: 'offline-sync',
+                builder: (_, __) => const OfflineSyncScreen(),
               ),
             ],
           ),

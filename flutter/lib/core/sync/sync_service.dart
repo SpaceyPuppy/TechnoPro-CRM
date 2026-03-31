@@ -3,6 +3,7 @@ import '../../shared/models/models.dart';
 import '../api/api_client.dart';
 import '../db/app_database.dart';
 import '../db/database_provider.dart';
+import 'sync_status_provider.dart';
 
 class SyncService {
   SyncService(this._ref);
@@ -16,6 +17,7 @@ class SyncService {
       return;
     }
 
+    _ref.read(syncStatusProvider.notifier).setSyncing(true);
     try {
       await Future.wait([
         _syncCustomers(),
@@ -23,9 +25,11 @@ class SyncService {
         _syncTicketEvents(),
         _syncInventory(),
       ], eagerError: false);
+      _ref.read(syncStatusProvider.notifier).setSyncComplete();
     } catch (e) {
       // Log error but don't throw — allow partial sync
       print('Sync error: $e');
+      _ref.read(syncStatusProvider.notifier).setSyncing(false);
     }
   }
 
@@ -154,13 +158,16 @@ class SyncService {
       return;
     }
 
+    _ref.read(syncStatusProvider.notifier).setSyncing(true);
     try {
       await Future.wait([
         _syncTickets(),
         _syncTicketEvents(),
       ], eagerError: false);
+      _ref.read(syncStatusProvider.notifier).setSyncComplete();
     } catch (e) {
       print('Ticket sync error: $e');
+      _ref.read(syncStatusProvider.notifier).setSyncing(false);
     }
   }
 
@@ -170,10 +177,13 @@ class SyncService {
       return;
     }
 
+    _ref.read(syncStatusProvider.notifier).setSyncing(true);
     try {
       await _syncCustomers();
+      _ref.read(syncStatusProvider.notifier).setSyncComplete();
     } catch (e) {
       print('Customer sync error: $e');
+      _ref.read(syncStatusProvider.notifier).setSyncing(false);
     }
   }
 
@@ -183,10 +193,13 @@ class SyncService {
       return;
     }
 
+    _ref.read(syncStatusProvider.notifier).setSyncing(true);
     try {
       await _syncInventory();
+      _ref.read(syncStatusProvider.notifier).setSyncComplete();
     } catch (e) {
       print('Inventory sync error: $e');
+      _ref.read(syncStatusProvider.notifier).setSyncing(false);
     }
   }
 }

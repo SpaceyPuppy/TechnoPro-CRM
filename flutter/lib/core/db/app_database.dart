@@ -185,7 +185,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<SyncQueueDb>> getAllSyncQueue() => select(syncQueue).get();
 
-  Future<void> queueMutation(SyncQueueDb item) async {
+  Future<void> queueMutation(SyncQueueCompanion item) async {
     await into(syncQueue).insert(item);
   }
 
