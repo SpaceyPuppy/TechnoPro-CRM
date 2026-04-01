@@ -5,14 +5,18 @@ import '../auth/logout_callback_provider.dart';
 
 const _kApiHost = String.fromEnvironment('API_HOST');
 
-String get _baseUrl {
+String get _defaultBaseUrl {
   if (_kApiHost.isNotEmpty) return 'http://$_kApiHost:3000/api/v1';
   if (Platform.isAndroid) return 'http://10.0.2.2:3000/api/v1';
   return 'http://localhost:3000/api/v1';
 }
 
+/// Configurable server URL — set from login screen, persisted in AuthStorage.
+/// Falls back to platform default if not set.
+final serverUrlProvider = StateProvider<String>((ref) => _defaultBaseUrl);
+
 /// Base URL for constructing file/attachment URLs.
-String get apiBaseUrl => _baseUrl;
+String get apiBaseUrl => _defaultBaseUrl;
 
 /// In-memory token — updated by AuthNotifier on login/logout/init.
 /// The interceptor reads this synchronously, avoiding async storage race conditions.
@@ -23,8 +27,9 @@ final tokenProvider = StateProvider<String?>((ref) => null);
 final serverReachableProvider = StateProvider<bool>((ref) => true);
 
 final apiClientProvider = Provider<Dio>((ref) {
+  final baseUrl = ref.watch(serverUrlProvider);
   final dio = Dio(BaseOptions(
-    baseUrl: _baseUrl,
+    baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 15),
     headers: {'Content-Type': 'application/json'},

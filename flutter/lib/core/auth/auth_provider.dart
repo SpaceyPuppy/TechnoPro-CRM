@@ -47,6 +47,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _init() async {
+    // Restore saved server URL before anything else
+    final savedUrl = await _storage.getServerUrl();
+    if (savedUrl != null) {
+      _ref.read(serverUrlProvider.notifier).state = savedUrl;
+    }
+
     final token = await _storage.getToken();
     final user = await _storage.getUser();
     if (token != null && user != null) {

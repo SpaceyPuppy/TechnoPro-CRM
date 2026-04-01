@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -13,17 +14,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _serverCtrl = TextEditingController();
   bool _obscurePassword = true;
+  bool _showServer = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _serverCtrl.text = ref.read(serverUrlProvider);
+  }
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _serverCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Apply server URL if changed
+    final serverUrl = _serverCtrl.text.trim();
+    if (serverUrl.isNotEmpty && serverUrl != ref.read(serverUrlProvider)) {
+      ref.read(serverUrlProvider.notifier).state = serverUrl;
+      ref.read(authStorageProvider).saveServerUrl(serverUrl);
+    }
+
     await ref.read(authProvider.notifier).login(
           _emailCtrl.text.trim(),
           _passwordCtrl.text,
@@ -105,6 +123,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           )
                         : const Text('Sign In'),
                   ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => setState(() => _showServer = !_showServer),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _showServer ? Icons.expand_less : Icons.expand_more,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Server',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_showServer) ...[
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _serverCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Server URL',
+                        prefixIcon: Icon(Icons.dns_outlined),
+                        border: OutlineInputBorder(),
+                        hintText: 'http://192.168.x.x:3000/api/v1',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Server URL is required' : null,
+                    ),
+                  ],
                 ],
               ),
             ),

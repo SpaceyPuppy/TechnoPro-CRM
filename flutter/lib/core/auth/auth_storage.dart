@@ -5,6 +5,7 @@ import '../../shared/models/models.dart';
 class AuthStorage {
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user';
+  static const _serverUrlKey = 'server_url';
 
   static const _storage = FlutterSecureStorage(
     wOptions: WindowsOptions(useBackwardCompatibility: false),
@@ -29,5 +30,17 @@ class AuthStorage {
     ]);
   }
 
-  Future<void> clear() => _storage.deleteAll();
+  Future<String?> getServerUrl() => _storage.read(key: _serverUrlKey);
+
+  Future<void> saveServerUrl(String url) =>
+      _storage.write(key: _serverUrlKey, value: url);
+
+  Future<void> clear() async {
+    // Preserve server URL across logouts
+    final serverUrl = await getServerUrl();
+    await _storage.deleteAll();
+    if (serverUrl != null) {
+      await saveServerUrl(serverUrl);
+    }
+  }
 }
