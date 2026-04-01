@@ -33,13 +33,12 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._ref, this._dio, this._storage)
+  AuthNotifier(this._ref, this._storage)
       : super(const AuthState(isLoading: true)) {
     _init();
   }
 
   final Ref _ref;
-  final Dio _dio;
   final AuthStorage _storage;
 
   void _setToken(String? token) {
@@ -68,7 +67,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final res = await _dio.post<Map<String, dynamic>>(
+      final dio = _ref.read(apiClientProvider);
+      final res = await dio.post<Map<String, dynamic>>(
         '/auth/login',
         data: LoginRequest(email: email, password: password).toJson(),
       );
@@ -91,5 +91,5 @@ class AuthNotifier extends StateNotifier<AuthState> {
 final authStorageProvider = Provider<AuthStorage>((ref) => AuthStorage());
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref, ref.read(apiClientProvider), ref.read(authStorageProvider));
+  return AuthNotifier(ref, ref.read(authStorageProvider));
 });

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
@@ -17,6 +18,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _serverCtrl = TextEditingController();
   bool _obscurePassword = true;
   bool _showServer = false;
+  bool _testingServer = false;
+  String? _serverTestResult;
+  bool _serverTestOk = false;
 
   @override
   void initState() {
@@ -30,6 +34,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordCtrl.dispose();
     _serverCtrl.dispose();
     super.dispose();
+  }
+
+  void _saveServerUrl() {
+    final url = _serverCtrl.text.trim();
+    if (url.isEmpty) return;
+    ref.read(serverUrlProvider.notifier).state = url;
+    ref.read(authStorageProvider).saveServerUrl(url);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Server URL saved')),
+    );
+  }
+
+  Future<void> _testServerUrl() async {
+    final url = _serverCtrl.text.trim();
+    if (url.isEmpty) return;
+    setState(() {
+      _testingServer = true;
+      _serverTestResult = null;
+    });
+    try {
+      final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 5)));
+      final healthUrl = url.endsWith('/api/v1')
+          ? '$url/health'
+          : '$url/health';
+      final res = await dio.get<Map<String, dynamic>>(healthUrl);
+      final ok = res.data?['status'] == 'ok';
+      setState(() {
+        _serverTestOk = ok;
+        _serverTestResult = ok ? 'Connected ✓' : 'Unexpected response';
+      });
+    } catch (e) {
+      setState(() {
+        _serverTestOk = false;
+        _serverTestResult = 'Cannot reach server';
+      });
+    } finally {
+      setState(() => _testingServer = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -125,7 +167,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   GestureDetector(
-                    onTap: () => setState(() => _showServer = !_showServer),
+                    onTap: () => setState(() {
+                      _showServer = !_showServer;
+                      _serverTestResult = null;
+                    }),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -155,9 +200,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         hintText: 'http://192.168.x.x:3000/api/v1',
                       ),
                       style: Theme.of(context).textTheme.bodySmall,
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Server URL is required' : null,
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: _testingServer
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.wifi_find_outlined, size: 16),
+                            label: const Text('Test'),
+                            onPressed: _testingServer ? null : _testServerUrl,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.tonal(
+                            onPressed: _saveServerUrl,
+                            child: const Text('Save'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_serverTestResult != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        _serverTestResult!,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: _serverTestOk ? Colors.green : Theme.of(context).colorScheme.error,
+                            ),
+                      ),
+                    ],
                   ],
                 ],
               ),
