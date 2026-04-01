@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   business_email: "",
   gst_rate: "10.00",
   invoice_notes: "",
+  labour_rate: "75.00",
 };
 
 export async function getAllSettings(): Promise<Record<string, string>> {

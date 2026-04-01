@@ -332,6 +332,32 @@ export interface AppSettings {
   business_email: string;
   gst_rate: string;
   invoice_notes: string;
+  labour_rate?: string;
+}
+
+// --- Time Entries ---
+
+export interface TimeEntryResponse {
+  id: string;
+  ticketId: string;
+  userId: string;
+  startedAt: string;
+  stoppedAt: string | null;
+  durationSeconds: number | null;
+  note: string | null;
+  labourRate: string;
+  billedAs: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StartTimeEntryRequest {
+  note?: string;
+  labourRate?: string;
+}
+
+export interface BillTimeEntryRequest {
+  description?: string;
 }
 
 // --- Attachments ---

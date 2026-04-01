@@ -8,6 +8,7 @@ import '../../shared/widgets/error_view.dart';
 import '../invoices/invoices_provider.dart';
 import 'ticket_attachments.dart';
 import 'tickets_provider.dart';
+import 'widgets/time_entry_widget.dart';
 
 class TicketDetailScreen extends ConsumerWidget {
   const TicketDetailScreen({super.key, required this.id});
@@ -38,6 +39,8 @@ class TicketDetailScreen extends ConsumerWidget {
             _InfoCard(ticket: ticket),
             const SizedBox(height: 16),
             _InvoiceSection(ticketId: id),
+            const SizedBox(height: 16),
+            TimeEntryTimerWidget(ticketId: id),
             const SizedBox(height: 16),
             TicketAttachmentsSection(ticketId: id),
             const SizedBox(height: 16),

@@ -91,18 +91,19 @@ Chris uses four Windows machines. Ask which one at session start.
 
 ## Current State
 
-**Updated:** 2026-03-31 | **Completed:** Stage 6 | **Current:** Stage 7 (in progress)
+**Updated:** 2026-04-01 | **Completed:** Stage 6 | **Current:** Stage 7 (in progress)
 
 **Surface:** Fully set up (2026-03-16) — Flutter 3.38.5, Docker, Android SDK 36.1.0, VS Build Tools + ATL component. Backend running, DB ready.
 
 ### Stage 7 Progress
 
-✅ **7a:** Scroll fixes (AlwaysScrollableScrollPhysics for Windows mouse wheel), UX polish (delete spinner, note toast), API host fallback  
-✅ **7b:** Flutter feature parity — customer/inventory delete, search on both platforms (web + Flutter)  
-✅ **Windows scroll fix:** Replaced BouncingScrollPhysics with AlwaysScrollableScrollPhysics  
-✅ **7c:** Web Finance hub with tabbed Invoices/Quotes, quote status actions (Sent/Accept/Decline/Convert to Ticket)  
-✅ **7d:** Web Settings module — Business Settings page (business details, GST, invoice notes), Device Models CRUD  
-🔄 **7e:** 401 interceptor for auto-logout on token expiry (web done, Flutter pending)  
+✅ **7a:** Scroll fixes (AlwaysScrollableScrollPhysics for Windows mouse wheel), UX polish (delete spinner, note toast), API host fallback
+✅ **7b:** Flutter feature parity — customer/inventory delete, search on both platforms (web + Flutter)
+✅ **Windows scroll fix:** Replaced BouncingScrollPhysics with AlwaysScrollableScrollPhysics
+✅ **7c:** Web Finance hub with tabbed Invoices/Quotes, quote status actions (Sent/Accept/Decline/Convert to Ticket)
+✅ **7d:** Web Settings module — Business Settings page (business details, GST, invoice notes), Device Models CRUD
+🔄 **7e:** 401 interceptor for auto-logout on token expiry (web done, Flutter pending)
+✅ **7e.5 (NEW):** Time tracking for tickets — timer UI in Flutter, labour billing with rate snapshots (commit e95cd72, pushed to origin/main)
 ⏸️ **7f–7h:** Deferred (bulk import, audit logs, roles hardening)
 
 ### Stages completed (0–6)
@@ -127,6 +128,56 @@ Chris uses four Windows machines. Ask which one at session start.
 - **Auth & security:** No 401 interceptor for auto-logout (expired token in one tab doesn't logout other tabs until next API call)
 - **Offline:** Drift SQLite offline sync for Flutter (deferred from Stage 6)
 - **Advanced features:** Configurable fields (custom ticket/device fields), audit logs, roles hardening, SMTP email integration
+
+### Pending Surface setup (Time Tracking feature — commit e95cd72)
+
+**Status:** Code ready, pushed to origin/main. Database migration + testing needed on Surface.
+
+**When on Surface, complete these steps:**
+
+1. **Run database migration:**
+   ```bash
+   npm run db:push --workspace=backend
+   ```
+   Creates `time_entries` table for timer tracking.
+
+2. **Test backend endpoints (optional, with backend running):**
+   ```bash
+   # Start timer
+   curl -X POST http://localhost:3000/api/v1/tickets/{TICKET_ID}/time-entries/start \
+     -H "Authorization: Bearer {JWT_TOKEN}" \
+     -H "Content-Type: application/json" \
+     -d '{"note":"Test entry"}'
+
+   # Stop timer (replace {TIME_ENTRY_ID})
+   curl -X POST http://localhost:3000/api/v1/time-entries/{TIME_ENTRY_ID}/stop \
+     -H "Authorization: Bearer {JWT_TOKEN}"
+
+   # List entries
+   curl http://localhost:3000/api/v1/tickets/{TICKET_ID}/time-entries \
+     -H "Authorization: Bearer {JWT_TOKEN}"
+
+   # Bill the time entry
+   curl -X POST http://localhost:3000/api/v1/time-entries/{TIME_ENTRY_ID}/bill \
+     -H "Authorization: Bearer {JWT_TOKEN}" -H "Content-Type: application/json" -d '{}'
+   ```
+
+3. **Test Flutter app:**
+   - Build and run on tablet/mobile
+   - Open any ticket → scroll to "Time Tracking" card (new, below Invoices)
+   - Test: Start Timer → Running display → Stop → Bill workflow
+   - Verify labour line item created on invoice
+
+4. **Verify settings:**
+   - Settings → Business Settings
+   - Check `labour_rate` field (default $75.00)
+
+**What was implemented:**
+- Backend: `time_entries` table, service layer, REST API routes for start/stop/bill
+- Flutter: TimeEntryModel, Riverpod providers, TimeEntryTimerWidget with 1-second timer display
+- Shared: TimeEntryResponse type, labour_rate app setting (default $75/hr, overridable per session)
+- **Design:** Multiple sessions per ticket, hourly rate snapshotted at start, manual billing, auto-creates invoice if needed
+- **Web:** Deferred to Stage 2 (backend ready)
 
 ### Test credentials (from seed script)
 
