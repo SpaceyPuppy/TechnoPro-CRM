@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../core/providers/layout_provider.dart';
+import '../../shared/models/enums.dart' show UserRolePermissions;
 import '../../shared/models/models.dart';
 import '../../shared/widgets/empty_state_widget.dart';
 import '../../shared/widgets/error_view.dart';
@@ -16,6 +18,7 @@ class InventoryListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final inventoryAsync = ref.watch(inventoryListProvider);
+    final canManage = ref.watch(authProvider).user?.role.canManage ?? false;
     final width = MediaQuery.sizeOf(context).width;
     final isTouch = ref.watch(touchModeProvider);
     final tier = layoutTier(width, isTouch);
@@ -74,10 +77,12 @@ class InventoryListScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/inventory/new'),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: canManage
+          ? FloatingActionButton(
+              onPressed: () => context.go('/inventory/new'),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

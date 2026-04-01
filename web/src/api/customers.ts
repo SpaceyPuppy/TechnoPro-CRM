@@ -7,6 +7,12 @@ import type {
   UpdateCustomerRequest,
 } from "@technopro/shared";
 
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: Array<{ row: number; reason: string }>;
+}
+
 export const customersApi = {
   list: (params: { page?: number; pageSize?: number; search?: string } = {}) => {
     const qs = new URLSearchParams();
@@ -21,4 +27,6 @@ export const customersApi = {
   update: (id: string, body: UpdateCustomerRequest) =>
     api.patch<ApiResponse<CustomerResponse>>(`/api/v1/customers/${id}`, body),
   delete: (id: string) => api.delete<void>(`/api/v1/customers/${id}`),
+  import: (rows: Array<{ name: string; email?: string; phone?: string; notes?: string }>) =>
+    api.post<ApiResponse<ImportResult>>("/api/v1/customers/import", { rows }),
 };

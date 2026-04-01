@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_provider.dart';
+import '../../shared/models/enums.dart' show UserRolePermissions;
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
 import '../inventory/inventory_provider.dart';
@@ -318,6 +320,11 @@ class _StatusActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final role = ref.watch(authProvider).user?.role;
+    final canCounter = role?.canCounter ?? false;
+    final canManage = role?.canManage ?? false;
+    if (!canCounter) return const SizedBox.shrink();
+
     // Quote actions
     if (invoice.isQuote) {
       final qs = invoice.quoteStatus ?? 'draft';
@@ -343,7 +350,7 @@ class _StatusActions extends ConsumerWidget {
               child: const Text('Decline'),
             ),
           ],
-          if (qs == 'accepted' && invoice.convertedTicketId == null)
+          if (qs == 'accepted' && invoice.convertedTicketId == null && canManage)
             FilledButton.icon(
               icon: const Icon(Icons.confirmation_number_outlined, size: 18),
               label: const Text('Convert to Ticket'),
@@ -375,11 +382,12 @@ class _StatusActions extends ConsumerWidget {
             onPressed: () => _setStatus(context, ref, 'paid'),
             child: const Text('Mark as Paid'),
           ),
-        OutlinedButton(
-          onPressed: () => _setStatus(context, ref, 'void'),
-          style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-          child: const Text('Void'),
-        ),
+        if (canManage)
+          OutlinedButton(
+            onPressed: () => _setStatus(context, ref, 'void'),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Void'),
+          ),
       ],
     );
   }
@@ -394,6 +402,7 @@ class _LineItemsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final canCounter = ref.watch(authProvider).user?.role.canCounter ?? false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -401,7 +410,7 @@ class _LineItemsSection extends ConsumerWidget {
           children: [
             Text('Line Items', style: Theme.of(context).textTheme.titleMedium),
             const Spacer(),
-            if (invoice.canEdit)
+            if (canCounter && invoice.canEdit)
               TextButton.icon(
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add'),
@@ -415,7 +424,7 @@ class _LineItemsSection extends ConsumerWidget {
         else
           ...invoice.lineItems.map((li) => _LineItemTile(
                 item: li,
-                canDelete: invoice.canEdit,
+                canDelete: canCounter && invoice.canEdit,
                 onDelete: () async {
                   try {
                     final invoiceRepo = ref.read(invoiceRepositoryProvider);
@@ -657,7 +666,7 @@ class _PaymentsSection extends ConsumerWidget {
           children: [
             Text('Payments', style: Theme.of(context).textTheme.titleMedium),
             const Spacer(),
-            if (!invoice.isPaid && !invoice.isVoid)
+            if ((ref.watch(authProvider).user?.role.canCounter ?? false) && !invoice.isPaid && !invoice.isVoid)
               TextButton.icon(
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Record Payment'),

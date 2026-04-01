@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../core/providers/layout_provider.dart';
+import '../../shared/models/enums.dart' show UserRolePermissions;
 import '../../shared/models/models.dart';
 import '../../shared/widgets/empty_state_widget.dart';
 import '../../shared/widgets/error_view.dart';
@@ -38,7 +40,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final canCounter = ref.watch(authProvider).user?.role.canCounter ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -77,15 +79,17 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
           ),
         ],
       ),
-      floatingActionButton: AnimatedBuilder(
-        animation: _tab,
-        builder: (_, __) => FloatingActionButton(
-          onPressed: () => _tab.index == 0
-              ? context.go('/finance/new')
-              : context.go('/finance/new?type=quote'),
-          child: const Icon(Icons.add),
-        ),
-      ),
+      floatingActionButton: canCounter
+          ? AnimatedBuilder(
+              animation: _tab,
+              builder: (_, __) => FloatingActionButton(
+                onPressed: () => _tab.index == 0
+                    ? context.go('/finance/new')
+                    : context.go('/finance/new?type=quote'),
+                child: const Icon(Icons.add),
+              ),
+            )
+          : null,
     );
   }
 }

@@ -45,10 +45,10 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     },
   );
 
-  // Start a timer
+  // Start a timer — technicians and above
   app.post<{ Params: { ticketId: string }; Body: StartTimeEntryRequest }>(
     "/tickets/:ticketId/time-entries/start",
-    { schema: startTimeEntrySchema },
+    { schema: startTimeEntrySchema, preHandler: app.requireRole("technician", "manager", "admin") },
     async (request, reply) => {
       try {
         const entry = await startTimeEntry(request.params.ticketId, request.user.id, {
@@ -69,8 +69,8 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     },
   );
 
-  // Stop a timer
-  app.post<{ Params: { id: string } }>("/time-entries/:id/stop", async (request, reply) => {
+  // Stop a timer — technicians and above
+  app.post<{ Params: { id: string } }>("/time-entries/:id/stop", { preHandler: app.requireRole("technician", "manager", "admin") }, async (request, reply) => {
     try {
       const entry = await stopTimeEntry(request.params.id);
       return reply.send({ data: entry });
@@ -86,10 +86,10 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     }
   });
 
-  // Bill a time entry
+  // Bill a time entry — technicians and above
   app.post<{ Params: { id: string }; Body: BillTimeEntryRequest }>(
     "/time-entries/:id/bill",
-    { schema: billTimeEntrySchema },
+    { schema: billTimeEntrySchema, preHandler: app.requireRole("technician", "manager", "admin") },
     async (request, reply) => {
       try {
         const invoice = await billTimeEntry(request.params.id, undefined, request.body.description);

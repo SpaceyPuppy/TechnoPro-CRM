@@ -5,6 +5,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/providers/layout_provider.dart';
 import '../../core/sync/offline_mode_provider.dart' show OfflineMode, offlineModeProvider;
+import '../models/enums.dart' show UserRolePermissions;
 
 // ── Destination definitions ──────────────────────────────────────────────────
 
@@ -103,22 +104,25 @@ class AppShell extends ConsumerWidget {
     final tier = layoutTier(width, isTouch);
     final isReachable = ref.watch(serverReachableProvider);
 
+    final canManage = user?.role.canManage ?? false;
+
     return switch (tier) {
-      LayoutTier.desktop => _buildDesktop(context, ref, _railIndex(context), user, isReachable),
-      LayoutTier.tablet  => _buildTablet(context, ref, _railIndex(context), user, isReachable),
-      LayoutTier.phone   => _buildPhone(context, ref, _phoneIndex(context), user, isReachable),
+      LayoutTier.desktop => _buildDesktop(context, ref, _railIndex(context), user, isReachable, canManage),
+      LayoutTier.tablet  => _buildTablet(context, ref, _railIndex(context), user, isReachable, canManage),
+      LayoutTier.phone   => _buildPhone(context, ref, _phoneIndex(context), user, isReachable, canManage),
     };
   }
 
   // ── Desktop: extended dark sidebar ─────────────────────────────────────────
 
-  Widget _buildDesktop(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable) {
+  Widget _buildDesktop(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage) {
     return Scaffold(
       body: Row(
         children: [
           _DesktopSidebar(
             selectedIndex: selectedIndex,
             user: user,
+            canManage: canManage,
             onDestinationSelected: (i) => context.go(_railDestinations[i].path),
             onLogout: () => ref.read(authProvider.notifier).logout(),
           ),
@@ -131,13 +135,14 @@ class AppShell extends ConsumerWidget {
 
   // ── Tablet: compact dark rail ───────────────────────────────────────────────
 
-  Widget _buildTablet(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable) {
+  Widget _buildTablet(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage) {
     return Scaffold(
       body: Row(
         children: [
           _TabletRail(
             selectedIndex: selectedIndex,
             user: user,
+            canManage: canManage,
             onDestinationSelected: (i) => context.go(_railDestinations[i].path),
             onLogout: () => ref.read(authProvider.notifier).logout(),
           ),
@@ -150,7 +155,7 @@ class AppShell extends ConsumerWidget {
 
   // ── Phone: bottom nav + "More" bottom sheet ──────────────────────────────────
 
-  Widget _buildPhone(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable) {
+  Widget _buildPhone(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage) {
     final colorScheme = Theme.of(context).colorScheme;
     // Map selectedIndex to navIndex for NavigationBar (0-4)
     // selectedIndex 5-6 (More items) → navIndex 4 (More button)
@@ -177,7 +182,7 @@ class AppShell extends ConsumerWidget {
           if (i < _phoneDestinations.length) {
             context.go(_phoneDestinations[i].path);
           } else {
-            showMoreSheet(context);
+            showMoreSheet(context, canManage: canManage);
           }
         },
         backgroundColor: colorScheme.surface,
@@ -205,12 +210,14 @@ class _DesktopSidebar extends StatelessWidget {
   const _DesktopSidebar({
     required this.selectedIndex,
     required this.user,
+    required this.canManage,
     required this.onDestinationSelected,
     required this.onLogout,
   });
 
   final int selectedIndex;
   final dynamic user;
+  final bool canManage;
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onLogout;
 
@@ -245,6 +252,10 @@ class _DesktopSidebar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               itemCount: _railDestinations.length,
               itemBuilder: (context, i) {
+                // Hide Settings (last item) for non-managers
+                if (i == _railDestinations.length - 1 && !canManage) {
+                  return const SizedBox.shrink();
+                }
                 final d = _railDestinations[i];
                 final isSelected = i == selectedIndex;
                 return _SidebarItem(
@@ -360,12 +371,14 @@ class _TabletRail extends StatelessWidget {
   const _TabletRail({
     required this.selectedIndex,
     required this.user,
+    required this.canManage,
     required this.onDestinationSelected,
     required this.onLogout,
   });
 
   final int selectedIndex;
   final dynamic user;
+  final bool canManage;
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onLogout;
 
@@ -396,6 +409,9 @@ class _TabletRail extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6),
               itemCount: _railDestinations.length,
               itemBuilder: (context, i) {
+                if (i == _railDestinations.length - 1 && !canManage) {
+                  return const SizedBox.shrink();
+                }
                 final d = _railDestinations[i];
                 final isSelected = i == selectedIndex;
                 return Tooltip(
@@ -443,7 +459,8 @@ class _TabletRail extends StatelessWidget {
 
 // ── More bottom sheet ─────────────────────────────────────────────────────────
 
-void showMoreSheet(BuildContext context) {
+void showMoreSheet(BuildContext context, {bool canManage = false}) {
+  final items = canManage ? _moreItems : _moreItems.where((d) => d.path != '/settings').toList();
   showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
@@ -463,7 +480,7 @@ void showMoreSheet(BuildContext context) {
                   ),
             ),
           ),
-          ..._moreItems.map((d) => ListTile(
+          ...items.map((d) => ListTile(
                 leading: Icon(d.icon, color: Theme.of(context).colorScheme.primary),
                 title: Text(d.label),
                 onTap: () {

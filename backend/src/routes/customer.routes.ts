@@ -7,6 +7,8 @@ import {
   deleteCustomer,
 } from "../services/customer.service";
 import { parsePagination, paginationMeta } from "../utils/pagination";
+import { getDb, schema } from "../db/index";
+import { generateId } from "../utils/id";
 import type { CreateCustomerRequest, UpdateCustomerRequest } from "@technopro/shared";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getCustomerById>>>) {
@@ -106,8 +108,73 @@ export async function customerRoutes(app: FastifyInstance) {
     },
   );
 
-  // Delete customer
-  app.delete<{ Params: { id: string } }>("/customers/:id", async (request, reply) => {
+  // Bulk import customers — managers and admins only
+  app.post<{
+    Body: {
+      rows: Array<{ name: string; email?: string; phone?: string; notes?: string }>;
+    };
+  }>(
+    "/customers/import",
+    {
+      schema: {
+        body: {
+          type: "object",
+          required: ["rows"],
+          properties: {
+            rows: {
+              type: "array",
+              maxItems: 2000,
+              items: {
+                type: "object",
+                required: ["name"],
+                properties: {
+                  name: { type: "string", minLength: 1, maxLength: 255 },
+                  email: { type: "string", maxLength: 255 },
+                  phone: { type: "string", maxLength: 50 },
+                  notes: { type: "string", maxLength: 5000 },
+                },
+                additionalProperties: false,
+              },
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      preHandler: app.requireRole("manager", "admin"),
+    },
+    async (request, reply) => {
+      const db = getDb();
+      let imported = 0;
+      const errors: Array<{ row: number; reason: string }> = [];
+
+      for (let i = 0; i < request.body.rows.length; i++) {
+        const row = request.body.rows[i]!;
+        try {
+          const name = row.name.trim();
+          if (!name) { errors.push({ row: i + 1, reason: "Name is required" }); continue; }
+          await db.insert(schema.customers).values({
+            id: generateId(),
+            name,
+            firstName: null,
+            lastName: null,
+            company: null,
+            email: row.email?.trim() || null,
+            phone: row.phone?.trim() || null,
+            notes: row.notes?.trim() || null,
+          });
+          imported++;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          errors.push({ row: i + 1, reason: message.includes("Duplicate") ? "Duplicate entry" : message });
+        }
+      }
+
+      return reply.send({ data: { imported, skipped: errors.length, errors } });
+    },
+  );
+
+  // Delete customer — managers and admins only
+  app.delete<{ Params: { id: string } }>("/customers/:id", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
     const deleted = await deleteCustomer(request.params.id);
     if (!deleted) {
       return reply.code(404).send({

@@ -187,20 +187,20 @@ export async function invoiceRoutes(app: FastifyInstance) {
     return reply.send({ data: invoiceToResponse(inv) });
   });
 
-  // Create invoice or quote
+  // Create invoice or quote — counter and above
   app.post<{ Body: CreateInvoiceRequest & { type?: "invoice" | "quote" } }>(
     "/invoices",
-    { schema: createInvoiceSchema },
+    { schema: createInvoiceSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
       const inv = await createInvoice(request.body);
       return reply.code(201).send({ data: invoiceToResponse(inv!) });
     },
   );
 
-  // Update invoice status
+  // Update invoice status — managers and admins only
   app.patch<{ Params: { id: string }; Body: { status: "draft" | "open" | "paid" | "void" } }>(
     "/invoices/:id/status",
-    { schema: statusSchema },
+    { schema: statusSchema, preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
       const inv = await updateInvoiceStatus(request.params.id, request.body.status);
       if (!inv) {
@@ -210,10 +210,10 @@ export async function invoiceRoutes(app: FastifyInstance) {
     },
   );
 
-  // Update quote status
+  // Update quote status — counter and above
   app.patch<{ Params: { id: string }; Body: { quoteStatus: "draft" | "sent" | "accepted" | "declined" } }>(
     "/invoices/:id/quote-status",
-    { schema: quoteStatusSchema },
+    { schema: quoteStatusSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
       const inv = await updateQuoteStatus(request.params.id, request.body.quoteStatus);
       if (!inv) {
@@ -223,9 +223,10 @@ export async function invoiceRoutes(app: FastifyInstance) {
     },
   );
 
-  // Convert accepted quote to a new ticket
+  // Convert accepted quote to a new ticket — managers and admins only
   app.patch<{ Params: { id: string } }>(
     "/invoices/:id/convert-to-ticket",
+    { preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
       const result = await convertQuoteToTicket(request.params.id, request.user.id);
       if (!result) {
@@ -237,10 +238,10 @@ export async function invoiceRoutes(app: FastifyInstance) {
     },
   );
 
-  // Add line item
+  // Add line item — counter and above
   app.post<{ Params: { id: string }; Body: CreateLineItemRequest }>(
     "/invoices/:id/line-items",
-    { schema: lineItemSchema },
+    { schema: lineItemSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
       const inv = await addLineItem(request.params.id, request.body);
       if (!inv) {
@@ -250,10 +251,10 @@ export async function invoiceRoutes(app: FastifyInstance) {
     },
   );
 
-  // Update line item
+  // Update line item — counter and above
   app.patch<{ Params: { id: string; lineItemId: string }; Body: UpdateLineItemRequest }>(
     "/invoices/:id/line-items/:lineItemId",
-    { schema: updateLineItemSchema },
+    { schema: updateLineItemSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
       const inv = await updateLineItem(
         request.params.id,
@@ -267,9 +268,10 @@ export async function invoiceRoutes(app: FastifyInstance) {
     },
   );
 
-  // Remove line item
+  // Remove line item — counter and above
   app.delete<{ Params: { id: string; lineItemId: string } }>(
     "/invoices/:id/line-items/:lineItemId",
+    { preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
       const removed = await removeLineItem(request.params.id, request.params.lineItemId);
       if (!removed) {
@@ -279,10 +281,10 @@ export async function invoiceRoutes(app: FastifyInstance) {
     },
   );
 
-  // Add payment (supports type: deposit | payment | refund)
+  // Add payment — counter and above
   app.post<{ Params: { id: string }; Body: CreatePaymentRequest & { type?: string } }>(
     "/invoices/:id/payments",
-    { schema: paymentSchema },
+    { schema: paymentSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
       const inv = await addPayment(
         request.params.id,

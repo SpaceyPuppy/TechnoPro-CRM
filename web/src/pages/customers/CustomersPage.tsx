@@ -1,16 +1,23 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Users } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Search, Users, Upload } from "lucide-react";
+import { toast } from "sonner";
 import { customersApi } from "@/api/customers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeleton";
+import { CsvImportDialog } from "@/components/ui/csv-import-dialog";
+import type { ImportResult } from "@/components/ui/csv-import-dialog";
+import { useRole } from "@/store/authStore";
 
 export function CustomersPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { canManage } = useRole();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [showImport, setShowImport] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["customers", { page, search }],
@@ -19,14 +26,47 @@ export function CustomersPage() {
 
   return (
     <div className="p-6 space-y-4">
+      {showImport && (
+        <CsvImportDialog
+          title="Import Customers"
+          columns={[
+            { key: "name", label: "Name", required: true },
+            { key: "email", label: "Email" },
+            { key: "phone", label: "Phone" },
+            { key: "notes", label: "Notes" },
+          ]}
+          exampleRow="John Smith,john@example.com,0412345678,VIP customer"
+          onImport={async (rows) => {
+            const typed = rows.map((r) => ({
+              name: r["name"] ?? "",
+              email: r["email"] || undefined,
+              phone: r["phone"] || undefined,
+              notes: r["notes"] || undefined,
+            }));
+            const res = await customersApi.import(typed);
+            qc.invalidateQueries({ queryKey: ["customers"] });
+            if (res.data.imported > 0) toast.success(`${res.data.imported} customers imported`);
+            return res.data;
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Customers</h1>
-        <Button asChild size="sm">
-          <Link to="/customers/new">
-            <Plus size={16} />
-            New Customer
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          {canManage && (
+            <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
+              <Upload size={16} />
+              Import CSV
+            </Button>
+          )}
+          <Button asChild size="sm">
+            <Link to="/customers/new">
+              <Plus size={16} />
+              New Customer
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ticketStatusVariant, ticketStatusLabel } from "@/lib/ticketHelpers";
+import { useRole } from "@/store/authStore";
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,8 @@ export function CustomerDetailPage() {
       navigate("/customers");
     },
   });
+
+  const { canManage } = useRole();
 
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
   if (isError || !customerData)
@@ -59,19 +62,21 @@ export function CustomerDetailPage() {
             Edit
           </Link>
         </Button>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={handleDelete}
-          disabled={deleteMutation.isPending}
-        >
-          {deleteMutation.isPending ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <Trash2 size={14} />
-          )}
-          Delete
-        </Button>
+        {canManage && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Trash2 size={14} />
+            )}
+            Delete
+          </Button>
+        )}
       </div>
 
       <Card>

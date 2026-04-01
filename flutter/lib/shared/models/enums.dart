@@ -13,6 +13,13 @@ enum UserRole {
       UserRole.values.firstWhere((e) => e.value == s, orElse: () => UserRole.technician);
 }
 
+extension UserRolePermissions on UserRole {
+  bool get canManage => this == UserRole.manager || this == UserRole.admin;
+  bool get canCounter => this == UserRole.counter || canManage;
+  bool get canTech => this == UserRole.technician || canManage;
+  bool get isAdmin => this == UserRole.admin;
+}
+
 enum TicketStatus {
   open('open'),
   inProgress('in_progress'),

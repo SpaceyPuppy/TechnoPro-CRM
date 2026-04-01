@@ -6,6 +6,7 @@ import { invoicesApi } from "@/api/invoices";
 import { InvoiceStatus } from "@technopro/shared";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useRole } from "@/store/authStore";
 
 const INVOICE_STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -45,6 +46,7 @@ function quoteStatusVariant(status: string) {
 
 export function FinancePage() {
   const navigate = useNavigate();
+  const { canCounter } = useRole();
   const [tab, setTab] = useState<"invoices" | "quotes">("invoices");
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [quoteStatus, setQuoteStatus] = useState("");
@@ -73,12 +75,14 @@ export function FinancePage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Finance</h1>
-        <Button asChild size="sm">
-          <Link to={tab === "invoices" ? "/invoices/new" : "/quotes/new"}>
-            <Plus size={16} />
-            {tab === "invoices" ? "New Invoice" : "New Quote"}
-          </Link>
-        </Button>
+        {canCounter && (
+          <Button asChild size="sm">
+            <Link to={tab === "invoices" ? "/invoices/new" : "/quotes/new"}>
+              <Plus size={16} />
+              {tab === "invoices" ? "New Invoice" : "New Quote"}
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Tabs */}

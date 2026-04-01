@@ -1,16 +1,23 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Search, Upload } from "lucide-react";
+import { toast } from "sonner";
 import { inventoryApi } from "@/api/inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useRole } from "@/store/authStore";
+import { CsvImportDialog } from "@/components/ui/csv-import-dialog";
+import type { ImportResult } from "@/components/ui/csv-import-dialog";
 
 export function InventoryPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [showImport, setShowImport] = useState(false);
+  const { canManage } = useRole();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["inventory", { page, search }],
@@ -19,14 +26,51 @@ export function InventoryPage() {
 
   return (
     <div className="p-6 space-y-4">
+      {showImport && (
+        <CsvImportDialog
+          title="Import Inventory Items"
+          columns={[
+            { key: "sku", label: "SKU", required: true },
+            { key: "name", label: "Name", required: true },
+            { key: "price", label: "Price", required: true },
+            { key: "cost", label: "Cost" },
+            { key: "stockQty", label: "StockQty" },
+            { key: "description", label: "Description" },
+          ]}
+          exampleRow="SCR-001,iPhone 16 Screen,149.99,89.99,5,Replacement screen"
+          onImport={async (rows) => {
+            const typed = rows.map((r) => ({
+              sku: r["sku"] ?? "",
+              name: r["name"] ?? "",
+              price: r["price"] ?? "0.00",
+              cost: r["cost"] || undefined,
+              stockQty: r["stockQty"] || undefined,
+              description: r["description"] || undefined,
+            }));
+            const res = await inventoryApi.import(typed);
+            qc.invalidateQueries({ queryKey: ["inventory"] });
+            if (res.data.imported > 0) toast.success(`${res.data.imported} items imported`);
+            return res.data;
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Inventory</h1>
-        <Button asChild size="sm">
-          <Link to="/inventory/new">
-            <Plus size={16} />
-            New Item
-          </Link>
-        </Button>
+        {canManage && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
+              <Upload size={16} />
+              Import CSV
+            </Button>
+            <Button asChild size="sm">
+              <Link to="/inventory/new">
+                <Plus size={16} />
+                New Item
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="relative max-w-sm">
@@ -68,8 +112,8 @@ export function InventoryPage() {
                 {data.data.map((item) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-muted/30 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/inventory/${item.id}/edit`)}
+                    className={canManage ? "hover:bg-muted/30 cursor-pointer transition-colors" : ""}
+                    onClick={() => canManage && navigate(`/inventory/${item.id}/edit`)}
                   >
                     <td className="px-4 py-3 font-mono text-xs">{item.sku}</td>
                     <td className="px-4 py-3 font-medium">{item.name}</td>

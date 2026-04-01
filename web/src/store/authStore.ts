@@ -20,3 +20,19 @@ export const useAuthStore = create<AuthState>()(
     { name: "technopro-auth" },
   ),
 );
+
+/** Role-based permission helpers. All checks are UI-only — backend enforces the real rules. */
+export function useRole() {
+  const role = useAuthStore((s) => s.user?.role);
+  return {
+    role,
+    /** Can manage: manager or admin */
+    canManage: role === "manager" || role === "admin",
+    /** Can access counter operations: counter, manager, admin */
+    canCounter: role === "counter" || role === "manager" || role === "admin",
+    /** Can access tech operations: technician, manager, admin */
+    canTech: role === "technician" || role === "manager" || role === "admin",
+    /** Admin only */
+    isAdmin: role === "admin",
+  };
+}

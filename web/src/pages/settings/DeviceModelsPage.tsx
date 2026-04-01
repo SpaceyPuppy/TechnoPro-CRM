@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Edit, Trash2, X } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { deviceModelsApi } from "@/api/deviceModels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { CsvImportDialog } from "@/components/ui/csv-import-dialog";
+import type { ImportResult } from "@/components/ui/csv-import-dialog";
 
 export function DeviceModelsPage() {
   const qc = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ manufacturer: "", name: "", sortOrder: "0" });
 
@@ -122,10 +125,16 @@ export function DeviceModelsPage() {
           </Button>
           <h1 className="text-2xl font-semibold">Device Models</h1>
         </div>
-        <Button onClick={handleAdd} size="sm">
-          <Plus size={16} />
-          Add Model
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
+            <Upload size={16} />
+            Import CSV
+          </Button>
+          <Button onClick={handleAdd} size="sm">
+            <Plus size={16} />
+            Add Model
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6">
@@ -170,6 +179,29 @@ export function DeviceModelsPage() {
           </div>
         )}
       </Card>
+
+      {/* CSV Import */}
+      {showImport && (
+        <CsvImportDialog
+          title="Import Device Models"
+          columns={[
+            { key: "manufacturer", label: "Manufacturer", required: true },
+            { key: "name", label: "Name", required: true },
+          ]}
+          exampleRow="Apple,iPhone 16 Pro"
+          onImport={async (rows) => {
+            const typed = rows.map((r) => ({
+              manufacturer: r["manufacturer"] ?? "",
+              name: r["name"] ?? "",
+            }));
+            const res = await deviceModelsApi.import(typed);
+            qc.invalidateQueries({ queryKey: ["device-models"] });
+            if (res.data.imported > 0) toast.success(`${res.data.imported} device models imported`);
+            return res.data;
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
 
       {/* Form Modal */}
       {showDialog && (

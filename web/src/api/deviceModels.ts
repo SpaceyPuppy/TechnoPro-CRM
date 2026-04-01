@@ -8,6 +8,12 @@ export interface DeviceModel {
   sortOrder: number;
 }
 
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: Array<{ row: number; reason: string }>;
+}
+
 export const deviceModelsApi = {
   list: () =>
     api.get<ApiResponse<DeviceModel[]>>("/api/v1/settings/device-models"),
@@ -17,4 +23,6 @@ export const deviceModelsApi = {
     api.patch<ApiResponse<DeviceModel>>(`/api/v1/settings/device-models/${id}`, data),
   delete: (id: string) =>
     api.delete<void>(`/api/v1/settings/device-models/${id}`),
+  import: (rows: Array<{ manufacturer: string; name: string }>) =>
+    api.post<ApiResponse<ImportResult>>("/api/v1/settings/device-models/import", { rows }),
 };

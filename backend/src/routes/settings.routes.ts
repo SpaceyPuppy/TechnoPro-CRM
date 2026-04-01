@@ -61,6 +61,7 @@ export async function settingsRoutes(app: FastifyInstance) {
           additionalProperties: { type: "string" },
         },
       },
+      preHandler: app.requireRole("manager", "admin"),
     },
     async (request, reply) => {
       // Only allow known keys to prevent arbitrary key injection
@@ -92,7 +93,7 @@ export async function settingsRoutes(app: FastifyInstance) {
   // Create device model
   app.post<{ Body: CreateDeviceModelRequest }>(
     "/settings/device-models",
-    { schema: createSchema },
+    { schema: createSchema, preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
       const db = getDb();
       const id = generateId();
@@ -114,7 +115,7 @@ export async function settingsRoutes(app: FastifyInstance) {
   // Update device model
   app.patch<{ Params: { id: string }; Body: UpdateDeviceModelRequest }>(
     "/settings/device-models/:id",
-    { schema: updateSchema },
+    { schema: updateSchema, preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
       const db = getDb();
       const existing = await db
@@ -141,9 +142,63 @@ export async function settingsRoutes(app: FastifyInstance) {
     },
   );
 
+  // Bulk import device models
+  app.post<{ Body: { rows: Array<{ manufacturer: string; name: string }> } }>(
+    "/settings/device-models/import",
+    {
+      schema: {
+        body: {
+          type: "object",
+          required: ["rows"],
+          properties: {
+            rows: {
+              type: "array",
+              maxItems: 2000,
+              items: {
+                type: "object",
+                required: ["manufacturer", "name"],
+                properties: {
+                  manufacturer: { type: "string", minLength: 1, maxLength: 100 },
+                  name: { type: "string", minLength: 1, maxLength: 100 },
+                },
+                additionalProperties: false,
+              },
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      preHandler: app.requireRole("manager", "admin"),
+    },
+    async (request, reply) => {
+      const db = getDb();
+      let imported = 0;
+      const errors: Array<{ row: number; reason: string }> = [];
+
+      for (let i = 0; i < request.body.rows.length; i++) {
+        const row = request.body.rows[i]!;
+        try {
+          await db.insert(schema.deviceModels).values({
+            id: generateId(),
+            manufacturer: row.manufacturer.trim(),
+            name: row.name.trim(),
+            sortOrder: 0,
+          });
+          imported++;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          errors.push({ row: i + 1, reason: message.includes("Duplicate") ? "Duplicate entry" : message });
+        }
+      }
+
+      return reply.send({ data: { imported, skipped: errors.length, errors } });
+    },
+  );
+
   // Delete device model
   app.delete<{ Params: { id: string } }>(
     "/settings/device-models/:id",
+    { preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
       const db = getDb();
       const existing = await db

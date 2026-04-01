@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useRole } from "@/store/authStore";
 
 const selectClass =
   "w-full text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring";
@@ -200,6 +201,7 @@ export function InvoiceDetailPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { canCounter, canManage } = useRole();
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
 
@@ -281,50 +283,52 @@ export function InvoiceDetailPage() {
         </div>
 
         {/* Status actions */}
-        <div className="flex gap-2">
-          {inv.type === "quote" ? (
-            <>
-              {inv.quoteStatus === "draft" && (
-                <Button size="sm" variant="outline" onClick={() => quoteStatusMutation.mutate("sent")} disabled={quoteStatusMutation.isPending}>
-                  Mark Sent
-                </Button>
-              )}
-              {inv.quoteStatus === "sent" && (
-                <>
-                  <Button size="sm" variant="outline" onClick={() => quoteStatusMutation.mutate("accepted")} disabled={quoteStatusMutation.isPending}>
-                    Accept
+        {(canCounter || canManage) && (
+          <div className="flex gap-2">
+            {inv.type === "quote" ? (
+              <>
+                {inv.quoteStatus === "draft" && (
+                  <Button size="sm" variant="outline" onClick={() => quoteStatusMutation.mutate("sent")} disabled={quoteStatusMutation.isPending}>
+                    Mark Sent
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => quoteStatusMutation.mutate("declined")} disabled={quoteStatusMutation.isPending}>
-                    Decline
+                )}
+                {inv.quoteStatus === "sent" && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => quoteStatusMutation.mutate("accepted")} disabled={quoteStatusMutation.isPending}>
+                      Accept
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => quoteStatusMutation.mutate("declined")} disabled={quoteStatusMutation.isPending}>
+                      Decline
+                    </Button>
+                  </>
+                )}
+                {inv.quoteStatus === "accepted" && canManage && (
+                  <Button size="sm" variant="outline" onClick={() => convertToTicketMutation.mutate()} disabled={convertToTicketMutation.isPending}>
+                    Convert to Ticket
                   </Button>
-                </>
-              )}
-              {inv.quoteStatus === "accepted" && (
-                <Button size="sm" variant="outline" onClick={() => convertToTicketMutation.mutate()} disabled={convertToTicketMutation.isPending}>
-                  Convert to Ticket
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
-              {inv.status === "draft" && (
-                <Button size="sm" variant="outline" onClick={() => statusMutation.mutate("open")} disabled={statusMutation.isPending}>
-                  Mark Open
-                </Button>
-              )}
-              {inv.status === "open" && (
-                <Button size="sm" variant="outline" onClick={() => statusMutation.mutate("paid")} disabled={statusMutation.isPending}>
-                  Mark Paid
-                </Button>
-              )}
-              {inv.status !== "void" && inv.status !== "paid" && (
-                <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => { if (confirm("Void this invoice?")) statusMutation.mutate("void"); }} disabled={statusMutation.isPending}>
-                  Void
-                </Button>
-              )}
-            </>
-          )}
-        </div>
+                )}
+              </>
+            ) : (
+              <>
+                {inv.status === "draft" && (
+                  <Button size="sm" variant="outline" onClick={() => statusMutation.mutate("open")} disabled={statusMutation.isPending}>
+                    Mark Open
+                  </Button>
+                )}
+                {inv.status === "open" && (
+                  <Button size="sm" variant="outline" onClick={() => statusMutation.mutate("paid")} disabled={statusMutation.isPending}>
+                    Mark Paid
+                  </Button>
+                )}
+                {canManage && inv.status !== "void" && inv.status !== "paid" && (
+                  <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => { if (confirm("Void this invoice?")) statusMutation.mutate("void"); }} disabled={statusMutation.isPending}>
+                    Void
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Line Items */}
@@ -332,7 +336,7 @@ export function InvoiceDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Line Items</CardTitle>
-            {inv.status !== "void" && inv.status !== "paid" && (
+            {canCounter && inv.status !== "void" && inv.status !== "paid" && (
               <Button size="sm" variant="outline" onClick={() => setShowAddItem((v) => !v)}>
                 <Plus size={14} />
                 Add Item
@@ -363,7 +367,7 @@ export function InvoiceDetailPage() {
                 </p>
               </div>
               <span className="font-medium">${li.total}</span>
-              {inv.status !== "void" && inv.status !== "paid" && (
+              {canCounter && inv.status !== "void" && inv.status !== "paid" && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -404,7 +408,7 @@ export function InvoiceDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Payments</CardTitle>
-            {inv.status !== "void" && inv.status !== "draft" && parseFloat(inv.balance) > 0 && (
+            {canCounter && inv.status !== "void" && inv.status !== "draft" && parseFloat(inv.balance) > 0 && (
               <Button size="sm" variant="outline" onClick={() => setShowAddPayment((v) => !v)}>
                 <Plus size={14} />
                 Record Payment

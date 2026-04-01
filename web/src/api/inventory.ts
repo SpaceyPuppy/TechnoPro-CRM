@@ -7,6 +7,12 @@ import type {
   UpdateInventoryItemRequest,
 } from "@technopro/shared";
 
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: Array<{ row: number; reason: string }>;
+}
+
 export const inventoryApi = {
   list: (params: { page?: number; pageSize?: number; search?: string } = {}) => {
     const qs = new URLSearchParams();
@@ -22,4 +28,6 @@ export const inventoryApi = {
   update: (id: string, body: UpdateInventoryItemRequest) =>
     api.patch<ApiResponse<InventoryItemResponse>>(`/api/v1/inventory/${id}`, body),
   delete: (id: string) => api.delete<void>(`/api/v1/inventory/${id}`),
+  import: (rows: Array<{ sku: string; name: string; price: string; cost?: string; stockQty?: string; description?: string }>) =>
+    api.post<ApiResponse<ImportResult>>("/api/v1/inventory/import", { rows }),
 };
