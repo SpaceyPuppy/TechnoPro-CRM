@@ -127,9 +127,9 @@ class _TimeEntryTimerWidgetState extends ConsumerState<TimeEntryTimerWidget> {
           controller: noteController,
           decoration: const InputDecoration(
             labelText: 'Optional note (e.g., "Diagnosis")',
-            maxLength: 500,
           ),
           maxLines: 3,
+          maxLength: 500,
         ),
         actions: [
           TextButton(
@@ -220,9 +220,9 @@ class _TimeEntryTimerWidgetState extends ConsumerState<TimeEntryTimerWidget> {
                 controller: descController,
                 decoration: const InputDecoration(
                   labelText: 'Line item description',
-                  maxLength: 500,
                 ),
                 maxLines: 2,
+                maxLength: 500,
               ),
             ],
           ),
