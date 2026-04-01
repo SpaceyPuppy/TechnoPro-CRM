@@ -295,6 +295,62 @@ class TicketEventModel {
       );
 }
 
+// --- Time Entries ---
+
+class TimeEntryModel {
+  final String id;
+  final String ticketId;
+  final String userId;
+  final String startedAt;
+  final String? stoppedAt;
+  final int? durationSeconds;
+  final String? note;
+  final String labourRate;
+  final String? billedAs;
+  final String createdAt;
+  final String updatedAt;
+
+  TimeEntryModel({
+    required this.id,
+    required this.ticketId,
+    required this.userId,
+    required this.startedAt,
+    this.stoppedAt,
+    this.durationSeconds,
+    this.note,
+    required this.labourRate,
+    this.billedAs,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory TimeEntryModel.fromJson(Map<String, dynamic> j) => TimeEntryModel(
+        id: j['id'] as String,
+        ticketId: j['ticketId'] as String,
+        userId: j['userId'] as String,
+        startedAt: j['startedAt'] as String,
+        stoppedAt: j['stoppedAt'] as String?,
+        durationSeconds: j['durationSeconds'] as int?,
+        note: j['note'] as String?,
+        labourRate: j['labourRate'] as String,
+        billedAs: j['billedAs'] as String?,
+        createdAt: j['createdAt'] as String,
+        updatedAt: j['updatedAt'] as String,
+      );
+
+  // Helper: format duration as "1h 23m 45s"
+  String get formattedDuration {
+    if (durationSeconds == null) return 'Running...';
+    final hours = durationSeconds! ~/ 3600;
+    final mins = (durationSeconds! % 3600) ~/ 60;
+    final secs = durationSeconds! % 60;
+    return '${hours}h ${mins}m ${secs}s';
+  }
+
+  // Helper: check if running
+  bool get isRunning => stoppedAt == null;
+}
+
 // --- Inventory ---
 
 class InventoryItemModel {
