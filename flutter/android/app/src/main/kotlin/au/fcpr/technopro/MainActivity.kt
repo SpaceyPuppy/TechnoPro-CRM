@@ -1,4 +1,4 @@
-package com.technopro.technopro_crm
+package au.fcpr.technopro
 
 import io.flutter.embedding.android.FlutterActivity
 
