@@ -41,6 +41,11 @@ final apiClientProvider = Provider<Dio>((ref) {
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }
+      // Remove Content-Type on requests with no body — Fastify rejects
+      // DELETE/GET with Content-Type: application/json but empty body
+      if (options.data == null) {
+        options.headers.remove('Content-Type');
+      }
       handler.next(options);
     },
     onResponse: (response, handler) {
