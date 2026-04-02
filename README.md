@@ -4,6 +4,47 @@ Internal CRM and point-of-sale system for a tech repair shop. Three clients shar
 
 ---
 
+## ⚡ Quick Navigation
+[🚀 Features](#-key-features) | [📁 Structure](#repo-structure) | [🛠️ Tech Stack](#-tech-stack-summary) | [🗄️ Schema](#database-schema) | [💻 Setup](#-getting-started)
+
+---
+
+## 🚀 Key Features
+
+### 🛠️ Repair & Ticket Management
+- **Smart Intake**: Rapid device intake with brand/model/serial/IMEI/pattern-lock capture.
+- **Visual Evidence**: Multi-photo capture for "before/after" repair proof (Flutter).
+- **Time Tracking**: Live "Stopwatch" timers for technicians with snapshotted labor rates for accurate billing.
+- **Status Lifecycle**: Track jobs from New → In Progress → Awaiting Parts → Ready → Collected.
+- **Digital Signatures**: Capture customer consent directly on tablets (Flutter).
+
+### 📦 Inventory & Supply Chain
+- **Stock Tracking**: Real-time SKU management with stock counts and cost/price tracking.
+- **Supplier CRM**: Centralized database for parts vendors and account numbers.
+- **Mixed PO Builder**: Create Purchase Orders containing cataloged inventory OR "one-off" special order items.
+- **Field Receiving**: One-tap "Receive" workflow in the operations app to auto-increment stock levels.
+
+### 💰 Finance & Point of Sale
+- **Quotes to Cash**: Professional quotes with easy conversion to tickets or invoices.
+- **Deposits**: Support for upfront deposits on expensive parts or special orders.
+- **GST/Tax Support**: Regional tax settings with clean, automated calculations.
+- **PDF Generation**: Generate professional, branded PDFs for invoices and quotes on-the-fly.
+
+### 📱 Operations App (Flutter)
+- **Cross-Platform**: Unified experience across Android, Windows, iOS, and macOS.
+- **Offline Capable**: Local data caching ensures technicians can work in poor signal areas.
+- **Responsive Status**: Toast/SnackBar system tailored for both touch (mobile) and mouse (tablet/desktop).
+
+---
+
+## 🛠️ Tech Stack Summary
+- **Backend:** Node.js (v20+), Fastify (v5), Drizzle ORM, MySQL 8
+- **Web Admin:** React 19, Tailwind CSS v4, Lucide Icons, TanStack Query
+- **Operations App:** Flutter 3.x, Riverpod, Dio, Drifty (SQLite)
+- **Shared:** TypeScript Workspace package for strict API contract parity
+
+---
+
 ## Repo structure
 
 ```

@@ -35,10 +35,13 @@ docker compose up -d
 # 6. Push schema to database
 npm run db:push --workspace=backend
 
-# 7. Seed test users
+# 7. Seed test users and core data
 npm run seed --workspace=backend
 
-# 8. Start the backend
+# 8. Seed procurement test data (Suppliers, POs)
+npm run seed:procurement --workspace=backend
+
+# 9. Start the backend
 npm run backend:dev
 ```
 

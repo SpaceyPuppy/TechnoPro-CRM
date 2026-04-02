@@ -32,6 +32,8 @@ PATCH  /api/v1/customers/:id      — Update customer
 DELETE /api/v1/customers/:id      — Delete customer
 
 GET    /api/v1/customers/:id/tickets  — List tickets for a customer (nested resource)
+
+POST   /api/v1/purchase-orders/:id/receive — Perform a state-change action on a resource
 ```
 
 ## Request Bodies

@@ -117,6 +117,9 @@ erDiagram
     Invoice ||--o{ Payment : "paid by"
     Invoice ||--o{ LineItem : "contains"
     InventoryItem ||--o{ LineItem : "referenced by"
+    Supplier ||--o{ PurchaseOrder : "provides"
+    PurchaseOrder ||--o{ POItem : "contains"
+    InventoryItem ||--o{ POItem : "restocked via"
 
     User {
         uuid id PK
@@ -218,6 +221,33 @@ erDiagram
         enum method
         string reference
         datetime paidAt
+    }
+
+    Supplier {
+        uuid id PK
+        string name
+        string contactName
+        string email
+        string phone
+        string accountNumber
+    }
+
+    PurchaseOrder {
+        uuid id PK
+        uuid supplierId FK
+        string poNumber
+        enum status
+        decimal totalCost
+        text notes
+    }
+
+    POItem {
+        uuid id PK
+        uuid poId FK
+        uuid inventoryItemId FK "nullable"
+        string description "manual item"
+        int quantity
+        decimal unitCost
     }
 ```
 
