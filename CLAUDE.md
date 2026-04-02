@@ -86,25 +86,33 @@ Chris uses four Windows machines. Ask which one at session start.
 | 5 | Flutter app — login, tickets, customers, inventory, photo capture, tablet UI | Complete |
 | 5.5 | Ticket intake form redesign — customer search, device capture, repairs, pattern lock | Complete |
 | 6 | Visual overhaul, GST/tax, PDF invoices/quotes, Quotes module, Deposits | Complete |
-| 7 | Interface polish, CSV bulk import, scrolling fixes, 401 interceptor, audit logs, roles hardening | Not started |
+| 7 | Interface polish, CSV bulk import, scrolling fixes, 401 interceptor, audit logs, roles hardening | In progress |
+| 8 | Procurement & Supply Chain (Vendors, POs, inventory receiving) | Not started |
+| 9 | Advanced Inventory & Barcode (Multi-bin, stocktake, low-stock alerts) | Not started |
+| 10 | Point of Sale (POS) Interface (Touch UI, split payments, hardware sync) | Not started |
+| 11 | E-Commerce Syncing (Shopify/WooCommerce 2-way sync) | Not started |
 
 
 ## Current State
+ 
+**Updated:** 2026-04-03 | **Completed:** Stage 8 | **Current:** Documentation & Prep for Stage 9
+ 
+### Stage 8 Progress (Procurement & Supply Chain) ✅
 
-**Updated:** 2026-04-01 | **Completed:** Stage 6 | **Current:** Stage 7 (in progress)
+- [x] **Backend:** `suppliers`, `purchase_orders`, `po_items` tables; CRUD services & routes.
+- [x] **Logic:** PO "Receive" workflow auto-updates inventory stock and status.
+- [x] **Web:** Multi-item PO builder with inventory search, manual line items, and supplier management.
+- [x] **Flutter:** Full Procurement navigation, PO list, and Receive Order workflow with responsive UI feedback (bottom-right on desktop, optimized on mobile).
+- [x] **Data:** Added `seed:procurement` script for rapid testing.
 
-**Surface:** Fully set up (2026-03-16) — Flutter 3.38.5, Docker, Android SDK 36.1.0, VS Build Tools + ATL component. Backend running, DB ready.
-
-### Stage 7 Progress
-
-✅ **7a:** Scroll fixes (AlwaysScrollableScrollPhysics for Windows mouse wheel), UX polish (delete spinner, note toast), API host fallback
-✅ **7b:** Flutter feature parity — customer/inventory delete, search on both platforms (web + Flutter)
-✅ **Windows scroll fix:** Replaced BouncingScrollPhysics with AlwaysScrollableScrollPhysics
-✅ **7c:** Web Finance hub with tabbed Invoices/Quotes, quote status actions (Sent/Accept/Decline/Convert to Ticket)
-✅ **7d:** Web Settings module — Business Settings page (business details, GST, invoice notes), Device Models CRUD
-🔄 **7e:** 401 interceptor for auto-logout on token expiry (web done, Flutter pending)
-✅ **7e.5 (NEW):** Time tracking for tickets — timer UI in Flutter, labour billing with rate snapshots (commit e95cd72, pushed to origin/main)
-⏸️ **7f–7h:** Deferred (bulk import, audit logs, roles hardening)
+### Stage 7 Progress ✅
+ 
+- [x] **7a:** Scroll fixes (AlwaysScrollableScrollPhysics for Windows mouse wheel), UX polish (delete spinner, note toast), API host fallback
+- [x] **7b:** Flutter feature parity — customer/inventory delete, search on both platforms (web + Flutter)
+- [x] **7c:** Web Finance hub with tabbed Invoices/Quotes, quote status actions (Sent/Accept/Decline/Convert to Ticket)
+- [x] **7d:** Web Settings module — Business Settings page (business details, GST, invoice notes), Device Models CRUD
+- [x] **7e:** 401 interceptor for auto-logout (Web + Flutter)
+- [x] **7f:** Time tracking for tickets — timer UI in Flutter, labour billing with rate snapshots
 
 ### Stages completed (0–6)
 
@@ -207,6 +215,18 @@ Completed: dark sidebar, GST settings, PDF invoices/quotes, Quotes module (Finan
 - Drift SQLite offline sync for Flutter
 - Configurable fields, SMTP integration (Microsoft 365 first)
 - Signatures on tickets, warranties on line items, tags on tickets/customers
+- **Stage 8:** Procurement & Supply Chain
+- **Stage 9:** Advanced Inventory & Barcode
+- **Stage 10:** Point of Sale (POS) Interface
+- **Stage 11:** E-Commerce Syncing
+
+## Future Competitive Features
+
+* **Buy/Sell/Trade (Refurbishment):** Pipeline to intake used devices, absorb parts/labor costs, and output refurbished retail inventory with accurate profit margins (inspired by RepairDesk).
+* **Automated Comms:** Twilio/SendGrid integration for automated SMS status updates and 30-day post-repair follow-ups.
+* **Customer Portal:** Lightweight web view for clients to check ticket status and pay Stripe invoices via Ticket ID.
+* **Staff Management:** Tie `time_entries` to commission structures and payroll reports.
+* **Accounting Sync:** Cron jobs to push finalized invoices and POs to Xero/QuickBooks.
 
 ### Quick setup (new machine)
 

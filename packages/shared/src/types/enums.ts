@@ -55,3 +55,12 @@ export const PaymentMethod = {
   OTHER: "other",
 } as const;
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
+
+export const PurchaseOrderStatus = {
+  DRAFT: "draft",
+  ORDERED: "ordered",
+  RECEIVED: "received",
+  CANCELLED: "cancelled",
+} as const;
+export type PurchaseOrderStatus = (typeof PurchaseOrderStatus)[keyof typeof PurchaseOrderStatus];
+

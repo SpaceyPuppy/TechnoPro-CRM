@@ -777,3 +777,131 @@ class PaginatedResponse<T> {
     );
   }
 }
+
+// --- Procurement / Supply Chain ---
+
+class SupplierModel {
+  final String id;
+  final String name;
+  final String? contactName;
+  final String? email;
+  final String? phone;
+  final String? accountNumber;
+  final int? leadTimeDays;
+  final String? notes;
+  final String createdAt;
+  final String updatedAt;
+
+  SupplierModel({
+    required this.id,
+    required this.name,
+    this.contactName,
+    this.email,
+    this.phone,
+    this.accountNumber,
+    this.leadTimeDays,
+    this.notes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory SupplierModel.fromJson(Map<String, dynamic> j) => SupplierModel(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        contactName: j['contactName'] as String?,
+        email: j['email'] as String?,
+        phone: j['phone'] as String?,
+        accountNumber: j['accountNumber'] as String?,
+        leadTimeDays: j['leadTimeDays'] as int?,
+        notes: j['notes'] as String?,
+        createdAt: j['createdAt'] as String,
+        updatedAt: j['updatedAt'] as String,
+      );
+}
+
+class POItemModel {
+  final String id;
+  final String poId;
+  final String? inventoryItemId;
+  final String? description;
+  final int quantity;
+  final String unitCost;
+  final String totalCost;
+  final InventoryItemModel? inventoryItem;
+
+  POItemModel({
+    required this.id,
+    required this.poId,
+    this.inventoryItemId,
+    this.description,
+    required this.quantity,
+    required this.unitCost,
+    required this.totalCost,
+    this.inventoryItem,
+  });
+
+  factory POItemModel.fromJson(Map<String, dynamic> j) {
+    final quantity = j['quantity'] as int;
+    final unitCost = j['unitCost'] as String;
+    final totalCost = j['totalCost'] as String? ?? (quantity * double.parse(unitCost)).toStringAsFixed(2);
+
+    return POItemModel(
+        id: j['id'] as String,
+        poId: j['poId'] as String,
+        inventoryItemId: j['inventoryItemId'] as String?,
+        description: j['description'] as String?,
+        quantity: quantity,
+        unitCost: unitCost,
+        totalCost: totalCost,
+        inventoryItem: j['inventoryItem'] != null
+            ? InventoryItemModel.fromJson(j['inventoryItem'] as Map<String, dynamic>)
+            : null,
+      );
+  }
+}
+
+class PurchaseOrderModel {
+  final String id;
+  final String poNumber;
+  final String supplierId;
+  final String status; // 'draft' | 'ordered' | 'received' | 'cancelled'
+  final String totalCost;
+  final String? expectedDeliveryDate;
+  final String? notes;
+  final String createdAt;
+  final String updatedAt;
+  final SupplierModel? supplier;
+  final List<POItemModel> items;
+
+  PurchaseOrderModel({
+    required this.id,
+    required this.poNumber,
+    required this.supplierId,
+    required this.status,
+    required this.totalCost,
+    this.expectedDeliveryDate,
+    this.notes,
+    required this.createdAt,
+    required this.updatedAt,
+    this.supplier,
+    this.items = const [],
+  });
+
+  factory PurchaseOrderModel.fromJson(Map<String, dynamic> j) => PurchaseOrderModel(
+        id: j['id'] as String,
+        poNumber: j['poNumber'] as String,
+        supplierId: j['supplierId'] as String,
+        status: j['status'] as String,
+        totalCost: j['totalCost'] as String,
+        expectedDeliveryDate: j['expectedDeliveryDate'] as String?,
+        notes: j['notes'] as String?,
+        createdAt: j['createdAt'] as String,
+        updatedAt: j['updatedAt'] as String,
+        supplier: j['supplier'] != null
+            ? SupplierModel.fromJson(j['supplier'] as Map<String, dynamic>)
+            : null,
+        items: (j['items'] as List? ?? [])
+            .map((e) => POItemModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}

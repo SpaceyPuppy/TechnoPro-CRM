@@ -20,6 +20,11 @@ import { InvoiceCreatePage } from "@/pages/invoices/InvoiceCreatePage";
 import { SettingsPage } from "@/pages/settings/SettingsPage";
 import { BusinessSettingsPage } from "@/pages/settings/BusinessSettingsPage";
 import { DeviceModelsPage } from "@/pages/settings/DeviceModelsPage";
+import { SuppliersPage } from "@/pages/suppliers/SuppliersPage";
+import { SupplierFormPage } from "@/pages/suppliers/SupplierFormPage";
+import { PurchaseOrdersPage } from "@/pages/purchase-orders/PurchaseOrdersPage";
+import { PurchaseOrderCreatePage } from "@/pages/purchase-orders/PurchaseOrderCreatePage";
+import { PurchaseOrderDetailPage } from "@/pages/purchase-orders/PurchaseOrderDetailPage";
 
 export function App() {
   return (
@@ -52,6 +57,15 @@ export function App() {
             <Route path="invoices/:id" element={<InvoiceDetailPage />} />
             <Route path="quotes/new" element={<InvoiceCreatePage />} />
             <Route path="quotes/:id" element={<InvoiceDetailPage />} />
+            
+            <Route path="suppliers" element={<SuppliersPage />} />
+            <Route path="suppliers/new" element={<SupplierFormPage />} />
+            <Route path="suppliers/:id/edit" element={<SupplierFormPage />} />
+            
+            <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+            <Route path="purchase-orders/new" element={<PurchaseOrderCreatePage />} />
+            <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+
             <Route path="settings" element={<SettingsPage />} />
             <Route path="settings/business" element={<BusinessSettingsPage />} />
             <Route path="settings/device-models" element={<DeviceModelsPage />} />

@@ -416,6 +416,95 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// --- Suppliers ---
+
+export interface SupplierResponse {
+  id: string;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  accountNumber: string | null;
+  leadTimeDays: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSupplierRequest {
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  accountNumber?: string;
+  leadTimeDays?: number;
+  notes?: string;
+}
+
+export interface UpdateSupplierRequest {
+  name?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  accountNumber?: string;
+  leadTimeDays?: number;
+  notes?: string;
+}
+
+// --- Purchase Orders ---
+
+export interface POItemResponse {
+  id: string;
+  poId: string;
+  inventoryItemId?: string | null;
+  description?: string | null;
+  quantity: number;
+  unitCost: string;
+  totalCost: string; // Line total (quantity * unitCost)
+  totalMarginCalc: string | null;
+  createdAt: string;
+}
+
+export interface PurchaseOrderResponse {
+  id: string;
+  poNumber: string;
+  supplierId: string;
+  status: import("./enums.js").PurchaseOrderStatus;
+  expectedDeliveryDate: string | null;
+  totalCost: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseOrderDetailResponse extends PurchaseOrderResponse {
+  items: POItemResponse[];
+}
+
+export interface CreatePOItemRequest {
+  inventoryItemId?: string;
+  description?: string;
+  quantity: number;
+  unitCost: string;
+}
+
+export interface CreatePurchaseOrderRequest {
+  supplierId: string;
+  expectedDeliveryDate?: string;
+  notes?: string;
+  items: CreatePOItemRequest[];
+}
+
+export interface UpdatePurchaseOrderRequest {
+  status?: import("./enums.js").PurchaseOrderStatus;
+  expectedDeliveryDate?: string;
+  notes?: string;
+}
+
+export interface ReceivePurchaseOrderRequest {
+  notes?: string;
+}
+
 // --- API wrapper ---
 
 export interface ApiResponse<T> {

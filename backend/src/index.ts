@@ -2,24 +2,26 @@ import { join } from "node:path";
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
-import { env, validateEnv } from "./config/env";
-import { registerCors } from "./plugins/cors";
-import { registerHelmet } from "./plugins/helmet";
-import { registerRateLimit } from "./plugins/rate-limit";
-import { registerJwt } from "./plugins/jwt";
-import { registerErrorHandler } from "./plugins/error-handler";
-import { healthRoutes } from "./routes/health.routes";
-import { authRoutes } from "./routes/auth.routes";
-import { customerRoutes } from "./routes/customer.routes";
-import { ticketRoutes } from "./routes/ticket.routes";
-import { attachmentRoutes } from "./routes/attachment.routes";
-import { inventoryRoutes } from "./routes/inventory.routes";
-import { invoiceRoutes } from "./routes/invoice.routes";
-import { dashboardRoutes } from "./routes/dashboard.routes";
-import { userRoutes } from "./routes/user.routes";
-import { settingsRoutes } from "./routes/settings.routes";
-import { timeEntryRoutes } from "./routes/time-entry.routes";
-import { closeDb } from "./db/index";
+import { env, validateEnv } from "./config/env.js";
+import { registerCors } from "./plugins/cors.js";
+import { registerHelmet } from "./plugins/helmet.js";
+import { registerRateLimit } from "./plugins/rate-limit.js";
+import { registerJwt } from "./plugins/jwt.js";
+import { registerErrorHandler } from "./plugins/error-handler.js";
+import { healthRoutes } from "./routes/health.routes.js";
+import { authRoutes } from "./routes/auth.routes.js";
+import { customerRoutes } from "./routes/customer.routes.js";
+import { ticketRoutes } from "./routes/ticket.routes.js";
+import { attachmentRoutes } from "./routes/attachment.routes.js";
+import { inventoryRoutes } from "./routes/inventory.routes.js";
+import { invoiceRoutes } from "./routes/invoice.routes.js";
+import { dashboardRoutes } from "./routes/dashboard.routes.js";
+import { userRoutes } from "./routes/user.routes.js";
+import { settingsRoutes } from "./routes/settings.routes.js";
+import { timeEntryRoutes } from "./routes/time-entry.routes.js";
+import { supplierRoutes } from "./routes/suppliers.routes.js";
+import { purchaseOrderRoutes } from "./routes/purchase-orders.routes.js";
+import { closeDb } from "./db/index.js";
 
 async function main() {
   validateEnv();
@@ -71,8 +73,11 @@ async function main() {
       await api.register(dashboardRoutes);
       await api.register(userRoutes);
       await api.register(settingsRoutes);
+      await api.register(supplierRoutes);
+      await api.register(purchaseOrderRoutes);
     },
     { prefix: "/api/v1" },
+
   );
 
   // Graceful shutdown

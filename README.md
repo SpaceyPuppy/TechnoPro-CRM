@@ -77,6 +77,9 @@ Published as the internal npm package `@technopro/shared`. Contains all API requ
 | `ticket_attachments` | File attachments (photos, documents) linked to tickets |
 | `time_entries` | Labour time tracking per ticket; start/stop timer, hourly rate snapshot |
 | `inventory_items` | Parts/products — SKU, price, cost, optional stock quantity |
+| `suppliers` | Vendor records for parts/stock procurement |
+| `purchase_orders` | POs sent to suppliers — status lifecycle (draft, ordered, received) |
+| `po_items` | Individual line items on a PO (inventory linkage or manual description) |
 | `invoices` | Invoices and quotes — `type: invoice|quote`, status lifecycle, GST |
 | `line_items` | Individual items on an invoice (labour `service` or part) |
 | `payments` | Payments against an invoice — cash, card, EFTPOS, bank transfer; type: `deposit|payment|refund` |
@@ -133,6 +136,8 @@ RBAC enforced server-side via `requireRole()` on each route.
 | Tickets | `GET/POST /tickets`, `GET/PATCH /tickets/:id`, events, attachments |
 | Time entries | `POST /tickets/:id/time-entries/start`, `POST /time-entries/:id/stop`, `/bill` |
 | Inventory | `GET/POST /inventory`, `GET/PATCH/DELETE /inventory/:id`, `POST /inventory/import` |
+| Suppliers | `GET/POST /suppliers`, `GET/PATCH/DELETE /suppliers/:id` |
+| Purchase Orders | `GET/POST /purchase-orders`, `GET /purchase-orders/:id`, `/receive` |
 | Invoices | `GET/POST /invoices`, `GET /invoices/:id`, status, quote-status, convert-to-ticket, line items, payments |
 | Settings | `GET/PATCH /settings`, device models CRUD + `POST /settings/device-models/import` |
 | Dashboard | `GET /dashboard/stats` |

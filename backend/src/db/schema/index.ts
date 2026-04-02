@@ -7,3 +7,4 @@ export { timeEntries } from "./time_entries";
 export { inventoryItems } from "./inventory";
 export { invoices, payments, lineItems } from "./billing";
 export { appSettings } from "./app_settings";
+export { suppliers, purchaseOrders, poItems, suppliersRelations, purchaseOrdersRelations, poItemsRelations } from "./suppliers";

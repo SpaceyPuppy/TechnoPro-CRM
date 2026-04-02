@@ -22,6 +22,8 @@ import '../../features/settings/offline_sync_screen.dart';
 import '../../shared/widgets/side_panel.dart';
 import '../../shared/widgets/app_shell.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/procurement/purchase_orders_list_screen.dart';
+import '../../features/procurement/purchase_order_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.read(authProvider.notifier);
@@ -156,6 +158,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/invoices',
             redirect: (_, state) => '/finance',
+          ),
+          GoRoute(
+            path: '/procurement',
+            builder: (_, __) => SidePanelShell(
+              listBuilder: (selectedId, onSelect) =>
+                  PurchaseOrdersListScreen(selectedId: selectedId, onSelect: onSelect),
+              panelBuilder: (id) => PurchaseOrderDetailScreen(id: id),
+            ),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, state) =>
+                    PurchaseOrderDetailScreen(id: state.pathParameters['id']!),
+              ),
+            ],
           ),
           GoRoute(
             path: '/settings',
