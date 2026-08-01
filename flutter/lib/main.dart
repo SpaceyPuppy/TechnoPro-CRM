@@ -17,9 +17,6 @@ class _SmoothDesktopScrollPhysics extends ClampingScrollPhysics {
     return _SmoothDesktopScrollPhysics(parent: buildParent(ancestor));
   }
 
-  // Lower friction = faster/longer deceleration = smoother feel
-  @override
-  double frictionFactor(double overscrollFriction) => 0.02;
 }
 
 class DesktopScrollBehavior extends ScrollBehavior {

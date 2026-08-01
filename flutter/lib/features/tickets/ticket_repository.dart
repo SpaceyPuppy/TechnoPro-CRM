@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/api/api_client.dart';
@@ -6,7 +5,6 @@ import '../../core/db/app_database.dart';
 import '../../core/db/database_provider.dart';
 import '../../core/sync/queue_manager.dart';
 import '../../core/sync/sync_service.dart';
-import '../../shared/models/models.dart';
 
 class TicketRepository {
   TicketRepository(this._ref);
@@ -69,6 +67,7 @@ class TicketRepository {
           notes: deviceData['notes'] as String?,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
+          syncedAt: DateTime.now(),
         ));
 
         // Queue device creation (must sync before ticket references it)
@@ -96,6 +95,7 @@ class TicketRepository {
         dueDate: payload['dueDate'] as String?,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        syncedAt: DateTime.now(),
       ));
 
       // Queue ticket creation
@@ -124,6 +124,7 @@ class TicketRepository {
         dueDate: payload['dueDate'] as String?,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        syncedAt: DateTime.now(),
       ));
 
       return ticketId;
