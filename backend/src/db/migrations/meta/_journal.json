@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1785598510462,
+      "tag": "0000_curious_mariko_yashida",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1785599089830,
+      "tag": "0001_outstanding_terror",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785599946585,
+      "tag": "0002_magical_earthquake",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1785602008362,
+      "tag": "0003_brown_skaar",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1785602189707,
+      "tag": "0004_round_talos",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1785602430480,
+      "tag": "0005_typical_overlord",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1785602627428,
+      "tag": "0006_ordinary_kang",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,5 +1,5 @@
-import { char, mysqlTable, varchar, text, int, decimal, timestamp, mysqlEnum, date } from "drizzle-orm/mysql-core";
-import { inventoryItems } from "./inventory";
+﻿import { char, mysqlTable, varchar, text, int, decimal, timestamp, mysqlEnum, date } from "drizzle-orm/mysql-core";
+import { inventoryItems } from "./inventory.js";
 import { relations } from "drizzle-orm";
 
 export const suppliers = mysqlTable("suppliers", {

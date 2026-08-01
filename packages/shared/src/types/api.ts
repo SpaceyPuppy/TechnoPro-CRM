@@ -1,6 +1,7 @@
 import type {
   UserRole,
   TicketStatus,
+  TicketType,
   TicketPriority,
   TicketEventType,
   LineItemType,
@@ -41,6 +42,7 @@ export interface CustomerResponse {
   company: string | null;
   email: string | null;
   phone: string | null;
+  address: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -53,6 +55,7 @@ export interface CreateCustomerRequest {
   company?: string;
   email?: string;
   phone?: string;
+  address?: string;
   notes?: string;
 }
 
@@ -63,6 +66,7 @@ export interface UpdateCustomerRequest {
   company?: string;
   email?: string;
   phone?: string;
+  address?: string;
   notes?: string;
 }
 
@@ -130,12 +134,15 @@ export interface TicketResponse {
   customerId: string;
   deviceId: string | null;
   assignedToId: string | null;
+  ticketType: TicketType;
   status: TicketStatus;
   priority: TicketPriority;
   summary: string;
   description: string | null;
+  serviceLocation: string | null;
   diagnosis: string | null;
   resolution: string | null;
+  scheduledAt: string | null;
   dueDate: string | null;
   createdAt: string;
   updatedAt: string;
@@ -167,21 +174,27 @@ export interface CreateTicketRequest {
   deviceId?: string;
   device?: CreateTicketDeviceData;
   assignedToId?: string;
+  ticketType?: TicketType;
   priority?: TicketPriority;
   summary: string;
   description?: string;
+  serviceLocation?: string;
+  scheduledAt?: string;
   dueDate?: string;
   repairs?: TicketRepairItem[];
 }
 
 export interface UpdateTicketRequest {
+  ticketType?: TicketType;
   status?: TicketStatus;
   priority?: TicketPriority;
   assignedToId?: string | null;
   summary?: string;
   description?: string;
+  serviceLocation?: string | null;
   diagnosis?: string;
   resolution?: string;
+  scheduledAt?: string | null;
   dueDate?: string | null;
 }
 
@@ -199,6 +212,16 @@ export interface TicketEventResponse {
 export interface CreateTicketEventRequest {
   eventType: TicketEventType;
   content?: string;
+}
+
+export interface TicketChecklistItemResponse {
+  id: string;
+  ticketId: string;
+  content: string;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // --- Inventory ---
@@ -393,6 +416,8 @@ export interface DashboardRecentEvent {
 export interface DashboardStatsResponse {
   ticketCounts: DashboardTicketCount[];
   overdueCount: number;
+  unassignedCount: number;
+  unbilledCount: number;
   todayNewTickets: number;
   todayRevenue: string;
   recentEvents: DashboardRecentEvent[];

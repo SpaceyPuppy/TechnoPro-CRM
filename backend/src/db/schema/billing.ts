@@ -1,7 +1,7 @@
-import { char, mysqlTable, varchar, text, int, decimal, timestamp } from "drizzle-orm/mysql-core";
-import { tickets } from "./tickets";
-import { inventoryItems } from "./inventory";
-import { users } from "./users";
+﻿import { char, mysqlTable, varchar, text, int, decimal, timestamp } from "drizzle-orm/mysql-core";
+import { tickets } from "./tickets.js";
+import { inventoryItems } from "./inventory.js";
+import { users } from "./users.js";
 
 export const invoices = mysqlTable("invoices", {
   id: char("id", { length: 36 }).primaryKey(),
@@ -41,6 +41,7 @@ export const payments = mysqlTable("payments", {
     .default("payment")
     .$type<"deposit" | "payment" | "refund">(),
   reference: varchar("reference", { length: 255 }),
+  idempotencyKey: varchar("idempotency_key", { length: 128 }).unique(),
   createdByUserId: char("created_by_user_id", { length: 36 }).references(() => users.id),
   paidAt: timestamp("paid_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -57,6 +58,7 @@ export const lineItems = mysqlTable("line_items", {
   description: varchar("description", { length: 500 }).notNull(),
   quantity: int("quantity").notNull().default(1),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }),
   discount: decimal("discount", { precision: 5, scale: 2 }).notNull().default("0.00"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),

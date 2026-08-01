@@ -19,17 +19,24 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
   bool _saving = false;
   String? _error;
   bool _initialized = false;
+  bool _isBusiness = false;
 
-  final _nameCtrl = TextEditingController();
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _companyCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _companyCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
+    _addressCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -41,10 +48,20 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
       _error = null;
     });
     try {
+      final firstName = _firstNameCtrl.text.trim();
+      final lastName = _lastNameCtrl.text.trim();
+      final company = _companyCtrl.text.trim();
+      final name = _isBusiness
+          ? company
+          : [firstName, lastName].where((part) => part.isNotEmpty).join(' ');
       final body = {
-        'name': _nameCtrl.text.trim(),
+        'name': name,
+        'firstName': firstName,
+        'lastName': lastName,
+        'company': _isBusiness ? company : '',
         if (_emailCtrl.text.isNotEmpty) 'email': _emailCtrl.text.trim(),
         if (_phoneCtrl.text.isNotEmpty) 'phone': _phoneCtrl.text.trim(),
+        if (_addressCtrl.text.isNotEmpty) 'address': _addressCtrl.text.trim(),
         if (_notesCtrl.text.isNotEmpty) 'notes': _notesCtrl.text.trim(),
       };
       final customerRepo = ref.read(customerRepositoryProvider);
@@ -78,9 +95,13 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
       if (!_initialized) {
         _initialized = true;
         final c = customerAsync.value!;
-        _nameCtrl.text = c.name;
+        _isBusiness = c.company?.isNotEmpty == true;
+        _firstNameCtrl.text = c.firstName ?? (_isBusiness ? '' : c.name);
+        _lastNameCtrl.text = c.lastName ?? '';
+        _companyCtrl.text = c.company ?? (_isBusiness ? c.name : '');
         _emailCtrl.text = c.email ?? '';
         _phoneCtrl.text = c.phone ?? '';
+        _addressCtrl.text = c.address ?? '';
         _notesCtrl.text = c.notes ?? '';
       }
     }
@@ -92,10 +113,53 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Name *', border: OutlineInputBorder()),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('Individual'), icon: Icon(Icons.person)),
+                ButtonSegment(value: true, label: Text('Business'), icon: Icon(Icons.business)),
+              ],
+              selected: {_isBusiness},
+              onSelectionChanged: (values) => setState(() => _isBusiness = values.first),
+            ),
+            const SizedBox(height: 16),
+            if (_isBusiness) ...[
+              TextFormField(
+                controller: _companyCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Business Name *',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => _isBusiness && (value == null || value.trim().isEmpty)
+                    ? 'Business name is required'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _firstNameCtrl,
+                    decoration: InputDecoration(
+                      labelText: _isBusiness ? 'Contact First Name' : 'First Name *',
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (value) => !_isBusiness && (value == null || value.trim().isEmpty)
+                        ? 'First name is required'
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _lastNameCtrl,
+                    decoration: InputDecoration(
+                      labelText: _isBusiness ? 'Contact Last Name' : 'Last Name',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -108,6 +172,16 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
               controller: _emailCtrl,
               decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
               keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _addressCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Primary Address / Service Location',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+              textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 16),
             TextFormField(

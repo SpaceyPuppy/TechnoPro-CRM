@@ -1,0 +1,1 @@
+ALTER TABLE `line_items` ADD `unit_cost` decimal(10,2);

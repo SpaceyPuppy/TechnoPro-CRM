@@ -71,9 +71,9 @@ export async function getPurchaseOrderById(id: string) {
 
 export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
   const db = getDb();
+  const id = generateId();
   
-  return await db.transaction(async (tx) => {
-    const id = generateId();
+  await db.transaction(async (tx) => {
     
     // Generate PO Number
     const countResult = await tx.select({ value: count() }).from(schema.purchaseOrders);
@@ -107,12 +107,11 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
       });
     }
 
-    // Retrieve full object
-    const createdPoResult = await tx.select().from(schema.purchaseOrders).where(eq(schema.purchaseOrders.id, id)).limit(1);
-    const createdItems = await tx.select().from(schema.poItems).where(eq(schema.poItems.poId, id));
-    
-    return { ...createdPoResult[0], items: createdItems };
   });
+
+  const created = await getPurchaseOrderById(id);
+  if (!created) throw new Error("Failed to create purchase order");
+  return created;
 }
 
 export async function updatePurchaseOrder(id: string, data: UpdatePurchaseOrderRequest) {
@@ -137,7 +136,7 @@ export async function updatePurchaseOrder(id: string, data: UpdatePurchaseOrderR
 export async function receivePurchaseOrder(id: string) {
   const db = getDb();
   
-  return await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     const result = await tx.select().from(schema.purchaseOrders).where(eq(schema.purchaseOrders.id, id)).limit(1);
     const po = result[0];
     
@@ -177,9 +176,9 @@ export async function receivePurchaseOrder(id: string) {
       .set({ status: "received" })
       .where(eq(schema.purchaseOrders.id, id));
       
-    // Reload PO
-    const finalPoResult = await tx.select().from(schema.purchaseOrders).where(eq(schema.purchaseOrders.id, id)).limit(1);
-    const finalItems = await tx.select().from(schema.poItems).where(eq(schema.poItems.poId, id));
-    return { ...finalPoResult[0], items: finalItems };
   });
+
+  const received = await getPurchaseOrderById(id);
+  if (!received) throw new Error("Failed to reload received purchase order");
+  return received;
 }

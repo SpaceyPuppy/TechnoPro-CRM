@@ -24,8 +24,8 @@ final timeEntriesProvider =
 class TimerNotifier extends StateNotifier<({String? runningId, int elapsedSeconds})> {
   TimerNotifier() : super((runningId: null, elapsedSeconds: 0));
 
-  void startLocal(String entryId) {
-    state = (runningId: entryId, elapsedSeconds: 0);
+  void startLocal(String entryId, {int initialSeconds = 0}) {
+    state = (runningId: entryId, elapsedSeconds: initialSeconds);
   }
 
   void tick() {
@@ -44,7 +44,7 @@ final timerStateProvider = StateNotifierProvider<TimerNotifier, ({String? runnin
 );
 
 // Start time entry
-final startTimeEntryProvider = FutureProvider.family<TimeEntryModel, (String, String?)>((ref, args) async {
+final startTimeEntryProvider = FutureProvider.autoDispose.family<TimeEntryModel, (String, String?)>((ref, args) async {
   final (ticketId, note) = args;
   final dio = ref.read(apiClientProvider);
   try {
@@ -54,10 +54,11 @@ final startTimeEntryProvider = FutureProvider.family<TimeEntryModel, (String, St
     }
     final res = await dio.post<Map<String, dynamic>>(
       '/tickets/$ticketId/time-entries/start',
-      data: body.isEmpty ? null : body,
+      data: body,
     );
     final entry = TimeEntryModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     ref.invalidate(timeEntriesProvider(ticketId));
+    ref.invalidate(currentTimeEntryProvider);
     return entry;
   } on DioException catch (e) {
     throw apiErrorMessage(e);
@@ -65,12 +66,47 @@ final startTimeEntryProvider = FutureProvider.family<TimeEntryModel, (String, St
 });
 
 // Stop time entry
-final stopTimeEntryProvider = FutureProvider.family<TimeEntryModel, (String, String)>((ref, args) async {
+final stopTimeEntryProvider = FutureProvider.autoDispose.family<TimeEntryModel, (String, String)>((ref, args) async {
   final (timeEntryId, ticketId) = args;
   final dio = ref.read(apiClientProvider);
   try {
     final res = await dio.post<Map<String, dynamic>>(
       '/time-entries/$timeEntryId/stop',
+    );
+    final entry = TimeEntryModel.fromJson(res.data!['data'] as Map<String, dynamic>);
+    ref.invalidate(timeEntriesProvider(ticketId));
+    ref.invalidate(currentTimeEntryProvider);
+    return entry;
+  } on DioException catch (e) {
+    throw apiErrorMessage(e);
+  }
+});
+
+final currentTimeEntryProvider = FutureProvider<TimeEntryModel?>((ref) async {
+  final dio = ref.read(apiClientProvider);
+  try {
+    final res = await dio.get<Map<String, dynamic>>('/time-entries/current');
+    final data = res.data!['data'];
+    return data == null
+        ? null
+        : TimeEntryModel.fromJson(data as Map<String, dynamic>);
+  } on DioException catch (e) {
+    throw apiErrorMessage(e);
+  }
+});
+
+final addManualTimeEntryProvider =
+    FutureProvider.autoDispose.family<TimeEntryModel, (String, int, String?, String?)>((ref, args) async {
+  final (ticketId, durationMinutes, note, labourRate) = args;
+  final dio = ref.read(apiClientProvider);
+  try {
+    final res = await dio.post<Map<String, dynamic>>(
+      '/tickets/$ticketId/time-entries/manual',
+      data: {
+        'durationSeconds': durationMinutes * 60,
+        if (note != null && note.isNotEmpty) 'note': note,
+        if (labourRate != null && labourRate.isNotEmpty) 'labourRate': labourRate,
+      },
     );
     final entry = TimeEntryModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     ref.invalidate(timeEntriesProvider(ticketId));
@@ -82,12 +118,16 @@ final stopTimeEntryProvider = FutureProvider.family<TimeEntryModel, (String, Str
 
 // Bill time entry (create labour line item)
 final billTimeEntryProvider =
-    FutureProvider.family<InvoiceModel, (String, String)>((ref, args) async {
-  final (timeEntryId, ticketId) = args;
+    FutureProvider.autoDispose.family<InvoiceModel, (String, String, String?)>((ref, args) async {
+  final (timeEntryId, ticketId, description) = args;
   final dio = ref.read(apiClientProvider);
   try {
     final res = await dio.post<Map<String, dynamic>>(
       '/time-entries/$timeEntryId/bill',
+      data: {
+        if (description != null && description.isNotEmpty)
+          'description': description,
+      },
     );
     final invoice = InvoiceModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     ref.invalidate(timeEntriesProvider(ticketId));

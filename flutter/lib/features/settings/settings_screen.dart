@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth/auth_provider.dart';
+import '../../shared/models/enums.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(authProvider).user?.role == UserRole.admin;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -19,6 +23,17 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => context.go('/settings/business'),
           ),
           const Divider(height: 1),
+          if (isAdmin) ...[
+            ListTile(
+              leading: Icon(Icons.admin_panel_settings_outlined,
+                  color: Theme.of(context).colorScheme.primary),
+              title: const Text('Staff Administration'),
+              subtitle: const Text('Accounts, roles, passwords and access'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('/settings/staff'),
+            ),
+            const Divider(height: 1),
+          ],
           ListTile(
             leading: Icon(Icons.phone_android_outlined,
                 color: Theme.of(context).colorScheme.primary),
@@ -26,15 +41,6 @@ class SettingsScreen extends StatelessWidget {
             subtitle: const Text('Manage phone and tablet model lookup list'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go('/settings/device-models'),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.cloud_off_outlined,
-                color: Theme.of(context).colorScheme.primary),
-            title: const Text('Offline & Sync'),
-            subtitle: const Text('Connection status, sync, and offline mode'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/settings/offline-sync'),
           ),
           const Divider(height: 1),
         ],

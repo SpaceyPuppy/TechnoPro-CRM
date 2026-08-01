@@ -14,9 +14,9 @@ typedef _Dest = ({IconData icon, IconData activeIcon, String label, String path}
 const _railDestinations = <_Dest>[
   (icon: Icons.dashboard_outlined,          activeIcon: Icons.dashboard,            label: 'Dashboard',  path: '/dashboard'),
   (icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number,  label: 'Tickets',    path: '/tickets'),
+  (icon: Icons.timer_outlined,              activeIcon: Icons.timer,                label: 'Current work', path: '/current-work'),
   (icon: Icons.people_outline,              activeIcon: Icons.people,               label: 'Customers',  path: '/customers'),
   (icon: Icons.inventory_2_outlined,        activeIcon: Icons.inventory_2,          label: 'Inventory',  path: '/inventory'),
-  (icon: Icons.local_shipping_outlined,     activeIcon: Icons.local_shipping,       label: 'Procurement',path: '/procurement'),
   (icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Finance', path: '/finance'),
   (icon: Icons.settings_outlined,           activeIcon: Icons.settings,             label: 'Settings',   path: '/settings'),
 ];
@@ -24,13 +24,13 @@ const _railDestinations = <_Dest>[
 const _phoneDestinations = <_Dest>[
   (icon: Icons.dashboard_outlined,          activeIcon: Icons.dashboard,            label: 'Dashboard',  path: '/dashboard'),
   (icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number,  label: 'Tickets',    path: '/tickets'),
-  (icon: Icons.people_outline,              activeIcon: Icons.people,               label: 'Customers',  path: '/customers'),
+  (icon: Icons.timer_outlined,              activeIcon: Icons.timer,                label: 'Timer',      path: '/current-work'),
   (icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Finance', path: '/finance'),
 ];
 
 const _moreItems = <_Dest>[
+  (icon: Icons.people_outline,       activeIcon: Icons.people,       label: 'Customers', path: '/customers'),
   (icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: 'Inventory', path: '/inventory'),
-  (icon: Icons.local_shipping_outlined, activeIcon: Icons.local_shipping, label: 'Procurement', path: '/procurement'),
   (icon: Icons.settings_outlined,    activeIcon: Icons.settings,    label: 'Settings',  path: '/settings'),
 ];
 
@@ -68,9 +68,9 @@ class AppShell extends ConsumerWidget {
   int _railIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/tickets'))   return 1;
-    if (loc.startsWith('/customers')) return 2;
-    if (loc.startsWith('/inventory')) return 3;
-    if (loc.startsWith('/procurement')) return 4;
+    if (loc.startsWith('/current-work')) return 2;
+    if (loc.startsWith('/customers')) return 3;
+    if (loc.startsWith('/inventory')) return 4;
     if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 5;
     if (loc.startsWith('/settings'))  return 6;
     return 0;
@@ -79,11 +79,11 @@ class AppShell extends ConsumerWidget {
   int _phoneIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/tickets'))   return 1;
-    if (loc.startsWith('/customers')) return 2;
+    if (loc.startsWith('/current-work')) return 2;
     if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 3;
     // more items mapping
-    if (loc.startsWith('/inventory')) return 5;
-    if (loc.startsWith('/procurement')) return 6;
+    if (loc.startsWith('/customers')) return 5;
+    if (loc.startsWith('/inventory')) return 6;
     if (loc.startsWith('/settings'))  return 7;
     return 0;
   }

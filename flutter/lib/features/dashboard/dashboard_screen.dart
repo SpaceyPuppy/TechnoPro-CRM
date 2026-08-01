@@ -88,7 +88,7 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final crossAxisCount = tier == LayoutTier.desktop ? 4 : 2;
+    final crossAxisCount = tier == LayoutTier.desktop ? 3 : 2;
     final currencyFmt = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
     final cards = [
@@ -105,6 +105,20 @@ class _StatsGrid extends StatelessWidget {
         value: stats.overdueCount.toString(),
         iconColor: const Color(0xFFEF4444),
         iconBg: const Color(0xFFFEF2F2),
+      ),
+      _StatCardData(
+        icon: Icons.person_off_outlined,
+        label: 'Unassigned',
+        value: stats.unassignedCount.toString(),
+        iconColor: const Color(0xFFF97316),
+        iconBg: const Color(0xFFFFF7ED),
+      ),
+      _StatCardData(
+        icon: Icons.timer_off_outlined,
+        label: 'Unbilled Work',
+        value: stats.unbilledCount.toString(),
+        iconColor: const Color(0xFF0F766E),
+        iconBg: const Color(0xFFF0FDFA),
       ),
       _StatCardData(
         icon: Icons.add_circle_rounded,
@@ -217,10 +231,13 @@ class _StatusBreakdownCard extends StatelessWidget {
   final DashboardStats stats;
 
   static const _mainStatuses = [
-    TicketStatus.open,
+    TicketStatus.new_,
+    TicketStatus.triage,
+    TicketStatus.scheduled,
     TicketStatus.inProgress,
-    TicketStatus.waitingParts,
-    TicketStatus.waitingCustomer,
+    TicketStatus.awaitingCustomer,
+    TicketStatus.awaitingParts,
+    TicketStatus.ready,
   ];
 
   static const _secondaryStatuses = [

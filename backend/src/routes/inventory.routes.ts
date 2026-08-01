@@ -1,14 +1,14 @@
-import type { FastifyInstance } from "fastify";
+﻿import type { FastifyInstance } from "fastify";
 import {
   listInventory,
   getInventoryItemById,
   createInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
-} from "../services/inventory.service";
-import { parsePagination, paginationMeta } from "../utils/pagination";
-import { getDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+} from "../services/inventory.service.js";
+import { parsePagination, paginationMeta } from "../utils/pagination.js";
+import { getDb, schema } from "../db/index.js";
+import { generateId } from "../utils/id.js";
 import type { CreateInventoryItemRequest, UpdateInventoryItemRequest } from "@technopro/shared";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getInventoryItemById>>>) {
@@ -107,7 +107,7 @@ export async function inventoryRoutes(app: FastifyInstance) {
     },
   );
 
-  // Bulk import inventory items — managers and admins only
+  // Bulk import inventory items â€” managers and admins only
   app.post<{
     Body: {
       rows: Array<{ sku: string; name: string; price: string; cost?: string; stockQty?: string; description?: string }>;

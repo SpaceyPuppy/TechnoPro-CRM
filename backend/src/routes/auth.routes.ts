@@ -1,5 +1,5 @@
-import type { FastifyInstance } from "fastify";
-import { findUserByEmail, findUserById, verifyPassword } from "../services/auth.service";
+﻿import type { FastifyInstance } from "fastify";
+import { findUserByEmail, findUserById, verifyPassword } from "../services/auth.service.js";
 import type { LoginRequest, LoginResponse } from "@technopro/shared";
 
 const loginSchema = {

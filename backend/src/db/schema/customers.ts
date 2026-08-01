@@ -8,6 +8,7 @@ export const customers = mysqlTable("customers", {
   company: varchar("company", { length: 255 }),
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
+  address: varchar("address", { length: 500 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),

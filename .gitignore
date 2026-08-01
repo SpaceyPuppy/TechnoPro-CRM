@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.npm-cache/
 
 # Build output
 dist/
@@ -43,6 +44,7 @@ flutter/android/.gradle/
 flutter/android/build/
 flutter/android/app/build/
 flutter/android/local.properties
+flutter/android/key.properties
 flutter/ios/Pods/
 flutter/ios/.symlinks/
 flutter/macos/Flutter/ephemeral/
@@ -54,6 +56,8 @@ flutter/windows/flutter/ephemeral/
 # Uploaded files (keep directory, ignore contents)
 backend/uploads/*
 !backend/uploads/.gitkeep
+deploy/backups/
+release-private/
 
 # Temporary files
 *.tmp

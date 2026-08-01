@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+﻿import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { getDb, schema } from "../db/index";
+import { getDb, schema } from "../db/index.js";
 
 const BCRYPT_ROUNDS = 12;
 

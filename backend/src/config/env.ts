@@ -27,4 +27,13 @@ export function validateEnv() {
   if (env.JWT_SECRET.length < 32) {
     throw new Error("JWT_SECRET must be at least 32 characters");
   }
+  if (env.NODE_ENV === "production" && !env.DB_PASSWORD) {
+    throw new Error("DB_PASSWORD environment variable is required in production");
+  }
+  if (!Number.isFinite(env.PORT) || env.PORT < 1 || env.PORT > 65535) {
+    throw new Error("PORT must be a valid TCP port");
+  }
+  if (!Number.isFinite(env.MAX_FILE_SIZE_MB) || env.MAX_FILE_SIZE_MB <= 0) {
+    throw new Error("MAX_FILE_SIZE_MB must be greater than zero");
+  }
 }

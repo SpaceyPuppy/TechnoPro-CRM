@@ -1,6 +1,6 @@
-import { eq, like, or, sql, desc } from "drizzle-orm";
-import { getDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+﻿import { eq, like, or, sql, desc } from "drizzle-orm";
+import { getDb, schema } from "../db/index.js";
+import { generateId } from "../utils/id.js";
 import type { CreateInventoryItemRequest, UpdateInventoryItemRequest } from "@technopro/shared";
 
 export async function listInventory(options: {

@@ -1,7 +1,8 @@
-import "dotenv/config";
-import { getDb, closeDb, schema } from "../db/index";
-import { hashPassword } from "../services/auth.service";
-import { generateId } from "../utils/id";
+﻿import "dotenv/config";
+import { eq } from "drizzle-orm";
+import { getDb, closeDb, schema } from "../db/index.js";
+import { hashPassword } from "../services/auth.service.js";
+import { generateId } from "../utils/id.js";
 
 const SEED_USERS = [
   { email: "admin@technopro.local", name: "Admin User", role: "admin" as const, password: "admin123" },
@@ -18,13 +19,10 @@ async function seed() {
     const existing = await db
       .select()
       .from(schema.users)
-      .where(({ email }) => ({ email: user.email }))
+      .where(eq(schema.users.email, user.email))
       .limit(1);
 
-    // Skip if user already exists (check by simple query)
-    const check = await db.select().from(schema.users).limit(100);
-    const found = check.find((u) => u.email === user.email);
-    if (found) {
+    if (existing.length > 0) {
       console.log(`  Skipping ${user.email} (already exists)`);
       continue;
     }

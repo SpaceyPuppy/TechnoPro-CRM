@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'core/auth/auth_provider.dart';
 import 'core/providers/layout_provider.dart';
 import 'core/router/router.dart';
 import 'core/sync/connectivity_service.dart';
@@ -58,16 +59,40 @@ void main() {
   runApp(const ProviderScope(child: TechnoProApp()));
 }
 
-class TechnoProApp extends ConsumerWidget {
+class TechnoProApp extends ConsumerStatefulWidget {
   const TechnoProApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
+  ConsumerState<TechnoProApp> createState() => _TechnoProAppState();
+}
 
-    // Initialize connectivity listening and initial sync
+class _TechnoProAppState extends ConsumerState<TechnoProApp> {
+  late final ProviderSubscription<bool> _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
     ref.read(connectivityServiceProvider);
-    ref.read(syncServiceProvider).syncAll();
+    _authSubscription = ref.listenManual<bool>(
+      authProvider.select((state) => state.isAuthenticated),
+      (previous, authenticated) {
+        if (authenticated && previous != true) {
+          ref.read(syncServiceProvider).syncAll();
+        }
+      },
+      fireImmediately: true,
+    );
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
       title: 'First Choice Phone Repair',

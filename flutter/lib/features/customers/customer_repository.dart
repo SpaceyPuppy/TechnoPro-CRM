@@ -10,6 +10,12 @@ class CustomerRepository {
 
   final Ref _ref;
 
+  void _requireConnection() {
+    if (!_ref.read(serverReachableProvider)) {
+      throw StateError('A server connection is required to save changes.');
+    }
+  }
+
   /// Returns a stream of all customers from the local database.
   Stream<List<CustomerDb>> watchAll() =>
       _ref.read(databaseProvider).watchAllCustomers();
@@ -23,6 +29,7 @@ class CustomerRepository {
 
   /// Creates a new customer. If offline, queues; if online, POSTs immediately.
   Future<String> create(Map<String, dynamic> payload) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       return _ref.read(queueManagerProvider).queueCreate('customer', payload);
     } else {
@@ -34,6 +41,7 @@ class CustomerRepository {
 
   /// Updates a customer. If offline, queues; if online, PATCHes immediately.
   Future<void> update(String id, Map<String, dynamic> payload) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       await _ref.read(queueManagerProvider).queueUpdate('customer', id, payload);
     } else {
@@ -59,6 +67,7 @@ class CustomerRepository {
 
   /// Deletes a customer. If offline, queues; if online, DELETEs immediately.
   Future<void> delete(String id) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       await _ref.read(queueManagerProvider).queueDelete('customer', id);
     } else {

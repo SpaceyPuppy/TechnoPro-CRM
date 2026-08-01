@@ -71,6 +71,7 @@ class CustomerModel {
   final String? company;
   final String? email;
   final String? phone;
+  final String? address;
   final String? notes;
   final String createdAt;
   final String updatedAt;
@@ -83,6 +84,7 @@ class CustomerModel {
     this.company,
     this.email,
     this.phone,
+    this.address,
     this.notes,
     required this.createdAt,
     required this.updatedAt,
@@ -96,6 +98,7 @@ class CustomerModel {
         company: j['company'] as String?,
         email: j['email'] as String?,
         phone: j['phone'] as String?,
+        address: j['address'] as String?,
         notes: j['notes'] as String?,
         createdAt: j['createdAt'] as String,
         updatedAt: j['updatedAt'] as String,
@@ -201,12 +204,15 @@ class TicketModel {
   final String customerId;
   final String? deviceId;
   final String? assignedToId;
+  final TicketType ticketType;
   final TicketStatus status;
   final TicketPriority priority;
   final String summary;
   final String? description;
+  final String? serviceLocation;
   final String? diagnosis;
   final String? resolution;
+  final String? scheduledAt;
   final String? dueDate;
   final String createdAt;
   final String updatedAt;
@@ -222,12 +228,15 @@ class TicketModel {
     required this.customerId,
     this.deviceId,
     this.assignedToId,
+    required this.ticketType,
     required this.status,
     required this.priority,
     required this.summary,
     this.description,
+    this.serviceLocation,
     this.diagnosis,
     this.resolution,
+    this.scheduledAt,
     this.dueDate,
     required this.createdAt,
     required this.updatedAt,
@@ -242,12 +251,15 @@ class TicketModel {
         customerId: j['customerId'] as String,
         deviceId: j['deviceId'] as String?,
         assignedToId: j['assignedToId'] as String?,
+        ticketType: TicketType.fromString(j['ticketType'] as String? ?? 'repair'),
         status: TicketStatus.fromString(j['status'] as String),
         priority: TicketPriority.fromString(j['priority'] as String),
         summary: j['summary'] as String,
         description: j['description'] as String?,
+        serviceLocation: j['serviceLocation'] as String?,
         diagnosis: j['diagnosis'] as String?,
         resolution: j['resolution'] as String?,
+        scheduledAt: j['scheduledAt'] as String?,
         dueDate: j['dueDate'] as String?,
         createdAt: j['createdAt'] as String,
         updatedAt: j['updatedAt'] as String,
@@ -292,6 +304,37 @@ class TicketEventModel {
         content: j['content'] as String?,
         createdAt: j['createdAt'] as String,
         user: j['user'] != null ? UserModel.fromJson(j['user'] as Map<String, dynamic>) : null,
+      );
+}
+
+class TicketChecklistItemModel {
+  final String id;
+  final String ticketId;
+  final String content;
+  final bool completed;
+  final int sortOrder;
+  final String createdAt;
+  final String updatedAt;
+
+  const TicketChecklistItemModel({
+    required this.id,
+    required this.ticketId,
+    required this.content,
+    required this.completed,
+    required this.sortOrder,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory TicketChecklistItemModel.fromJson(Map<String, dynamic> json) =>
+      TicketChecklistItemModel(
+        id: json['id'] as String,
+        ticketId: json['ticketId'] as String,
+        content: json['content'] as String,
+        completed: json['completed'] as bool,
+        sortOrder: json['sortOrder'] as int,
+        createdAt: json['createdAt'] as String,
+        updatedAt: json['updatedAt'] as String,
       );
 }
 
@@ -612,6 +655,7 @@ class AppSettings {
   final String businessPhone;
   final String businessEmail;
   final String gstRate;
+  final String labourRate;
   final String invoiceNotes;
 
   AppSettings({
@@ -621,6 +665,7 @@ class AppSettings {
     required this.businessPhone,
     required this.businessEmail,
     required this.gstRate,
+    required this.labourRate,
     required this.invoiceNotes,
   });
 
@@ -631,6 +676,7 @@ class AppSettings {
         businessPhone: j['business_phone'] as String? ?? '',
         businessEmail: j['business_email'] as String? ?? '',
         gstRate: j['gst_rate'] as String? ?? '10.00',
+        labourRate: j['labour_rate'] as String? ?? '75.00',
         invoiceNotes: j['invoice_notes'] as String? ?? '',
       );
 
@@ -641,6 +687,7 @@ class AppSettings {
         businessPhone: '',
         businessEmail: '',
         gstRate: '10.00',
+        labourRate: '75.00',
         invoiceNotes: '',
       );
 
@@ -652,6 +699,7 @@ class AppSettings {
         businessPhone: m['businessPhone'] as String? ?? '',
         businessEmail: m['businessEmail'] as String? ?? '',
         gstRate: m['gstRate'] as String? ?? '10.00',
+        labourRate: m['labourRate'] as String? ?? '75.00',
         invoiceNotes: m['invoiceNotes'] as String? ?? '',
       );
 }
@@ -705,6 +753,8 @@ class DashboardRecentEvent {
 class DashboardStats {
   final List<DashboardTicketCount> ticketCounts;
   final int overdueCount;
+  final int unassignedCount;
+  final int unbilledCount;
   final int todayNewTickets;
   final String todayRevenue;
   final List<DashboardRecentEvent> recentEvents;
@@ -713,6 +763,8 @@ class DashboardStats {
   DashboardStats({
     required this.ticketCounts,
     required this.overdueCount,
+    required this.unassignedCount,
+    required this.unbilledCount,
     required this.todayNewTickets,
     required this.todayRevenue,
     required this.recentEvents,
@@ -724,6 +776,8 @@ class DashboardStats {
             .map((e) => DashboardTicketCount.fromJson(e as Map<String, dynamic>))
             .toList(),
         overdueCount: j['overdueCount'] as int,
+        unassignedCount: j['unassignedCount'] as int? ?? 0,
+        unbilledCount: j['unbilledCount'] as int? ?? 0,
         todayNewTickets: j['todayNewTickets'] as int,
         todayRevenue: j['todayRevenue'] as String,
         recentEvents: (j['recentEvents'] as List)
@@ -737,7 +791,8 @@ class DashboardStats {
       );
 
   int get activeCount => ticketCounts
-      .where((c) => c.status != 'closed' && c.status != 'cancelled')
+      .where((c) =>
+          c.status != 'resolved' && c.status != 'closed' && c.status != 'cancelled')
       .fold(0, (sum, c) => sum + c.count);
 
   int countForStatus(String status) => ticketCounts

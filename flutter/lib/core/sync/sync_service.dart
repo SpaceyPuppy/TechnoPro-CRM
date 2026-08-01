@@ -40,7 +40,7 @@ class SyncService {
   Future<void> _syncCustomers() async {
     try {
       final dio = _ref.read(apiClientProvider);
-      final response = await dio.get<Map<String, dynamic>>('/customers?limit=1000');
+      final response = await dio.get<Map<String, dynamic>>('/customers?pageSize=100');
       final data = response.data?['data'] as List<dynamic>? ?? [];
 
       final customers = data
@@ -70,7 +70,7 @@ class SyncService {
   Future<void> _syncTickets() async {
     try {
       final dio = _ref.read(apiClientProvider);
-      final response = await dio.get<Map<String, dynamic>>('/tickets?limit=1000');
+      final response = await dio.get<Map<String, dynamic>>('/tickets?pageSize=100');
       final data = response.data?['data'] as List<dynamic>? ?? [];
 
       final tickets = data
@@ -104,7 +104,7 @@ class SyncService {
   Future<void> _syncTicketEvents() async {
     try {
       final dio = _ref.read(apiClientProvider);
-      final response = await dio.get<Map<String, dynamic>>('/ticket-events?limit=5000');
+      final response = await dio.get<Map<String, dynamic>>('/ticket-events?pageSize=100');
       final data = response.data?['data'] as List<dynamic>? ?? [];
 
       final events = data
@@ -129,7 +129,7 @@ class SyncService {
   Future<void> _syncInventory() async {
     try {
       final dio = _ref.read(apiClientProvider);
-      final response = await dio.get<Map<String, dynamic>>('/inventory?limit=1000');
+      final response = await dio.get<Map<String, dynamic>>('/inventory?pageSize=100');
       final data = response.data?['data'] as List<dynamic>? ?? [];
 
       final items = data
@@ -210,7 +210,7 @@ class SyncService {
   Future<void> _syncDevices() async {
     try {
       final dio = _ref.read(apiClientProvider);
-      final response = await dio.get<Map<String, dynamic>>('/devices?limit=1000');
+      final response = await dio.get<Map<String, dynamic>>('/devices?pageSize=100');
       final data = response.data?['data'] as List<dynamic>? ?? [];
 
       final devices = data
@@ -247,7 +247,7 @@ class SyncService {
   Future<void> _syncInvoices() async {
     try {
       final dio = _ref.read(apiClientProvider);
-      final response = await dio.get<Map<String, dynamic>>('/invoices?limit=1000&status=*');
+      final response = await dio.get<Map<String, dynamic>>('/invoices?pageSize=100');
       final data = response.data?['data'] as List<dynamic>? ?? [];
 
       final invoices = <InvoiceDb>[];
@@ -329,13 +329,13 @@ class SyncService {
 
       await _ref.read(databaseProvider).upsertAppSettings(AppSettingsDb(
         id: 'singleton',
-        businessName: data['businessName'] as String? ?? '',
-        businessAbn: data['businessAbn'] as String? ?? '',
-        businessAddress: data['businessAddress'] as String? ?? '',
-        businessPhone: data['businessPhone'] as String? ?? '',
-        businessEmail: data['businessEmail'] as String? ?? '',
-        gstRate: data['gstRate'] as String? ?? '10.00',
-        invoiceNotes: data['invoiceNotes'] as String? ?? '',
+        businessName: data['business_name'] as String? ?? '',
+        businessAbn: data['business_abn'] as String? ?? '',
+        businessAddress: data['business_address'] as String? ?? '',
+        businessPhone: data['business_phone'] as String? ?? '',
+        businessEmail: data['business_email'] as String? ?? '',
+        gstRate: data['gst_rate'] as String? ?? '10.00',
+        invoiceNotes: data['invoice_notes'] as String? ?? '',
         syncedAt: DateTime.now(),
       ));
     } catch (e) {

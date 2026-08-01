@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/api/api_client.dart';
@@ -7,10 +8,36 @@ import '../../core/db/database_provider.dart';
 import '../../core/sync/queue_manager.dart';
 import '../../shared/models/models.dart';
 
+int _decimalHundredths(String value) {
+  final parts = value.split('.');
+  final whole = int.parse(parts[0]);
+  final fraction = parts.length == 1 ? '00' : parts[1].padRight(2, '0');
+  return whole * 100 + int.parse(fraction.substring(0, 2));
+}
+
+String _formatHundredths(int value) {
+  final whole = value ~/ 100;
+  final fraction = (value % 100).abs().toString().padLeft(2, '0');
+  return '$whole.$fraction';
+}
+
+String _calculateLineTotal(String unitPrice, int quantity, String discount) {
+  final gross = _decimalHundredths(unitPrice) * quantity;
+  final discountHundredths = _decimalHundredths(discount);
+  final total = (gross * (10000 - discountHundredths) + 5000) ~/ 10000;
+  return _formatHundredths(total);
+}
+
 class InvoiceRepository {
   InvoiceRepository(this._ref);
 
   final Ref _ref;
+
+  void _requireConnection() {
+    if (!_ref.read(serverReachableProvider)) {
+      throw StateError('A server connection is required to save changes.');
+    }
+  }
 
   Stream<List<InvoiceDb>> watchAll() => _ref.read(databaseProvider).watchAllInvoices();
 
@@ -25,6 +52,7 @@ class InvoiceRepository {
 
   /// Creates a new invoice. If offline, creates locally with DRAFT number and queues sync.
   Future<String> create({ String? ticketId, bool isQuote = false }) async {
+    _requireConnection();
     final isOnline = _ref.read(serverReachableProvider);
     final db = _ref.read(databaseProvider);
 
@@ -106,15 +134,13 @@ class InvoiceRepository {
     String discount = '0.00',
     String? inventoryItemId,
   }) async {
+    _requireConnection();
     final isOnline = _ref.read(serverReachableProvider);
     final db = _ref.read(databaseProvider);
     final localId = 'local_${const Uuid().v4()}';
 
     // Calculate total
-    final qty = quantity.toDouble();
-    final unit = double.parse(unitPrice);
-    final disc = double.parse(discount);
-    final total = ((qty * unit) - disc).toStringAsFixed(2);
+    final total = _calculateLineTotal(unitPrice, quantity, discount);
 
     if (!isOnline) {
       // Create local line item
@@ -160,7 +186,9 @@ class InvoiceRepository {
           if (inventoryItemId != null) 'inventoryItemId': inventoryItemId,
         },
       );
-      final serverId = (res.data?['data']?['id'] ?? res.data?['id']) as String;
+      final serverId = (res.data?['data']?['lineItemId'] ??
+          res.data?['data']?['id'] ??
+          res.data?['id']) as String;
 
       // Upsert to local DB
       await db.upsertLineItem(LineItemDb(
@@ -187,7 +215,9 @@ class InvoiceRepository {
     required String method, // 'cash', 'card', 'eftpos', 'bank_transfer', 'other'
     String type = 'payment', // 'deposit', 'payment', 'refund'
     String? reference,
+    String? idempotencyKey,
   }) async {
+    _requireConnection();
     final isOnline = _ref.read(serverReachableProvider);
     final db = _ref.read(databaseProvider);
     final localId = 'local_${const Uuid().v4()}';
@@ -224,6 +254,9 @@ class InvoiceRepository {
       final dio = _ref.read(apiClientProvider);
       final res = await dio.post<Map<String, dynamic>>(
         '/invoices/$invoiceId/payments',
+        options: Options(headers: {
+          'Idempotency-Key': idempotencyKey ?? localId,
+        }),
         data: {
           'amount': amount,
           'method': method,
@@ -231,7 +264,9 @@ class InvoiceRepository {
           if (reference != null) 'reference': reference,
         },
       );
-      final serverId = (res.data?['data']?['id'] ?? res.data?['id']) as String;
+      final serverId = (res.data?['data']?['paymentId'] ??
+          res.data?['data']?['id'] ??
+          res.data?['id']) as String;
 
       // Upsert to local DB
       await db.upsertPayment(PaymentDb(
@@ -251,6 +286,7 @@ class InvoiceRepository {
 
   /// Deletes a line item.
   Future<void> deleteLineItem(String invoiceId, String lineItemId) async {
+    _requireConnection();
     final isOnline = _ref.read(serverReachableProvider);
     final db = _ref.read(databaseProvider);
 
@@ -268,6 +304,7 @@ class InvoiceRepository {
 
   /// Deletes a payment.
   Future<void> deletePayment(String invoiceId, String paymentId) async {
+    _requireConnection();
     final isOnline = _ref.read(serverReachableProvider);
     final db = _ref.read(databaseProvider);
 

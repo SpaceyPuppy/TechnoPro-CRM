@@ -1,7 +1,7 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyError, FastifyInstance } from "fastify";
 
 export function registerErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error: FastifyError, _request, reply) => {
     const statusCode = error.statusCode ?? 500;
 
     // Log internal errors without leaking details to client

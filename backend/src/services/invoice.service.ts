@@ -1,6 +1,15 @@
-import { eq, sql, desc, and } from "drizzle-orm";
-import { getDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+﻿import { eq, sql, desc, and } from "drizzle-orm";
+import { getDb, schema } from "../db/index.js";
+import { generateId } from "../utils/id.js";
+import {
+  addDecimals,
+  calculateLineTotal,
+  calculateTax,
+  decimalToHundredths,
+  hundredthsToDecimal,
+  subtractDecimals,
+  sumDecimals,
+} from "../utils/money.js";
 import { getSetting } from "./settings.service.js";
 import type {
   CreateInvoiceRequest,
@@ -8,6 +17,27 @@ import type {
   UpdateLineItemRequest,
   CreatePaymentRequest,
 } from "@technopro/shared";
+
+export class InvoiceConflictError extends Error {
+  readonly statusCode = 409;
+
+  constructor(
+    message: string,
+    readonly code = "INVOICE_CONFLICT",
+  ) {
+    super(message);
+    this.name = "InvoiceConflictError";
+  }
+}
+
+function assertInvoiceEditable(invoice: { status: string }) {
+  if (invoice.status !== "draft") {
+    throw new InvoiceConflictError(
+      "Finalised invoices cannot be edited; void or replace the invoice instead",
+      "INVOICE_FINALISED",
+    );
+  }
+}
 
 // --- Number generation ---
 
@@ -43,14 +73,16 @@ async function nextQuoteNumber(): Promise<string> {
 
 // --- Totals ---
 
-async function recalculateTotals(invoiceId: string) {
-  const db = getDb();
+type InvoiceDbExecutor = Pick<ReturnType<typeof getDb>, "select" | "update">;
+
+async function recalculateTotals(invoiceId: string, executor?: InvoiceDbExecutor) {
+  const db = executor ?? getDb();
   const items = await db
     .select({ total: schema.lineItems.total })
     .from(schema.lineItems)
     .where(eq(schema.lineItems.invoiceId, invoiceId));
 
-  const subtotal = items.reduce((sum, i) => sum + parseFloat(i.total), 0);
+  const subtotal = sumDecimals(items.map((item) => item.total));
 
   // Fetch current taxRate stored on the invoice (set at creation time from settings)
   const inv = await db
@@ -58,27 +90,31 @@ async function recalculateTotals(invoiceId: string) {
     .from(schema.invoices)
     .where(eq(schema.invoices.id, invoiceId))
     .limit(1);
-  const taxRate = parseFloat(inv[0]?.taxRate ?? "0");
-  const taxAmount = (subtotal * taxRate) / 100;
-  const total = subtotal + taxAmount;
+  const taxRate = inv[0]?.taxRate ?? "0.00";
+  const taxAmount = calculateTax(subtotal, taxRate);
+  const total = addDecimals(subtotal, taxAmount);
 
   await db
     .update(schema.invoices)
     .set({
-      subtotal: subtotal.toFixed(2),
-      taxAmount: taxAmount.toFixed(2),
-      total: total.toFixed(2),
+      subtotal,
+      taxAmount,
+      total,
     })
     .where(eq(schema.invoices.id, invoiceId));
 }
 
-async function getAmountPaid(invoiceId: string): Promise<number> {
+async function getAmountPaid(invoiceId: string): Promise<string> {
   const db = getDb();
-  const result = await db
-    .select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
+  const rows = await db
+    .select({ amount: schema.payments.amount, type: schema.payments.type })
     .from(schema.payments)
     .where(eq(schema.payments.invoiceId, invoiceId));
-  return Number(result[0]?.total ?? 0);
+  const total = rows.reduce((sum, payment) => {
+    const amount = decimalToHundredths(payment.amount);
+    return sum + (payment.type === "refund" ? -amount : amount);
+  }, 0n);
+  return hundredthsToDecimal(total);
 }
 
 // --- Invoice CRUD ---
@@ -118,8 +154,8 @@ export async function listInvoices(options: {
   const enriched = await Promise.all(
     rows.map(async (inv) => {
       const amountPaid = await getAmountPaid(inv.id);
-      const balance = parseFloat(inv.total) - amountPaid;
-      return { ...inv, amountPaid: amountPaid.toFixed(2), balance: balance.toFixed(2) };
+      const balance = subtractDecimals(inv.total, amountPaid);
+      return { ...inv, amountPaid, balance };
     }),
   );
 
@@ -150,30 +186,51 @@ export async function getInvoiceById(id: string) {
       .orderBy(schema.payments.paidAt),
   ]);
 
-  const amountPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-  const balance = parseFloat(inv.total) - amountPaid;
+  const amountPaid = hundredthsToDecimal(
+    payments.reduce((sum, payment) => {
+      const amount = decimalToHundredths(payment.amount);
+      return sum + (payment.type === "refund" ? -amount : amount);
+    }, 0n),
+  );
+  const balance = subtractDecimals(inv.total, amountPaid);
 
-  return { ...inv, amountPaid: amountPaid.toFixed(2), balance: balance.toFixed(2), lineItems, payments };
+  return { ...inv, amountPaid, balance, lineItems, payments };
 }
 
 export async function createInvoice(data: CreateInvoiceRequest & { type?: "invoice" | "quote" }) {
   const db = getDb();
   const id = generateId();
   const isQuote = data.type === "quote";
-  const invoiceNumber = isQuote ? await nextQuoteNumber() : await nextInvoiceNumber();
   const taxRate = await getSetting("gst_rate");
 
-  await db.insert(schema.invoices).values({
-    id,
-    invoiceNumber,
-    ticketId: data.ticketId ?? null,
-    type: isQuote ? "quote" : "invoice",
-    quoteStatus: isQuote ? "draft" : null,
-    subtotal: "0.00",
-    taxRate,
-    taxAmount: "0.00",
-    total: "0.00",
-    status: "draft",
+  await db.transaction(async (tx) => {
+    const type = isQuote ? "quote" : "invoice";
+    const prefix = isQuote ? "QTE-" : "INV-";
+    const [last] = await tx
+      .select({ invoiceNumber: schema.invoices.invoiceNumber })
+      .from(schema.invoices)
+      .where(eq(schema.invoices.type, type))
+      .orderBy(desc(schema.invoices.createdAt))
+      .limit(1)
+      .for("update");
+    const lastNumber = last?.invoiceNumber;
+    const sequence = lastNumber?.startsWith(prefix)
+      ? Number.parseInt(lastNumber.slice(prefix.length), 10) + 1
+      : 1;
+    const invoiceNumber = `${prefix}${String(sequence).padStart(5, "0")}`;
+
+    await tx.insert(schema.invoices).values({
+      id,
+      invoiceNumber,
+      ticketId: data.ticketId ?? null,
+      type,
+      quoteStatus: isQuote ? "draft" : null,
+      subtotal: "0.00",
+      taxRate,
+      taxAmount: "0.00",
+      total: "0.00",
+      status: "draft",
+    });
   });
 
   return getInvoiceById(id);
@@ -181,9 +238,51 @@ export async function createInvoice(data: CreateInvoiceRequest & { type?: "invoi
 
 export async function updateInvoiceStatus(id: string, status: "draft" | "open" | "paid" | "void") {
   const db = getDb();
-  const existing = await getInvoiceById(id);
-  if (!existing) return null;
-  await db.update(schema.invoices).set({ status }).where(eq(schema.invoices.id, id));
+  const found = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(schema.invoices)
+      .where(eq(schema.invoices.id, id))
+      .limit(1)
+      .for("update");
+    if (!existing) return false;
+
+    if (existing.status === "void" && status !== "void") {
+      throw new InvoiceConflictError("A void invoice cannot be reopened", "INVOICE_VOID");
+    }
+    if (existing.status === "paid" && status !== "paid" && status !== "void") {
+      throw new InvoiceConflictError(
+        "A paid invoice can only be voided or refunded",
+        "INVOICE_PAID",
+      );
+    }
+    if (existing.status === "open" && status === "draft") {
+      throw new InvoiceConflictError(
+        "A finalised invoice cannot be returned to draft",
+        "INVOICE_FINALISED",
+      );
+    }
+    if (status === "paid") {
+      const payments = await tx
+        .select({ amount: schema.payments.amount, type: schema.payments.type })
+        .from(schema.payments)
+        .where(eq(schema.payments.invoiceId, id));
+      const paid = payments.reduce((sum, payment) => {
+        const amount = decimalToHundredths(payment.amount);
+        return sum + (payment.type === "refund" ? -amount : amount);
+      }, 0n);
+      if (decimalToHundredths(existing.total) - paid > 0n) {
+        throw new InvoiceConflictError(
+          "An invoice with an outstanding balance cannot be marked paid",
+          "INVOICE_BALANCE_REMAINING",
+        );
+      }
+    }
+
+    await tx.update(schema.invoices).set({ status }).where(eq(schema.invoices.id, id));
+    return true;
+  });
+  if (!found) return null;
   return getInvoiceById(id);
 }
 
@@ -208,7 +307,7 @@ export async function convertQuoteToTicket(
   const quote = await getInvoiceById(quoteId);
   if (!quote || quote.type !== "quote" || quote.quoteStatus !== "accepted") return null;
   if (quote.convertedTicketId) {
-    // Already converted — return existing ticket
+    // Already converted â€” return existing ticket
     return { ticketId: quote.convertedTicketId, ticketNumber: "" };
   }
 
@@ -228,7 +327,7 @@ export async function convertQuoteToTicket(
   }
 
   // Derive customerId from existing ticket if linked, else fall back to null
-  // (Quotes may not be linked to a ticket — we create the ticket with no customer initially)
+  // (Quotes may not be linked to a ticket â€” we create the ticket with no customer initially)
   const sourceTicketId = quote.ticketId;
   let customerId: string | null = null;
   if (sourceTicketId) {
@@ -247,8 +346,8 @@ export async function convertQuoteToTicket(
     id: ticketId,
     ticketNumber: ticketNum,
     customerId,
-    status: "open",
-    priority: "medium",
+    status: "new",
+    priority: "normal",
     summary: `Quote ${quote.invoiceNumber}`,
     createdAt: now,
     updatedAt: now,
@@ -271,24 +370,70 @@ export async function addLineItem(
   const db = getDb();
   const id = generateId();
   const quantity = data.quantity ?? 1;
-  const unitPrice = parseFloat(data.unitPrice);
-  const discount = parseFloat(data.discount ?? "0");
-  const total = (quantity * unitPrice * (1 - discount / 100)).toFixed(2);
+  const discount = data.discount ?? "0.00";
+  const total = calculateLineTotal(data.unitPrice, quantity, discount);
+  const created = await db.transaction(async (tx) => {
+    const [invoice] = await tx
+      .select()
+      .from(schema.invoices)
+      .where(eq(schema.invoices.id, invoiceId))
+      .limit(1)
+      .for("update");
+    if (!invoice) return false;
+    assertInvoiceEditable(invoice);
 
-  await db.insert(schema.lineItems).values({
-    id,
-    invoiceId,
-    inventoryItemId: data.inventoryItemId ?? null,
-    type: data.type,
-    description: data.description,
-    quantity,
-    unitPrice: data.unitPrice,
-    discount: discount.toFixed(2),
-    total,
+    let unitCost: string | null = null;
+    if (data.inventoryItemId) {
+      if (data.type !== "part") {
+        throw new InvoiceConflictError(
+          "An inventory item can only be attached to a part line",
+          "INVALID_INVENTORY_LINE",
+        );
+      }
+      const [inventoryItem] = await tx
+        .select()
+        .from(schema.inventoryItems)
+        .where(eq(schema.inventoryItems.id, data.inventoryItemId))
+        .limit(1)
+        .for("update");
+      if (!inventoryItem) {
+        throw new InvoiceConflictError("Inventory item not found", "INVENTORY_NOT_FOUND");
+      }
+      unitCost = inventoryItem.cost;
+      if (inventoryItem.stockQty !== null) {
+        const remaining = inventoryItem.stockQty - quantity;
+        if (remaining < 0) {
+          throw new InvoiceConflictError(
+            `Insufficient stock for ${inventoryItem.name}`,
+            "INSUFFICIENT_STOCK",
+          );
+        }
+        await tx
+          .update(schema.inventoryItems)
+          .set({ stockQty: remaining })
+          .where(eq(schema.inventoryItems.id, inventoryItem.id));
+      }
+    }
+
+    await tx.insert(schema.lineItems).values({
+      id,
+      invoiceId,
+      inventoryItemId: data.inventoryItemId ?? null,
+      type: data.type,
+      description: data.description,
+      quantity,
+      unitPrice: data.unitPrice,
+      unitCost,
+      discount,
+      total,
+    });
+    await recalculateTotals(invoiceId, tx);
+    return true;
   });
+  if (!created) return null;
 
-  await recalculateTotals(invoiceId);
-  return getInvoiceById(invoiceId);
+  const invoiceResult = await getInvoiceById(invoiceId);
+  return invoiceResult ? { invoice: invoiceResult, lineItemId: id } : null;
 }
 
 export async function createInvoiceWithItems(
@@ -339,47 +484,108 @@ export async function updateLineItem(
   data: UpdateLineItemRequest,
 ) {
   const db = getDb();
+  const updated = await db.transaction(async (tx) => {
+    const [invoice] = await tx
+      .select()
+      .from(schema.invoices)
+      .where(eq(schema.invoices.id, invoiceId))
+      .limit(1)
+      .for("update");
+    if (!invoice) return false;
+    assertInvoiceEditable(invoice);
 
-  const existing = await db
-    .select()
-    .from(schema.lineItems)
-    .where(eq(schema.lineItems.id, lineItemId))
-    .limit(1);
+    const [existing] = await tx
+      .select()
+      .from(schema.lineItems)
+      .where(eq(schema.lineItems.id, lineItemId))
+      .limit(1)
+      .for("update");
+    if (!existing || existing.invoiceId !== invoiceId) return false;
 
-  if (!existing[0] || existing[0].invoiceId !== invoiceId) return null;
+    const quantity = data.quantity ?? existing.quantity;
+    const unitPrice = data.unitPrice ?? existing.unitPrice;
+    const total = calculateLineTotal(unitPrice, quantity, existing.discount);
+    const stockDelta = quantity - existing.quantity;
+    if (existing.inventoryItemId && stockDelta !== 0) {
+      const [inventoryItem] = await tx
+        .select()
+        .from(schema.inventoryItems)
+        .where(eq(schema.inventoryItems.id, existing.inventoryItemId))
+        .limit(1)
+        .for("update");
+      if (!inventoryItem) {
+        throw new InvoiceConflictError("Inventory item not found", "INVENTORY_NOT_FOUND");
+      }
+      if (inventoryItem.stockQty !== null) {
+        const remaining = inventoryItem.stockQty - stockDelta;
+        if (remaining < 0) {
+          throw new InvoiceConflictError(
+            `Insufficient stock for ${inventoryItem.name}`,
+            "INSUFFICIENT_STOCK",
+          );
+        }
+        await tx
+          .update(schema.inventoryItems)
+          .set({ stockQty: remaining })
+          .where(eq(schema.inventoryItems.id, inventoryItem.id));
+      }
+    }
 
-  const quantity = data.quantity ?? existing[0].quantity;
-  const unitPrice = parseFloat(data.unitPrice ?? existing[0].unitPrice);
-  const total = (quantity * unitPrice).toFixed(2);
-
-  await db
-    .update(schema.lineItems)
-    .set({
-      ...(data.description !== undefined ? { description: data.description } : {}),
-      quantity,
-      unitPrice: data.unitPrice ?? existing[0].unitPrice,
-      total,
-    })
-    .where(eq(schema.lineItems.id, lineItemId));
-
-  await recalculateTotals(invoiceId);
+    await tx
+      .update(schema.lineItems)
+      .set({
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        quantity,
+        unitPrice,
+        total,
+      })
+      .where(eq(schema.lineItems.id, lineItemId));
+    await recalculateTotals(invoiceId, tx);
+    return true;
+  });
+  if (!updated) return null;
   return getInvoiceById(invoiceId);
 }
 
 export async function removeLineItem(invoiceId: string, lineItemId: string) {
   const db = getDb();
+  return db.transaction(async (tx) => {
+    const [invoice] = await tx
+      .select()
+      .from(schema.invoices)
+      .where(eq(schema.invoices.id, invoiceId))
+      .limit(1)
+      .for("update");
+    if (!invoice) return false;
+    assertInvoiceEditable(invoice);
 
-  const existing = await db
-    .select()
-    .from(schema.lineItems)
-    .where(eq(schema.lineItems.id, lineItemId))
-    .limit(1);
+    const [existing] = await tx
+      .select()
+      .from(schema.lineItems)
+      .where(eq(schema.lineItems.id, lineItemId))
+      .limit(1)
+      .for("update");
+    if (!existing || existing.invoiceId !== invoiceId) return false;
 
-  if (!existing[0] || existing[0].invoiceId !== invoiceId) return false;
+    if (existing.inventoryItemId) {
+      const [inventoryItem] = await tx
+        .select()
+        .from(schema.inventoryItems)
+        .where(eq(schema.inventoryItems.id, existing.inventoryItemId))
+        .limit(1)
+        .for("update");
+      if (inventoryItem?.stockQty !== null && inventoryItem?.stockQty !== undefined) {
+        await tx
+          .update(schema.inventoryItems)
+          .set({ stockQty: inventoryItem.stockQty + existing.quantity })
+          .where(eq(schema.inventoryItems.id, inventoryItem.id));
+      }
+    }
 
-  await db.delete(schema.lineItems).where(eq(schema.lineItems.id, lineItemId));
-  await recalculateTotals(invoiceId);
-  return true;
+    await tx.delete(schema.lineItems).where(eq(schema.lineItems.id, lineItemId));
+    await recalculateTotals(invoiceId, tx);
+    return true;
+  });
 }
 
 // --- Payments ---
@@ -388,40 +594,139 @@ export async function addPayment(
   invoiceId: string,
   data: CreatePaymentRequest & { type?: "deposit" | "payment" | "refund" },
   userId: string,
+  idempotencyKey?: string,
 ) {
   const db = getDb();
-
-  const invoice = await getInvoiceById(invoiceId);
-  if (!invoice) return null;
-
-  const id = generateId();
-  await db.insert(schema.payments).values({
-    id,
-    invoiceId,
-    amount: data.amount,
-    method: data.method,
-    type: data.type ?? "payment",
-    reference: data.reference ?? null,
-    createdByUserId: userId,
-    paidAt: data.paidAt ? new Date(data.paidAt) : new Date(),
-  });
-
-  // Auto-update invoice status (skip for deposits — they don't settle the invoice)
-  if ((data.type ?? "payment") !== "deposit") {
-    const amountPaid = parseFloat(invoice.amountPaid) + parseFloat(data.amount);
-    const total = parseFloat(invoice.total);
-    if (amountPaid >= total && invoice.status !== "void") {
-      await db
-        .update(schema.invoices)
-        .set({ status: "paid" })
-        .where(eq(schema.invoices.id, invoiceId));
-    } else if (invoice.status === "draft") {
-      await db
-        .update(schema.invoices)
-        .set({ status: "open" })
-        .where(eq(schema.invoices.id, invoiceId));
-    }
+  const paymentType = data.type ?? "payment";
+  const key = idempotencyKey?.trim() || null;
+  if (key && key.length > 128) {
+    throw new InvoiceConflictError(
+      "Idempotency-Key must be at most 128 characters",
+      "INVALID_IDEMPOTENCY_KEY",
+    );
   }
 
-  return getInvoiceById(invoiceId);
+  const amountHundredths = decimalToHundredths(data.amount);
+  if (amountHundredths <= 0n) {
+    throw new InvoiceConflictError("Payment amount must be greater than zero", "INVALID_PAYMENT");
+  }
+
+  const matchesRequest = (payment: typeof schema.payments.$inferSelect) =>
+    payment.invoiceId === invoiceId &&
+    payment.amount === data.amount &&
+    payment.method === data.method &&
+    payment.type === paymentType;
+
+  let outcome: { paymentId: string; replayed: boolean } | null;
+  try {
+    outcome = await db.transaction(async (tx) => {
+      const invoiceRows = await tx
+        .select()
+        .from(schema.invoices)
+        .where(eq(schema.invoices.id, invoiceId))
+        .limit(1)
+        .for("update");
+      const invoice = invoiceRows[0];
+      if (!invoice) return null;
+      if (invoice.type === "quote") {
+        throw new InvoiceConflictError("Payments cannot be recorded against quotes", "QUOTE_PAYMENT");
+      }
+      if (invoice.status === "void") {
+        throw new InvoiceConflictError("Payments cannot be recorded against a void invoice", "INVOICE_VOID");
+      }
+
+      if (key) {
+        const existingRows = await tx
+          .select()
+          .from(schema.payments)
+          .where(eq(schema.payments.idempotencyKey, key))
+          .limit(1);
+        const existing = existingRows[0];
+        if (existing) {
+          if (!matchesRequest(existing)) {
+            throw new InvoiceConflictError(
+              "Idempotency-Key was already used for a different payment",
+              "IDEMPOTENCY_CONFLICT",
+            );
+          }
+          return { paymentId: existing.id, replayed: true };
+        }
+      }
+
+      const priorPayments = await tx
+        .select({ amount: schema.payments.amount, type: schema.payments.type })
+        .from(schema.payments)
+        .where(eq(schema.payments.invoiceId, invoiceId));
+      const amountPaidBefore = priorPayments.reduce((sum, payment) => {
+        const amount = decimalToHundredths(payment.amount);
+        return sum + (payment.type === "refund" ? -amount : amount);
+      }, 0n);
+      const invoiceTotal = decimalToHundredths(invoice.total);
+
+      if (paymentType === "refund") {
+        if (amountHundredths > amountPaidBefore) {
+          throw new InvoiceConflictError(
+            "Refund cannot exceed the amount paid",
+            "REFUND_EXCEEDS_PAID",
+          );
+        }
+      } else if (amountHundredths > invoiceTotal - amountPaidBefore) {
+        throw new InvoiceConflictError(
+          "Payment cannot exceed the outstanding balance",
+          "PAYMENT_EXCEEDS_BALANCE",
+        );
+      }
+
+      const paymentId = generateId();
+      await tx.insert(schema.payments).values({
+        id: paymentId,
+        invoiceId,
+        amount: data.amount,
+        method: data.method,
+        type: paymentType,
+        reference: data.reference ?? null,
+        idempotencyKey: key,
+        createdByUserId: userId,
+        paidAt: data.paidAt ? new Date(data.paidAt) : new Date(),
+      });
+
+      const amountPaidAfter = paymentType === "refund"
+        ? amountPaidBefore - amountHundredths
+        : amountPaidBefore + amountHundredths;
+      const nextStatus = invoiceTotal > 0n && amountPaidAfter >= invoiceTotal
+        ? "paid"
+        : "open";
+      await tx
+        .update(schema.invoices)
+        .set({ status: nextStatus })
+        .where(eq(schema.invoices.id, invoiceId));
+
+      return { paymentId, replayed: false };
+    });
+  } catch (error) {
+    const isDuplicate =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "ER_DUP_ENTRY";
+    if (!isDuplicate || !key) throw error;
+
+    const [existing] = await db
+      .select()
+      .from(schema.payments)
+      .where(eq(schema.payments.idempotencyKey, key))
+      .limit(1);
+    if (!existing || !matchesRequest(existing)) {
+      throw new InvoiceConflictError(
+        "Idempotency-Key was already used for a different payment",
+        "IDEMPOTENCY_CONFLICT",
+      );
+    }
+    outcome = { paymentId: existing.id, replayed: true };
+  }
+
+  if (!outcome) return null;
+  const invoice = await getInvoiceById(invoiceId);
+  if (!invoice) return null;
+  return { invoice, paymentId: outcome.paymentId, replayed: outcome.replayed };
 }

@@ -1,7 +1,5 @@
-import { join } from "node:path";
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
-import fastifyStatic from "@fastify/static";
 import { env, validateEnv } from "./config/env.js";
 import { registerCors } from "./plugins/cors.js";
 import { registerHelmet } from "./plugins/helmet.js";
@@ -48,15 +46,9 @@ async function main() {
   // Multipart (file uploads) — registered before routes, 10MB limit
   await app.register(multipart, {
     limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB
+      fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024,
       files: 1,
     },
-  });
-
-  // Serve uploaded files at /uploads/* (unauthenticated; filenames include UUID prefix)
-  await app.register(fastifyStatic, {
-    root: join(process.cwd(), "uploads"),
-    prefix: "/uploads/",
   });
 
   // Register routes under /api/v1

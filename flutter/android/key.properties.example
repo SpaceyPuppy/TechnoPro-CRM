@@ -1,0 +1,5 @@
+storePassword=replace-with-keystore-password
+keyPassword=replace-with-key-password
+keyAlias=technopro-upload
+storeFile=/absolute/path/to/technopro-upload-keystore.jks
+storeType=JKS

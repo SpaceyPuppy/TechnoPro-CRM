@@ -1,5 +1,5 @@
-import type { FastifyInstance } from "fastify";
-import { getDb } from "../db/index";
+﻿import type { FastifyInstance } from "fastify";
+import { getDb } from "../db/index.js";
 import { sql } from "drizzle-orm";
 
 export async function healthRoutes(app: FastifyInstance) {

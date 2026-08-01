@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../shared/models/enums.dart' show UserRolePermissions;
@@ -792,6 +793,7 @@ class _AddPaymentSheetState extends ConsumerState<_AddPaymentSheet> {
   final _formKey = GlobalKey<FormState>();
   final _amountCtrl = TextEditingController();
   final _referenceCtrl = TextEditingController();
+  final _idempotencyKey = const Uuid().v4();
   String _method = 'cash';
   String _type = 'payment'; // deposit | payment | refund
   bool _saving = false;
@@ -826,6 +828,7 @@ class _AddPaymentSheetState extends ConsumerState<_AddPaymentSheet> {
         method: _method,
         type: _type,
         reference: _referenceCtrl.text.isNotEmpty ? _referenceCtrl.text.trim() : null,
+        idempotencyKey: _idempotencyKey,
       );
       widget.onAdded();
       if (mounted) Navigator.pop(context);

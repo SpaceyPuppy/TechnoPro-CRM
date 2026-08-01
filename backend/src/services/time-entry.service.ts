@@ -1,9 +1,15 @@
-import { eq, desc } from "drizzle-orm";
-import { getDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+﻿import { and, desc, eq, isNull } from "drizzle-orm";
+import { getDb, schema } from "../db/index.js";
+import { generateId } from "../utils/id.js";
 import { getSetting } from "./settings.service.js";
 import { getTicketById } from "./ticket.service.js";
-import { getInvoiceById, addLineItem, createInvoiceWithItems } from "./invoice.service.js";
+import { getInvoiceById, InvoiceConflictError } from "./invoice.service.js";
+import {
+  addDecimals,
+  calculateTax,
+  calculateTimedAmount,
+  sumDecimals,
+} from "../utils/money.js";
 import type { TimeEntryResponse } from "@technopro/shared";
 
 // --- Time Entry CRUD ---
@@ -19,15 +25,14 @@ export async function startTimeEntry(
   const ticket = await getTicketById(ticketId);
   if (!ticket) throw new Error("Ticket not found");
 
-  // Check for existing running entry
+  // A technician may only have one active timer across all tickets.
   const running = await db
     .select()
     .from(schema.timeEntries)
-    .where(eq(schema.timeEntries.ticketId, ticketId))
-    .where(eq(schema.timeEntries.stoppedAt, null));
+    .where(and(eq(schema.timeEntries.userId, userId), isNull(schema.timeEntries.stoppedAt)));
 
   if (running.length > 0) {
-    throw new Error("A timer is already running for this ticket");
+    throw new Error("You already have a running timer");
   }
 
   // Get labour rate from settings if not overridden
@@ -36,16 +41,27 @@ export async function startTimeEntry(
   const id = generateId();
   const now = new Date();
 
-  await db.insert(schema.timeEntries).values({
-    id,
-    ticketId,
-    userId,
-    startedAt: now,
-    stoppedAt: null,
-    durationSeconds: null,
-    note: options?.note ?? null,
-    labourRate,
-  });
+  try {
+    await db.insert(schema.timeEntries).values({
+      id,
+      ticketId,
+      userId,
+      runningUserId: userId,
+      startedAt: now,
+      stoppedAt: null,
+      durationSeconds: null,
+      note: options?.note ?? null,
+      labourRate,
+    });
+  } catch (error) {
+    const duplicateRunningTimer =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "ER_DUP_ENTRY";
+    if (duplicateRunningTimer) throw new Error("You already have a running timer");
+    throw error;
+  }
 
   const entry = await db
     .select()
@@ -56,38 +72,91 @@ export async function startTimeEntry(
   return toTimeEntryResponse(entry[0]!);
 }
 
-export async function stopTimeEntry(timeEntryId: string): Promise<TimeEntryResponse> {
+export async function createManualTimeEntry(
+  ticketId: string,
+  userId: string,
+  options: {
+    durationSeconds: number;
+    note?: string;
+    labourRate?: string;
+    startedAt?: string;
+  },
+): Promise<TimeEntryResponse> {
+  const ticket = await getTicketById(ticketId);
+  if (!ticket) throw new Error("Ticket not found");
+  if (!Number.isSafeInteger(options.durationSeconds) || options.durationSeconds < 60) {
+    throw new Error("Manual time must be at least one minute");
+  }
+
+  const stoppedAt = new Date();
+  const startedAt = options.startedAt
+    ? new Date(options.startedAt)
+    : new Date(stoppedAt.getTime() - options.durationSeconds * 1000);
+  if (Number.isNaN(startedAt.getTime()) || startedAt > stoppedAt) {
+    throw new Error("Manual start time is invalid");
+  }
+
   const db = getDb();
-
-  // Get entry
-  const entry = await db
+  const id = generateId();
+  await db.insert(schema.timeEntries).values({
+    id,
+    ticketId,
+    userId,
+    runningUserId: null,
+    startedAt,
+    stoppedAt,
+    durationSeconds: options.durationSeconds,
+    note: options.note ?? null,
+    labourRate: options.labourRate ?? (await getSetting("labour_rate")),
+  });
+  const [created] = await db
     .select()
     .from(schema.timeEntries)
-    .where(eq(schema.timeEntries.id, timeEntryId))
+    .where(eq(schema.timeEntries.id, id))
     .limit(1);
+  return toTimeEntryResponse(created!);
+}
 
-  if (!entry[0]) throw new Error("Time entry not found");
-  if (entry[0].stoppedAt) throw new Error("Time entry is already stopped");
+export async function stopTimeEntry(
+  timeEntryId: string,
+  userId: string,
+  canManage: boolean,
+): Promise<TimeEntryResponse> {
+  const db = getDb();
+  const updated = await db.transaction(async (tx) => {
+    const [entry] = await tx
+      .select()
+      .from(schema.timeEntries)
+      .where(eq(schema.timeEntries.id, timeEntryId))
+      .limit(1)
+      .for("update");
 
-  // Calculate duration
-  const now = new Date();
-  const startedAt = new Date(entry[0].startedAt);
-  const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+    if (!entry) throw new Error("Time entry not found");
+    if (entry.userId !== userId && !canManage) {
+      throw new Error("You cannot stop another staff member's timer");
+    }
+    if (entry.stoppedAt) return entry;
 
-  // Update entry
-  await db
-    .update(schema.timeEntries)
-    .set({ stoppedAt: now, durationSeconds })
-    .where(eq(schema.timeEntries.id, timeEntryId));
+    const now = new Date();
+    const durationSeconds = Math.max(
+      0,
+      Math.floor((now.getTime() - entry.startedAt.getTime()) / 1000),
+    );
 
-  // Fetch updated entry
-  const updated = await db
-    .select()
-    .from(schema.timeEntries)
-    .where(eq(schema.timeEntries.id, timeEntryId))
-    .limit(1);
+    await tx
+      .update(schema.timeEntries)
+      .set({ stoppedAt: now, durationSeconds, runningUserId: null })
+      .where(eq(schema.timeEntries.id, timeEntryId));
 
-  return toTimeEntryResponse(updated[0]!);
+    const [result] = await tx
+      .select()
+      .from(schema.timeEntries)
+      .where(eq(schema.timeEntries.id, timeEntryId))
+      .limit(1);
+    return result!;
+  });
+
+  return toTimeEntryResponse(updated);
 }
 
 export async function listTimeEntries(
@@ -102,13 +171,13 @@ export async function listTimeEntries(
 
   const conditions = [eq(schema.timeEntries.ticketId, ticketId)];
   if (includeOnlyRunning) {
-    conditions.push(eq(schema.timeEntries.stoppedAt, null));
+    conditions.push(isNull(schema.timeEntries.stoppedAt));
   }
 
   const entries = await db
     .select()
     .from(schema.timeEntries)
-    .where(conditions.length === 1 ? conditions[0] : conditions[0]!)
+    .where(and(...conditions))
     .orderBy(desc(schema.timeEntries.createdAt));
 
   return entries.map(toTimeEntryResponse);
@@ -124,6 +193,18 @@ export async function getTimeEntryById(timeEntryId: string): Promise<TimeEntryRe
   return entry[0] ? toTimeEntryResponse(entry[0]) : null;
 }
 
+export async function getRunningTimeEntryForUser(
+  userId: string,
+): Promise<TimeEntryResponse | null> {
+  const db = getDb();
+  const [entry] = await db
+    .select()
+    .from(schema.timeEntries)
+    .where(eq(schema.timeEntries.runningUserId, userId))
+    .limit(1);
+  return entry ? toTimeEntryResponse(entry) : null;
+}
+
 // --- Billing ---
 
 export async function billTimeEntry(
@@ -132,58 +213,127 @@ export async function billTimeEntry(
   description?: string,
 ) {
   const db = getDb();
+  const defaultTaxRate = await getSetting("gst_rate");
 
-  // Get entry
-  const entry = await db
-    .select()
-    .from(schema.timeEntries)
-    .where(eq(schema.timeEntries.id, timeEntryId))
-    .limit(1);
+  const resolvedInvoiceId = await db.transaction(async (tx) => {
+    const [entry] = await tx
+      .select()
+      .from(schema.timeEntries)
+      .where(eq(schema.timeEntries.id, timeEntryId))
+      .limit(1)
+      .for("update");
 
-  if (!entry[0]) throw new Error("Time entry not found");
-  if (!entry[0].stoppedAt || !entry[0].durationSeconds) {
-    throw new Error("Cannot bill a running time entry");
-  }
-  if (entry[0].billedAs) throw new Error("Time entry already billed");
+    if (!entry) throw new Error("Time entry not found");
+    if (!entry.stoppedAt || !entry.durationSeconds) {
+      throw new Error("Cannot bill a running or zero-duration time entry");
+    }
 
-  // Calculate labour line item
-  const hours = entry[0].durationSeconds / 3600;
-  const labourRate = parseFloat(entry[0].labourRate);
-  const unitPrice = (hours * labourRate).toFixed(2);
-  const desc = description || `Labour (${hours.toFixed(2)} hours)`;
+    if (entry.billedAs) {
+      const [existingLine] = await tx
+        .select({ invoiceId: schema.lineItems.invoiceId })
+        .from(schema.lineItems)
+        .where(eq(schema.lineItems.id, entry.billedAs))
+        .limit(1);
+      if (!existingLine?.invoiceId) throw new Error("Billed line item is missing its invoice");
+      return existingLine.invoiceId;
+    }
 
-  // Get or create invoice
-  let targetInvoiceId = invoiceId;
-  if (!targetInvoiceId) {
-    const inv = await createInvoiceWithItems(entry[0].ticketId, []);
-    if (!inv) throw new Error("Failed to create invoice");
-    targetInvoiceId = inv.data.id;
-  }
+    let targetInvoice: typeof schema.invoices.$inferSelect | undefined;
+    if (invoiceId) {
+      [targetInvoice] = await tx
+        .select()
+        .from(schema.invoices)
+        .where(eq(schema.invoices.id, invoiceId))
+        .limit(1)
+        .for("update");
+      if (!targetInvoice) throw new Error("Invoice not found");
+    } else {
+      [targetInvoice] = await tx
+        .select()
+        .from(schema.invoices)
+        .where(
+          and(
+            eq(schema.invoices.ticketId, entry.ticketId),
+            eq(schema.invoices.type, "invoice"),
+            eq(schema.invoices.status, "draft"),
+          ),
+        )
+        .orderBy(desc(schema.invoices.createdAt))
+        .limit(1)
+        .for("update");
+    }
 
-  // Add line item
-  const lineItemResult = await addLineItem(targetInvoiceId, {
-    type: "service",
-    description: desc,
-    unitPrice,
-    quantity: 1,
+    if (!targetInvoice) {
+      const [lastInvoice] = await tx
+        .select({ invoiceNumber: schema.invoices.invoiceNumber })
+        .from(schema.invoices)
+        .where(eq(schema.invoices.type, "invoice"))
+        .orderBy(desc(schema.invoices.createdAt))
+        .limit(1)
+        .for("update");
+      const lastNumber = lastInvoice?.invoiceNumber;
+      const nextNumber = lastNumber?.startsWith("INV-")
+        ? `INV-${String(Number.parseInt(lastNumber.slice(4), 10) + 1).padStart(5, "0")}`
+        : "INV-00001";
+      const newInvoiceId = generateId();
+      await tx.insert(schema.invoices).values({
+        id: newInvoiceId,
+        invoiceNumber: nextNumber,
+        ticketId: entry.ticketId,
+        type: "invoice",
+        subtotal: "0.00",
+        taxRate: defaultTaxRate,
+        taxAmount: "0.00",
+        total: "0.00",
+        status: "draft",
+      });
+      [targetInvoice] = await tx
+        .select()
+        .from(schema.invoices)
+        .where(eq(schema.invoices.id, newInvoiceId))
+        .limit(1);
+    }
+
+    if (!targetInvoice || targetInvoice.status !== "draft") {
+      throw new InvoiceConflictError(
+        "Time can only be billed to a draft invoice",
+        "INVOICE_FINALISED",
+      );
+    }
+
+    const hours = entry.durationSeconds / 3600;
+    const unitPrice = calculateTimedAmount(entry.labourRate, entry.durationSeconds);
+    const lineItemId = generateId();
+    await tx.insert(schema.lineItems).values({
+      id: lineItemId,
+      invoiceId: targetInvoice.id,
+      type: "service",
+      description: description || `Labour (${hours.toFixed(2)} hours)`,
+      quantity: 1,
+      unitPrice,
+      discount: "0.00",
+      total: unitPrice,
+    });
+
+    const totals = await tx
+      .select({ total: schema.lineItems.total })
+      .from(schema.lineItems)
+      .where(eq(schema.lineItems.invoiceId, targetInvoice.id));
+    const subtotal = sumDecimals(totals.map((item) => item.total));
+    const taxAmount = calculateTax(subtotal, targetInvoice.taxRate);
+    await tx
+      .update(schema.invoices)
+      .set({ subtotal, taxAmount, total: addDecimals(subtotal, taxAmount) })
+      .where(eq(schema.invoices.id, targetInvoice.id));
+    await tx
+      .update(schema.timeEntries)
+      .set({ billedAs: lineItemId })
+      .where(eq(schema.timeEntries.id, timeEntryId));
+
+    return targetInvoice.id;
   });
 
-  if (!lineItemResult || !lineItemResult.data || !lineItemResult.data.lineItems) {
-    throw new Error("Failed to create line item");
-  }
-
-  // Get the line item ID (last added)
-  const lineItemId = lineItemResult.data.lineItems[lineItemResult.data.lineItems.length - 1]?.id;
-  if (!lineItemId) throw new Error("Line item ID not found");
-
-  // Update time entry with billed_as
-  await db
-    .update(schema.timeEntries)
-    .set({ billedAs: lineItemId })
-    .where(eq(schema.timeEntries.id, timeEntryId));
-
-  // Return updated invoice
-  return getInvoiceById(targetInvoiceId);
+  return getInvoiceById(resolvedInvoiceId);
 }
 
 // --- Helpers ---

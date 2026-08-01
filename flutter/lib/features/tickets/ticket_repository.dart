@@ -13,6 +13,12 @@ class TicketRepository {
 
   final Ref _ref;
 
+  void _requireConnection() {
+    if (!_ref.read(serverReachableProvider)) {
+      throw StateError('A server connection is required to save changes.');
+    }
+  }
+
   /// Returns a stream of all tickets from the local database.
   /// The stream updates whenever the database changes.
   Stream<List<TicketDb>> watchAll() =>
@@ -33,6 +39,7 @@ class TicketRepository {
   /// Creates a new ticket. If offline, queues the mutation with device handling.
   /// If device data is provided and offline, creates a local device record first.
   Future<String> create(Map<String, dynamic> payload) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       // Offline path: handle device creation if device data is in payload
       final db = _ref.read(databaseProvider);
@@ -80,7 +87,7 @@ class TicketRepository {
         customerId: customerId,
         deviceId: deviceId,
         assignedToId: payload['assignedToId'] as String?,
-        status: payload['status'] as String? ?? 'open',
+        status: payload['status'] as String? ?? 'new',
         priority: payload['priority'] as String? ?? 'medium',
         summary: payload['summary'] as String? ?? '',
         description: payload['description'] as String?,
@@ -108,7 +115,7 @@ class TicketRepository {
         customerId: payload['customerId'] as String,
         deviceId: response.data?['data']?['deviceId'] as String?,
         assignedToId: payload['assignedToId'] as String?,
-        status: payload['status'] as String? ?? 'open',
+        status: payload['status'] as String? ?? 'new',
         priority: payload['priority'] as String? ?? 'medium',
         summary: payload['summary'] as String? ?? '',
         description: payload['description'] as String?,
@@ -125,6 +132,7 @@ class TicketRepository {
 
   /// Updates a ticket. If offline, queues the mutation; if online, PATCHes immediately.
   Future<void> update(String id, Map<String, dynamic> payload) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       // Queue for later
       await _ref.read(queueManagerProvider).queueUpdate('ticket', id, payload);
@@ -154,6 +162,7 @@ class TicketRepository {
 
   /// Deletes a ticket. If offline, queues the mutation; if online, DELETEs immediately.
   Future<void> delete(String id) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       // Queue for later
       await _ref.read(queueManagerProvider).queueDelete('ticket', id);

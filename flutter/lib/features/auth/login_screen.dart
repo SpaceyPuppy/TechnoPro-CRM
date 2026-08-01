@@ -36,41 +36,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _saveServerUrl() {
-    final url = _serverCtrl.text.trim();
+  Future<void> _saveServerUrl() async {
+    final url = normalizeServerUrl(_serverCtrl.text);
     if (url.isEmpty) return;
+    _serverCtrl.text = url;
     ref.read(serverUrlProvider.notifier).state = url;
-    ref.read(authStorageProvider).saveServerUrl(url);
+    await ref.read(authStorageProvider).saveServerUrl(url);
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Server URL saved')),
     );
   }
 
   Future<void> _testServerUrl() async {
-    final url = _serverCtrl.text.trim();
+    final url = normalizeServerUrl(_serverCtrl.text);
     if (url.isEmpty) return;
+    _serverCtrl.text = url;
     setState(() {
       _testingServer = true;
       _serverTestResult = null;
     });
     try {
       final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 5)));
-      final healthUrl = url.endsWith('/api/v1')
-          ? '$url/health'
-          : '$url/health';
-      final res = await dio.get<Map<String, dynamic>>(healthUrl);
+      final res = await dio.get<Map<String, dynamic>>('$url/health');
       final ok = res.data?['status'] == 'ok';
+      if (!mounted) return;
       setState(() {
         _serverTestOk = ok;
         _serverTestResult = ok ? 'Connected ✓' : 'Unexpected response';
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _serverTestOk = false;
         _serverTestResult = 'Cannot reach server';
       });
     } finally {
-      setState(() => _testingServer = false);
+      if (mounted) setState(() => _testingServer = false);
     }
   }
 
@@ -78,10 +80,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     // Apply server URL if changed
-    final serverUrl = _serverCtrl.text.trim();
+    final serverUrl = normalizeServerUrl(_serverCtrl.text);
     if (serverUrl.isNotEmpty && serverUrl != ref.read(serverUrlProvider)) {
+      _serverCtrl.text = serverUrl;
       ref.read(serverUrlProvider.notifier).state = serverUrl;
-      ref.read(authStorageProvider).saveServerUrl(serverUrl);
+      await ref.read(authStorageProvider).saveServerUrl(serverUrl);
     }
 
     await ref.read(authProvider.notifier).login(
@@ -197,7 +200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: 'Server URL',
                         prefixIcon: Icon(Icons.dns_outlined),
                         border: OutlineInputBorder(),
-                        hintText: 'http://192.168.x.x:3000/api/v1',
+                        hintText: 'https://crm.example.com',
                       ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),

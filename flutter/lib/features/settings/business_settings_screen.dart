@@ -20,6 +20,7 @@ class _BusinessSettingsScreenState
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _gstCtrl = TextEditingController();
+  final _labourRateCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
   bool _initialized = false;
@@ -34,6 +35,7 @@ class _BusinessSettingsScreenState
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _gstCtrl.dispose();
+    _labourRateCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -47,6 +49,7 @@ class _BusinessSettingsScreenState
     _phoneCtrl.text = s.businessPhone;
     _emailCtrl.text = s.businessEmail;
     _gstCtrl.text = s.gstRate;
+    _labourRateCtrl.text = s.labourRate;
     _notesCtrl.text = s.invoiceNotes;
   }
 
@@ -61,6 +64,7 @@ class _BusinessSettingsScreenState
         'business_phone': _phoneCtrl.text.trim(),
         'business_email': _emailCtrl.text.trim(),
         'gst_rate': _gstCtrl.text.trim(),
+        'labour_rate': _labourRateCtrl.text.trim(),
         'invoice_notes': _notesCtrl.text.trim(),
       });
       ref.invalidate(appSettingsProvider);
@@ -182,6 +186,20 @@ class _BusinessSettingsScreenState
                 decoration: const InputDecoration(
                   labelText: 'GST Rate',
                   suffixText: '%',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 24),
+              _SectionLabel('Service Defaults'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _labourRateCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Default Labour Rate',
+                  prefixText: r'$',
+                  suffixText: '/ hour',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType:

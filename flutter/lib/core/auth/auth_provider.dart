@@ -49,7 +49,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Restore saved server URL before anything else
     final savedUrl = await _storage.getServerUrl();
     if (savedUrl != null) {
-      _ref.read(serverUrlProvider.notifier).state = savedUrl;
+      final normalisedUrl = normalizeServerUrl(savedUrl);
+      _ref.read(serverUrlProvider.notifier).state = normalisedUrl;
+      if (normalisedUrl != savedUrl) {
+        await _storage.saveServerUrl(normalisedUrl);
+      }
     }
 
     final token = await _storage.getToken();

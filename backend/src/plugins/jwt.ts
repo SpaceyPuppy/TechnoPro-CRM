@@ -1,6 +1,6 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+﻿import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import fjwt from "@fastify/jwt";
-import { env } from "../config/env";
+import { env } from "../config/env.js";
 import type { UserRole } from "@technopro/shared";
 
 // Extend Fastify's JWT user type
