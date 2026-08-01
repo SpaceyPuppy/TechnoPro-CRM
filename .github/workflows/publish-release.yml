@@ -195,6 +195,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: release-assets
+          pattern: technopro-*-release
           merge-multiple: true
       - name: Generate checksums
         working-directory: release-assets
