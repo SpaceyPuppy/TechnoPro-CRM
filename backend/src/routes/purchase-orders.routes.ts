@@ -8,6 +8,7 @@ import {
 } from "../services/purchase-orders.service.js";
 import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import type { CreatePurchaseOrderRequest, UpdatePurchaseOrderRequest } from "@technopro/shared";
+import { rolePolicies } from "../access-control.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getPurchaseOrderById>>>) {
   return {
@@ -82,6 +83,7 @@ export async function purchaseOrderRoutes(app: FastifyInstance) {
 
   app.get<{ Querystring: { page?: number; pageSize?: number; search?: string } }>(
     "/purchase-orders",
+    { preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       const { page, pageSize } = parsePagination(request.query);
       const { rows, totalCount } = await listPurchaseOrders({
@@ -107,7 +109,7 @@ export async function purchaseOrderRoutes(app: FastifyInstance) {
     },
   );
 
-  app.get<{ Params: { id: string } }>("/purchase-orders/:id", async (request, reply) => {
+  app.get<{ Params: { id: string } }>("/purchase-orders/:id", { preHandler: app.requireRole(...rolePolicies.manager) }, async (request, reply) => {
     const item = await getPurchaseOrderById(request.params.id);
     if (!item) {
       return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Purchase Order not found" } });
@@ -117,7 +119,7 @@ export async function purchaseOrderRoutes(app: FastifyInstance) {
 
   app.post<{ Body: CreatePurchaseOrderRequest }>(
     "/purchase-orders",
-    { schema: createSchema },
+    { schema: createSchema, preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       const item = await createPurchaseOrder(request.body);
       return reply.code(201).send({ data: toResponse(item) });
@@ -126,7 +128,7 @@ export async function purchaseOrderRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string }; Body: UpdatePurchaseOrderRequest }>(
     "/purchase-orders/:id",
-    { schema: updateSchema },
+    { schema: updateSchema, preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       try {
         const item = await updatePurchaseOrder(request.params.id, request.body);
@@ -142,7 +144,7 @@ export async function purchaseOrderRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { id: string } }>(
     "/purchase-orders/:id/receive", 
-    { preHandler: app.requireRole("admin", "manager") }, 
+    { preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       try {
         const item = await receivePurchaseOrder(request.params.id);

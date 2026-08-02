@@ -398,6 +398,8 @@ class _InvoiceSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final canCounter = ref.watch(authProvider).user?.role.canCounter ?? false;
+    if (!canCounter) return const SizedBox.shrink();
     final invoiceAsync = ref.watch(ticketInvoiceProvider(ticketId));
 
     return Column(

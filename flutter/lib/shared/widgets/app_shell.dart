@@ -108,17 +108,18 @@ class AppShell extends ConsumerWidget {
     final isReachable = ref.watch(serverReachableProvider);
 
     final canManage = user?.role.canManage ?? false;
+    final canCounter = user?.role.canCounter ?? false;
 
     return switch (tier) {
-      LayoutTier.desktop => _buildDesktop(context, ref, _railIndex(context), user, isReachable, canManage),
-      LayoutTier.tablet  => _buildTablet(context, ref, _railIndex(context), user, isReachable, canManage),
-      LayoutTier.phone   => _buildPhone(context, ref, _phoneIndex(context), user, isReachable, canManage),
+      LayoutTier.desktop => _buildDesktop(context, ref, _railIndex(context), user, isReachable, canManage, canCounter),
+      LayoutTier.tablet  => _buildTablet(context, ref, _railIndex(context), user, isReachable, canManage, canCounter),
+      LayoutTier.phone   => _buildPhone(context, ref, _phoneIndex(context), user, isReachable, canManage, canCounter),
     };
   }
 
   // ── Desktop: extended dark sidebar ─────────────────────────────────────────
 
-  Widget _buildDesktop(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage) {
+  Widget _buildDesktop(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage, bool canCounter) {
     return Scaffold(
       body: Row(
         children: [
@@ -126,6 +127,7 @@ class AppShell extends ConsumerWidget {
             selectedIndex: selectedIndex,
             user: user,
             canManage: canManage,
+            canCounter: canCounter,
             onDestinationSelected: (i) => context.go(_railDestinations[i].path),
             onLogout: () => ref.read(authProvider.notifier).logout(),
           ),
@@ -138,7 +140,7 @@ class AppShell extends ConsumerWidget {
 
   // ── Tablet: compact dark rail ───────────────────────────────────────────────
 
-  Widget _buildTablet(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage) {
+  Widget _buildTablet(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage, bool canCounter) {
     return Scaffold(
       body: Row(
         children: [
@@ -146,6 +148,7 @@ class AppShell extends ConsumerWidget {
             selectedIndex: selectedIndex,
             user: user,
             canManage: canManage,
+            canCounter: canCounter,
             onDestinationSelected: (i) => context.go(_railDestinations[i].path),
             onLogout: () => ref.read(authProvider.notifier).logout(),
           ),
@@ -158,7 +161,7 @@ class AppShell extends ConsumerWidget {
 
   // ── Phone: bottom nav + "More" bottom sheet ──────────────────────────────────
 
-  Widget _buildPhone(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage) {
+  Widget _buildPhone(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage, bool canCounter) {
     final colorScheme = Theme.of(context).colorScheme;
     // Map selectedIndex to navIndex for NavigationBar (0-4)
     // selectedIndex 5-6 (More items) → navIndex 4 (More button)
@@ -183,6 +186,7 @@ class AppShell extends ConsumerWidget {
         selectedIndex: navIndex,
         onDestinationSelected: (i) {
           if (i < _phoneDestinations.length) {
+            if (_phoneDestinations[i].path == '/finance' && !canCounter) return;
             context.go(_phoneDestinations[i].path);
           } else {
             showMoreSheet(context, canManage: canManage);
@@ -214,6 +218,7 @@ class _DesktopSidebar extends StatelessWidget {
     required this.selectedIndex,
     required this.user,
     required this.canManage,
+    required this.canCounter,
     required this.onDestinationSelected,
     required this.onLogout,
   });
@@ -221,6 +226,7 @@ class _DesktopSidebar extends StatelessWidget {
   final int selectedIndex;
   final dynamic user;
   final bool canManage;
+  final bool canCounter;
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onLogout;
 
@@ -257,6 +263,9 @@ class _DesktopSidebar extends StatelessWidget {
               itemBuilder: (context, i) {
                 // Hide Settings (last item) for non-managers
                 if (i == _railDestinations.length - 1 && !canManage) {
+                  return const SizedBox.shrink();
+                }
+                if (_railDestinations[i].path == '/finance' && !canCounter) {
                   return const SizedBox.shrink();
                 }
                 final d = _railDestinations[i];
@@ -375,6 +384,7 @@ class _TabletRail extends StatelessWidget {
     required this.selectedIndex,
     required this.user,
     required this.canManage,
+    required this.canCounter,
     required this.onDestinationSelected,
     required this.onLogout,
   });
@@ -382,6 +392,7 @@ class _TabletRail extends StatelessWidget {
   final int selectedIndex;
   final dynamic user;
   final bool canManage;
+  final bool canCounter;
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onLogout;
 
@@ -413,6 +424,9 @@ class _TabletRail extends StatelessWidget {
               itemCount: _railDestinations.length,
               itemBuilder: (context, i) {
                 if (i == _railDestinations.length - 1 && !canManage) {
+                  return const SizedBox.shrink();
+                }
+                if (_railDestinations[i].path == '/finance' && !canCounter) {
                   return const SizedBox.shrink();
                 }
                 final d = _railDestinations[i];
