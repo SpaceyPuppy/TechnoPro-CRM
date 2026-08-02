@@ -22,7 +22,11 @@ class _CustomerSearchSectionState extends ConsumerState<CustomerSearchSection> {
   bool _searching = false;
   List<CustomerModel> _results = [];
   Timer? _debounce;
-  bool _dropdownVisible = false;
+  final _searchLink = LayerLink();
+  final _searchFieldKey = GlobalKey();
+  final _searchFocusNode = FocusNode();
+  OverlayEntry? _resultsOverlay;
+  bool _inlineResultsVisible = false;
 
   final _searchController = TextEditingController();
   final _firstNameCtrl = TextEditingController();
@@ -35,7 +39,9 @@ class _CustomerSearchSectionState extends ConsumerState<CustomerSearchSection> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _removeResultsOverlay();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _phoneCtrl.dispose();
@@ -47,9 +53,11 @@ class _CustomerSearchSectionState extends ConsumerState<CustomerSearchSection> {
   void _onSearchChanged(String value) {
     _debounce?.cancel();
     if (value.trim().isEmpty) {
-      setState(() { _results = []; _dropdownVisible = false; });
+      setState(() => _results = []);
+      _removeResultsOverlay();
       return;
     }
+    _removeResultsOverlay();
     _debounce = Timer(const Duration(milliseconds: 350), () => _search(value.trim()));
   }
 
@@ -62,9 +70,14 @@ class _CustomerSearchSectionState extends ConsumerState<CustomerSearchSection> {
         'pageSize': 10,
       });
       final page = PaginatedResponse.fromJson(res.data!, CustomerModel.fromJson);
-      if (mounted) setState(() { _results = page.data; _dropdownVisible = true; });
+      if (!mounted || _searchController.text.trim() != q) return;
+      setState(() => _results = page.data);
+      _showResultsOverlay();
     } catch (_) {
-      if (mounted) setState(() => _results = []);
+      if (mounted && _searchController.text.trim() == q) {
+        setState(() => _results = []);
+        _showResultsOverlay();
+      }
     } finally {
       if (mounted) setState(() => _searching = false);
     }
@@ -107,23 +120,100 @@ class _CustomerSearchSectionState extends ConsumerState<CustomerSearchSection> {
   void _selectCustomer(CustomerModel c) {
     setState(() {
       _selected = c;
-      _dropdownVisible = false;
       _searchController.clear();
       _results = [];
     });
+    _removeResultsOverlay();
     widget.onCustomerSelected(c);
   }
 
   void _clearSelection() {
     setState(() => _selected = null);
     widget.onCustomerSelected(null);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _removeResultsOverlay() {
+    _resultsOverlay?.remove();
+    _resultsOverlay = null;
+  }
+
+  void _showResultsOverlay() {
+    final overlay = Overlay.of(context);
+    if (_resultsOverlay == null) {
+      _resultsOverlay = OverlayEntry(builder: (_) => _buildResultsOverlay());
+      overlay.insert(_resultsOverlay!);
+    } else {
+      _resultsOverlay!.markNeedsBuild();
+    }
+  }
+
+  Widget _buildResultsOverlay() {
+    final renderBox = _searchFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = renderBox?.size.width ?? MediaQuery.sizeOf(context).width - 32;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return CompositedTransformFollower(
+      link: _searchLink,
+      showWhenUnlinked: false,
+      targetAnchor: Alignment.bottomLeft,
+      followerAnchor: Alignment.topLeft,
+      offset: const Offset(0, 4),
+      child: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: width,
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 220),
+            decoration: BoxDecoration(
+              border: Border.all(color: colorScheme.outlineVariant),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _results.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'No customers found — create a new one',
+                      style: textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: _results.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: colorScheme.outlineVariant),
+                    itemBuilder: (context, i) {
+                      final customer = _results[i];
+                      return ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Text(
+                            customer.displayName.isNotEmpty
+                                ? customer.displayName[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(fontSize: 12, color: colorScheme.onPrimaryContainer),
+                          ),
+                        ),
+                        title: Text(customer.displayName),
+                        subtitle: customer.phone == null ? null : Text(customer.phone!),
+                        onTap: () => _selectCustomer(customer),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -147,10 +237,14 @@ class _CustomerSearchSectionState extends ConsumerState<CustomerSearchSection> {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
+                child: CompositedTransformTarget(
+                  link: _searchLink,
+                  child: TextField(
+                    key: _searchFieldKey,
+                    focusNode: _searchFocusNode,
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    decoration: InputDecoration(
                     hintText: 'Search by name, phone, or email…',
                     prefixIcon: _searching
                         ? const Padding(
@@ -164,22 +258,26 @@ class _CustomerSearchSectionState extends ConsumerState<CustomerSearchSection> {
                         : const Icon(Icons.search, size: 20),
                     border: const OutlineInputBorder(),
                     isDense: true,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
-                onPressed: () => setState(() {
-                  _showNewForm = true;
-                  _dropdownVisible = false;
-                  _searchController.clear();
-                }),
+                onPressed: () {
+                  setState(() {
+                    _showNewForm = true;
+                    _searchController.clear();
+                    _results = [];
+                  });
+                  _removeResultsOverlay();
+                },
                 icon: const Icon(Icons.person_add_outlined, size: 18),
                 label: const Text('New'),
               ),
             ],
           ),
-          if (_dropdownVisible && _results.isNotEmpty) ...[
+          if (_inlineResultsVisible && _results.isNotEmpty) ...[
             const SizedBox(height: 4),
             Material(
               elevation: 2,
@@ -246,7 +344,7 @@ class _CustomerSearchSectionState extends ConsumerState<CustomerSearchSection> {
                 ),
               ),
             ),
-          ] else if (_dropdownVisible && _results.isEmpty) ...[
+          ] else if (_inlineResultsVisible && _results.isEmpty) ...[
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
