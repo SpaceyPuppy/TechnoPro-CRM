@@ -219,7 +219,7 @@ install_dependencies() {
   for command in curl tar sha256sum openssl awk; do
     command -v "$command" >/dev/null 2>&1 || missing=true
   done
-  $missing || return
+  $missing || return 0
   command -v apt-get >/dev/null 2>&1 || die "install curl, tar, coreutils, openssl and awk, then rerun"
   apt-get update
   DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl coreutils gawk openssl tar
