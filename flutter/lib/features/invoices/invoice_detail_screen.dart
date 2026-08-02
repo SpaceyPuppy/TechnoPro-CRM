@@ -85,17 +85,54 @@ class _PdfButton extends ConsumerStatefulWidget {
 class _PdfButtonState extends ConsumerState<_PdfButton> {
   bool _generating = false;
 
+  Future<AppSettings?> _loadPdfSettings() async {
+    try {
+      // Await the provider rather than reading its current value so the first
+      // share attempt works while settings are still loading.
+      final settings = await ref.read(appSettingsProvider.future);
+      if (settings.businessName.trim().isNotEmpty) return settings;
+
+      if (!mounted) return null;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Business name required'),
+          content: const Text(
+            'Add your business name before generating a customer-facing PDF. '
+            'ABN, email, address and phone are optional.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                context.push('/settings/business');
+              },
+              child: const Text('Business Settings'),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load business settings. Check your connection and try again.'),
+          ),
+        );
+      }
+    }
+    return null;
+  }
+
   Future<void> _generate() async {
     setState(() => _generating = true);
     try {
-      final settingsAsync = ref.read(appSettingsProvider);
-      final settings = settingsAsync.valueOrNull;
-      if (settings == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings not loaded — try again')),
-        );
-        return;
-      }
+      final settings = await _loadPdfSettings();
+      if (settings == null) return;
 
       // Try to get customer from linked ticket
       CustomerModel? customer;
@@ -131,8 +168,7 @@ class _PdfButtonState extends ConsumerState<_PdfButton> {
   Future<void> _print() async {
     setState(() => _generating = true);
     try {
-      final settingsAsync = ref.read(appSettingsProvider);
-      final settings = settingsAsync.valueOrNull;
+      final settings = await _loadPdfSettings();
       if (settings == null) return;
 
       CustomerModel? customer;
@@ -415,7 +451,7 @@ class _LineItemsSection extends ConsumerWidget {
               TextButton.icon(
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add'),
-                onPressed: () => _showAddLineItem(context, ref),
+                onPressed: () => _showAddLineItem(context, ref, invoice),
               ),
           ],
         ),
@@ -444,12 +480,13 @@ class _LineItemsSection extends ConsumerWidget {
     );
   }
 
-  void _showAddLineItem(BuildContext context, WidgetRef ref) {
+  void _showAddLineItem(BuildContext context, WidgetRef ref, InvoiceModel invoice) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (_) => _AddLineItemSheet(
         invoiceId: invoice.id,
+        taxRate: invoice.taxRate,
         onAdded: () {
           ref.invalidate(invoiceListProvider);
           onChanged();
@@ -493,8 +530,13 @@ class _LineItemTile extends StatelessWidget {
 // --- Add line item bottom sheet ---
 
 class _AddLineItemSheet extends ConsumerStatefulWidget {
-  const _AddLineItemSheet({required this.invoiceId, required this.onAdded});
+  const _AddLineItemSheet({
+    required this.invoiceId,
+    required this.taxRate,
+    required this.onAdded,
+  });
   final String invoiceId;
+  final String taxRate;
   final VoidCallback onAdded;
 
   @override
@@ -508,7 +550,27 @@ class _AddLineItemSheetState extends ConsumerState<_AddLineItemSheet> {
   final _priceCtrl = TextEditingController();
   final _qtyCtrl = TextEditingController(text: '1');
   String? _inventoryItemId;
+  String _taxTreatment = 'exclusive';
+  bool _taxTreatmentInitialized = false;
   bool _saving = false;
+
+  String _effectiveTaxTreatment() => _taxTreatmentInitialized
+      ? _taxTreatment
+      : ref.read(appSettingsProvider).valueOrNull?.taxEntryMode ?? 'exclusive';
+
+  int _cents(String value) {
+    final normalized = value.replaceAll(',', '').trim();
+    if (!RegExp(r'^\d+(?:\.\d{1,2})?$').hasMatch(normalized)) return 0;
+    final parts = normalized.split('.');
+    return int.parse(parts[0]) * 100 +
+        int.parse(parts.length == 1 ? '00' : parts[1].padRight(2, '0'));
+  }
+
+  String _amount(int cents) =>
+      '${cents ~/ 100}.${(cents % 100).abs().toString().padLeft(2, '0')}';
+
+  int _exclusiveCents(int amount, int taxRate) =>
+      (amount * 10000 + (10000 + taxRate) ~/ 2) ~/ (10000 + taxRate);
 
   @override
   void dispose() {
@@ -529,12 +591,15 @@ class _AddLineItemSheetState extends ConsumerState<_AddLineItemSheet> {
     setState(() => _saving = true);
     try {
       final invoiceRepo = ref.read(invoiceRepositoryProvider);
+      final taxTreatment = _effectiveTaxTreatment();
       await invoiceRepo.addLineItem(
         widget.invoiceId,
         description: _descCtrl.text.trim(),
         type: _type,
         quantity: int.tryParse(_qtyCtrl.text) ?? 1,
         unitPrice: _formatPrice(_priceCtrl.text.trim()),
+        taxRate: widget.taxRate,
+        taxTreatment: taxTreatment,
         inventoryItemId: _inventoryItemId,
       );
       widget.onAdded();
@@ -552,7 +617,18 @@ class _AddLineItemSheetState extends ConsumerState<_AddLineItemSheet> {
   @override
   Widget build(BuildContext context) {
     final inventoryAsync = ref.watch(inventoryListProvider);
+    final settingsAsync = ref.watch(appSettingsProvider);
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    final taxTreatment = _taxTreatmentInitialized
+        ? _taxTreatment
+        : settingsAsync.valueOrNull?.taxEntryMode ?? 'exclusive';
+    final enteredCents = _cents(_priceCtrl.text) * (int.tryParse(_qtyCtrl.text) ?? 1);
+    final rateCents = _cents(widget.taxRate);
+    final exTaxCents = taxTreatment == 'inclusive'
+        ? _exclusiveCents(enteredCents, rateCents)
+        : enteredCents;
+    final gstCents = (exTaxCents * rateCents + 5000) ~/ 10000;
+    final totalCents = exTaxCents + gstCents;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottom),
@@ -571,6 +647,18 @@ class _AddLineItemSheetState extends ConsumerState<_AddLineItemSheet> {
               ],
               selected: {_type},
               onSelectionChanged: (s) => setState(() => _type = s.first),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'exclusive', label: Text('Ex GST')),
+                ButtonSegment(value: 'inclusive', label: Text('Inc GST')),
+              ],
+              selected: {taxTreatment},
+              onSelectionChanged: (selection) => setState(() {
+                _taxTreatment = selection.first;
+                _taxTreatmentInitialized = true;
+              }),
             ),
             const SizedBox(height: 12),
             if (_type == 'part')
@@ -613,12 +701,15 @@ class _AddLineItemSheetState extends ConsumerState<_AddLineItemSheet> {
               Expanded(
                 child: TextFormField(
                   controller: _priceCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Unit Price *',
+                  decoration: InputDecoration(
+                      labelText: taxTreatment == 'inclusive'
+                          ? 'Unit Price inc GST *'
+                          : 'Unit Price ex GST *',
                       border: OutlineInputBorder(),
                       isDense: true,
                       prefixText: '\$'),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (_) => setState(() {}),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Required';
                     if (double.tryParse(v) == null) return 'Invalid number';
@@ -634,9 +725,15 @@ class _AddLineItemSheetState extends ConsumerState<_AddLineItemSheet> {
                   decoration: const InputDecoration(
                       labelText: 'Qty', border: OutlineInputBorder(), isDense: true),
                   keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
                 ),
               ),
             ]),
+            const SizedBox(height: 12),
+            Text(
+              'Ex GST: \$${_amount(exTaxCents)}   GST: \$${_amount(gstCents)}   Total: \$${_amount(totalCents)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _saving ? null : _save,

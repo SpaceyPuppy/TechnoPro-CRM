@@ -9,6 +9,7 @@ import {
 import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import type { CreateSupplierRequest, UpdateSupplierRequest } from "@technopro/shared";
 import { recordAuditEvent } from "../services/audit.service.js";
+import { rolePolicies } from "../access-control.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getSupplierById>>>) {
   return {
@@ -63,6 +64,7 @@ export async function supplierRoutes(app: FastifyInstance) {
 
   app.get<{ Querystring: { page?: number; pageSize?: number; search?: string } }>(
     "/suppliers",
+    { preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       const { page, pageSize } = parsePagination(request.query);
       const { rows, totalCount } = await listSuppliers({
@@ -77,7 +79,7 @@ export async function supplierRoutes(app: FastifyInstance) {
     },
   );
 
-  app.get<{ Params: { id: string } }>("/suppliers/:id", async (request, reply) => {
+  app.get<{ Params: { id: string } }>("/suppliers/:id", { preHandler: app.requireRole(...rolePolicies.manager) }, async (request, reply) => {
     const item = await getSupplierById(request.params.id);
     if (!item) {
       return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Supplier not found" } });
@@ -87,7 +89,7 @@ export async function supplierRoutes(app: FastifyInstance) {
 
   app.post<{ Body: CreateSupplierRequest }>(
     "/suppliers",
-    { schema: createSchema },
+    { schema: createSchema, preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       const item = await createSupplier(request.body);
       await recordAuditEvent("supplier", item!.id, "created", request.user.id, {
@@ -99,7 +101,7 @@ export async function supplierRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string }; Body: UpdateSupplierRequest }>(
     "/suppliers/:id",
-    { schema: updateSchema },
+    { schema: updateSchema, preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       const before = await getSupplierById(request.params.id);
       const item = await updateSupplier(request.params.id, request.body);
@@ -114,7 +116,7 @@ export async function supplierRoutes(app: FastifyInstance) {
     },
   );
 
-  app.delete<{ Params: { id: string } }>("/suppliers/:id", { preHandler: app.requireRole("admin", "manager") }, async (request, reply) => {
+  app.delete<{ Params: { id: string } }>("/suppliers/:id", { preHandler: app.requireRole(...rolePolicies.manager) }, async (request, reply) => {
     const before = await getSupplierById(request.params.id);
     const deleted = await deleteSupplier(request.params.id);
     if (!deleted) {

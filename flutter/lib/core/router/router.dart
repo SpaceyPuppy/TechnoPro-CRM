@@ -23,6 +23,7 @@ import '../../features/settings/staff_admin_screen.dart';
 import '../../shared/widgets/side_panel.dart';
 import '../../shared/widgets/app_shell.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../shared/models/enums.dart' show UserRolePermissions;
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.read(authProvider.notifier);
@@ -39,6 +40,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (!auth.isAuthenticated && !isLoginRoute) return '/login';
       if (auth.isAuthenticated && isLoginRoute) return '/dashboard';
+
+      final role = auth.user?.role;
+      if (state.matchedLocation.startsWith('/finance') && !(role?.canCounter ?? false)) {
+        return '/dashboard';
+      }
+      if (state.matchedLocation.startsWith('/settings') && !(role?.canManage ?? false)) {
+        return '/dashboard';
+      }
 
       return null;
     },

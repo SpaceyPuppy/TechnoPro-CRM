@@ -269,6 +269,7 @@ export interface LineItemResponse {
   description: string;
   quantity: number;
   unitPrice: string;
+  taxTreatment: "inclusive" | "exclusive";
   discount: string;
   total: string;
   createdAt: string;
@@ -279,6 +280,7 @@ export interface CreateLineItemRequest {
   description: string;
   quantity?: number;
   unitPrice: string;
+  taxTreatment?: "inclusive" | "exclusive";
   inventoryItemId?: string;
 }
 
@@ -286,6 +288,7 @@ export interface UpdateLineItemRequest {
   description?: string;
   quantity?: number;
   unitPrice?: string;
+  taxTreatment?: "inclusive" | "exclusive";
 }
 
 // --- Invoices ---
@@ -354,6 +357,7 @@ export interface AppSettings {
   business_phone: string;
   business_email: string;
   gst_rate: string;
+  tax_entry_mode: "inclusive" | "exclusive";
   invoice_notes: string;
   labour_rate?: string;
 }

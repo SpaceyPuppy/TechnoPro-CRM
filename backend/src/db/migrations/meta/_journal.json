@@ -50,6 +50,13 @@
       "when": 1785602627428,
       "tag": "0006_ordinary_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1785682510335,
+      "tag": "0007_glorious_dragon_man",
+      "breakpoints": true
     }
   ]
 }

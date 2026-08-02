@@ -59,6 +59,10 @@ export const lineItems = mysqlTable("line_items", {
   quantity: int("quantity").notNull().default(1),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   unitCost: decimal("unit_cost", { precision: 10, scale: 2 }),
+  taxTreatment: varchar("tax_treatment", { length: 10 })
+    .notNull()
+    .default("exclusive")
+    .$type<"inclusive" | "exclusive">(),
   discount: decimal("discount", { precision: 5, scale: 2 }).notNull().default("0.00"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),

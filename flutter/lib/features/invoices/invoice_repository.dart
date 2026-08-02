@@ -28,6 +28,13 @@ String _calculateLineTotal(String unitPrice, int quantity, String discount) {
   return _formatHundredths(total);
 }
 
+String _removeTax(String inclusiveAmount, String taxRate) {
+  final inclusive = _decimalHundredths(inclusiveAmount);
+  final rate = _decimalHundredths(taxRate);
+  return _formatHundredths(
+      (inclusive * 10000 + (10000 + rate) ~/ 2) ~/ (10000 + rate));
+}
+
 class InvoiceRepository {
   InvoiceRepository(this._ref);
 
@@ -131,6 +138,8 @@ class InvoiceRepository {
     required String type, // 'service' or 'part'
     required int quantity,
     required String unitPrice,
+    required String taxRate,
+    String taxTreatment = 'exclusive',
     String discount = '0.00',
     String? inventoryItemId,
   }) async {
@@ -140,7 +149,10 @@ class InvoiceRepository {
     final localId = 'local_${const Uuid().v4()}';
 
     // Calculate total
-    final total = _calculateLineTotal(unitPrice, quantity, discount);
+    final storedUnitPrice = taxTreatment == 'inclusive'
+        ? _removeTax(unitPrice, taxRate)
+        : unitPrice;
+    final total = _calculateLineTotal(storedUnitPrice, quantity, discount);
 
     if (!isOnline) {
       // Create local line item
@@ -151,7 +163,7 @@ class InvoiceRepository {
         type: type,
         description: description,
         quantity: quantity,
-        unitPrice: unitPrice,
+        unitPrice: storedUnitPrice,
         discount: discount,
         total: total,
         createdAt: DateTime.now(),
@@ -166,6 +178,7 @@ class InvoiceRepository {
           'description': description,
           'quantity': quantity,
           'unitPrice': unitPrice,
+          'taxTreatment': taxTreatment,
           'discount': discount,
           if (inventoryItemId != null) 'inventoryItemId': inventoryItemId,
         },
@@ -182,6 +195,7 @@ class InvoiceRepository {
           'description': description,
           'quantity': quantity,
           'unitPrice': unitPrice,
+          'taxTreatment': taxTreatment,
           'discount': discount,
           if (inventoryItemId != null) 'inventoryItemId': inventoryItemId,
         },
@@ -198,7 +212,7 @@ class InvoiceRepository {
         type: type,
         description: description,
         quantity: quantity,
-        unitPrice: unitPrice,
+        unitPrice: storedUnitPrice,
         discount: discount,
         total: total,
         createdAt: DateTime.now(),
@@ -358,6 +372,7 @@ class InvoiceRepository {
                 description: li.description,
                 quantity: li.quantity,
                 unitPrice: li.unitPrice,
+                taxTreatment: 'exclusive',
                 discount: li.discount,
                 total: li.total,
                 createdAt: li.createdAt.toIso8601String(),

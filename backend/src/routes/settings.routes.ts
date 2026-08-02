@@ -7,6 +7,7 @@ import type {
   CreateDeviceModelRequest,
   UpdateDeviceModelRequest,
 } from "@technopro/shared";
+import { rolePolicies } from "../access-control.js";
 
 function toResponse(row: typeof schema.deviceModels.$inferSelect) {
   return {
@@ -47,7 +48,7 @@ export async function settingsRoutes(app: FastifyInstance) {
 
   // â”€â”€ App settings (business details + GST) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  app.get("/settings", async (_request, reply) => {
+  app.get("/settings", { preHandler: app.requireRole(...rolePolicies.counter) }, async (_request, reply) => {
     const settings = await getAllSettings();
     return reply.send({ data: settings });
   });
@@ -61,13 +62,13 @@ export async function settingsRoutes(app: FastifyInstance) {
           additionalProperties: { type: "string" },
         },
       },
-      preHandler: app.requireRole("manager", "admin"),
+      preHandler: app.requireRole(...rolePolicies.manager),
     },
     async (request, reply) => {
       // Only allow known keys to prevent arbitrary key injection
       const allowed = new Set([
         "business_name", "business_abn", "business_address",
-        "business_phone", "business_email", "gst_rate", "invoice_notes",
+        "business_phone", "business_email", "gst_rate", "tax_entry_mode", "invoice_notes",
         "labour_rate",
       ]);
       const filtered = Object.fromEntries(
@@ -94,7 +95,7 @@ export async function settingsRoutes(app: FastifyInstance) {
   // Create device model
   app.post<{ Body: CreateDeviceModelRequest }>(
     "/settings/device-models",
-    { schema: createSchema, preHandler: app.requireRole("manager", "admin") },
+    { schema: createSchema, preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       const db = getDb();
       const id = generateId();
@@ -116,7 +117,7 @@ export async function settingsRoutes(app: FastifyInstance) {
   // Update device model
   app.patch<{ Params: { id: string }; Body: UpdateDeviceModelRequest }>(
     "/settings/device-models/:id",
-    { schema: updateSchema, preHandler: app.requireRole("manager", "admin") },
+    { schema: updateSchema, preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       const db = getDb();
       const existing = await db
@@ -169,7 +170,7 @@ export async function settingsRoutes(app: FastifyInstance) {
           additionalProperties: false,
         },
       },
-      preHandler: app.requireRole("manager", "admin"),
+      preHandler: app.requireRole(...rolePolicies.manager),
     },
     async (request, reply) => {
       const db = getDb();
@@ -199,7 +200,7 @@ export async function settingsRoutes(app: FastifyInstance) {
   // Delete device model
   app.delete<{ Params: { id: string } }>(
     "/settings/device-models/:id",
-    { preHandler: app.requireRole("manager", "admin") },
+    { preHandler: app.requireRole(...rolePolicies.manager) },
     async (request, reply) => {
       const db = getDb();
       const existing = await db

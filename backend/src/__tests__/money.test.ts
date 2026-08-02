@@ -3,6 +3,7 @@ import {
   addDecimals,
   calculateLineTotal,
   calculateTax,
+  removeTax,
   calculateTimedAmount,
   decimalToHundredths,
   hundredthsToDecimal,
@@ -22,6 +23,11 @@ describe("money helpers", () => {
 
   it("rounds GST to the nearest cent", () => {
     expect(calculateTax("19.95", "10.00")).toBe("2.00");
+  });
+
+  it("extracts GST from inclusive prices without floating point", () => {
+    expect(removeTax("110.00", "10.00")).toBe("100.00");
+    expect(removeTax("19.95", "10.00")).toBe("18.14");
   });
 
   it("calculates timed labour without floating point", () => {

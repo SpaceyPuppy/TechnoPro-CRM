@@ -19,6 +19,7 @@ import type {
   UpdateLineItemRequest,
   CreatePaymentRequest,
 } from "@technopro/shared";
+import { rolePolicies } from "../access-control.js";
 
 function invoiceToResponse(inv: NonNullable<Awaited<ReturnType<typeof getInvoiceById>>>) {
   return {
@@ -46,6 +47,7 @@ function invoiceToResponse(inv: NonNullable<Awaited<ReturnType<typeof getInvoice
       description: li.description,
       quantity: li.quantity,
       unitPrice: li.unitPrice,
+      taxTreatment: li.taxTreatment,
       unitCost: li.unitCost,
       discount: li.discount,
       total: li.total,
@@ -125,6 +127,7 @@ const lineItemSchema = {
       description: { type: "string", minLength: 1, maxLength: 500 },
       quantity: { type: "integer", minimum: 1 },
       unitPrice: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
+      taxTreatment: { type: "string", enum: ["inclusive", "exclusive"] },
       discount: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       inventoryItemId: { type: "string", minLength: 36, maxLength: 36 },
     },
@@ -139,12 +142,20 @@ const updateLineItemSchema = {
       description: { type: "string", minLength: 1, maxLength: 500 },
       quantity: { type: "integer", minimum: 1 },
       unitPrice: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
+      taxTreatment: { type: "string", enum: ["inclusive", "exclusive"] },
     },
     additionalProperties: false,
   },
 } as const;
 
 const paymentSchema = {
+  headers: {
+    type: "object",
+    required: ["idempotency-key"],
+    properties: {
+      "idempotency-key": { type: "string", minLength: 1, maxLength: 128 },
+    },
+  },
   body: {
     type: "object",
     required: ["amount", "method"],
@@ -165,7 +176,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
   // List invoices/quotes
   app.get<{
     Querystring: { page?: number; pageSize?: number; status?: string; ticketId?: string; type?: string };
-  }>("/invoices", async (request, reply) => {
+  }>("/invoices", { preHandler: app.requireRole(...rolePolicies.counter) }, async (request, reply) => {
     const { page, pageSize } = parsePagination(request.query);
     const { rows, totalCount } = await listInvoices({
       page,
@@ -181,7 +192,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
   });
 
   // Get invoice/quote by ID
-  app.get<{ Params: { id: string } }>("/invoices/:id", async (request, reply) => {
+  app.get<{ Params: { id: string } }>("/invoices/:id", { preHandler: app.requireRole(...rolePolicies.counter) }, async (request, reply) => {
     const inv = await getInvoiceById(request.params.id);
     if (!inv) {
       return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Invoice not found" } });
