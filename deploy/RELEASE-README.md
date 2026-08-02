@@ -4,6 +4,10 @@ This bundle runs the TechnoPro API, MySQL and Caddy HTTPS proxy using versioned 
 
 ## Quick start
 
+The normal installation path is the `install-technopro.sh` asset attached to the same GitHub release. It asks for the required values, generates secrets and starts the stack. Re-run the installer from a newer release to update.
+
+This archive is retained as the version-matched deployment kit used by the installer and as a manual recovery option. For a manual deployment:
+
 1. Point an `A` DNS record such as `crm.example.com` at the VPS.
 2. Install Docker Engine and the Docker Compose plugin.
 3. Copy `deploy/.env.example` to `deploy/.env`, set the domain, and replace every example password/secret.
