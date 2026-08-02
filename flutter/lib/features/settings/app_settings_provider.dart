@@ -20,6 +20,7 @@ final appSettingsProvider = FutureProvider<AppSettings>((ref) async {
         'businessPhone': cached.businessPhone,
         'businessEmail': cached.businessEmail,
         'gstRate': cached.gstRate,
+        'taxEntryMode': 'exclusive',
         'labourRate': '75.00',
         'invoiceNotes': cached.invoiceNotes,
       });

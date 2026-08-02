@@ -5,6 +5,7 @@ import {
   addDecimals,
   calculateLineTotal,
   calculateTax,
+  removeTax,
   decimalToHundredths,
   hundredthsToDecimal,
   subtractDecimals,
@@ -371,7 +372,6 @@ export async function addLineItem(
   const id = generateId();
   const quantity = data.quantity ?? 1;
   const discount = data.discount ?? "0.00";
-  const total = calculateLineTotal(data.unitPrice, quantity, discount);
   const created = await db.transaction(async (tx) => {
     const [invoice] = await tx
       .select()
@@ -381,6 +381,11 @@ export async function addLineItem(
       .for("update");
     if (!invoice) return false;
     assertInvoiceEditable(invoice);
+    const taxTreatment = data.taxTreatment ?? "exclusive";
+    const unitPrice = taxTreatment === "inclusive"
+      ? removeTax(data.unitPrice, invoice.taxRate)
+      : data.unitPrice;
+    const total = calculateLineTotal(unitPrice, quantity, discount);
 
     let unitCost: string | null = null;
     if (data.inventoryItemId) {
@@ -422,8 +427,9 @@ export async function addLineItem(
       type: data.type,
       description: data.description,
       quantity,
-      unitPrice: data.unitPrice,
+      unitPrice,
       unitCost,
+      taxTreatment,
       discount,
       total,
     });
@@ -503,7 +509,11 @@ export async function updateLineItem(
     if (!existing || existing.invoiceId !== invoiceId) return false;
 
     const quantity = data.quantity ?? existing.quantity;
-    const unitPrice = data.unitPrice ?? existing.unitPrice;
+    const taxTreatment = data.taxTreatment ?? existing.taxTreatment;
+    const enteredUnitPrice = data.unitPrice ?? existing.unitPrice;
+    const unitPrice = data.unitPrice !== undefined && taxTreatment === "inclusive"
+      ? removeTax(enteredUnitPrice, invoice.taxRate)
+      : enteredUnitPrice;
     const total = calculateLineTotal(unitPrice, quantity, existing.discount);
     const stockDelta = quantity - existing.quantity;
     if (existing.inventoryItemId && stockDelta !== 0) {
@@ -537,6 +547,7 @@ export async function updateLineItem(
         ...(data.description !== undefined ? { description: data.description } : {}),
         quantity,
         unitPrice,
+        taxTreatment,
         total,
       })
       .where(eq(schema.lineItems.id, lineItemId));

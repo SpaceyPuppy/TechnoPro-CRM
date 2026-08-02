@@ -482,6 +482,7 @@ class LineItemModel {
   final String description;
   final int quantity;
   final String unitPrice;
+  final String taxTreatment;
   final String discount;
   final String total;
   final String createdAt;
@@ -494,6 +495,7 @@ class LineItemModel {
     required this.description,
     required this.quantity,
     required this.unitPrice,
+    this.taxTreatment = 'exclusive',
     required this.discount,
     required this.total,
     required this.createdAt,
@@ -507,6 +509,7 @@ class LineItemModel {
         description: j['description'] as String,
         quantity: j['quantity'] as int,
         unitPrice: j['unitPrice'] as String,
+        taxTreatment: j['taxTreatment'] as String? ?? 'exclusive',
         discount: j['discount'] as String? ?? '0.00',
         total: j['total'] as String,
         createdAt: j['createdAt'] as String,
@@ -655,6 +658,7 @@ class AppSettings {
   final String businessPhone;
   final String businessEmail;
   final String gstRate;
+  final String taxEntryMode;
   final String labourRate;
   final String invoiceNotes;
 
@@ -665,6 +669,7 @@ class AppSettings {
     required this.businessPhone,
     required this.businessEmail,
     required this.gstRate,
+    this.taxEntryMode = 'exclusive',
     required this.labourRate,
     required this.invoiceNotes,
   });
@@ -676,6 +681,7 @@ class AppSettings {
         businessPhone: j['business_phone'] as String? ?? '',
         businessEmail: j['business_email'] as String? ?? '',
         gstRate: j['gst_rate'] as String? ?? '10.00',
+        taxEntryMode: j['tax_entry_mode'] as String? ?? 'exclusive',
         labourRate: j['labour_rate'] as String? ?? '75.00',
         invoiceNotes: j['invoice_notes'] as String? ?? '',
       );
@@ -687,6 +693,7 @@ class AppSettings {
         businessPhone: '',
         businessEmail: '',
         gstRate: '10.00',
+        taxEntryMode: 'exclusive',
         labourRate: '75.00',
         invoiceNotes: '',
       );
@@ -699,6 +706,7 @@ class AppSettings {
         businessPhone: m['businessPhone'] as String? ?? '',
         businessEmail: m['businessEmail'] as String? ?? '',
         gstRate: m['gstRate'] as String? ?? '10.00',
+        taxEntryMode: m['taxEntryMode'] as String? ?? 'exclusive',
         labourRate: m['labourRate'] as String? ?? '75.00',
         invoiceNotes: m['invoiceNotes'] as String? ?? '',
       );

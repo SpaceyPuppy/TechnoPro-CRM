@@ -62,6 +62,18 @@ export function calculateTax(subtotal: string, taxRatePercent: string): string {
   );
 }
 
+/** Convert a GST-inclusive amount to its GST-exclusive amount without floating point. */
+export function removeTax(inclusiveAmount: string, taxRatePercent: string): string {
+  const inclusiveHundredths = decimalToHundredths(inclusiveAmount);
+  const rateHundredths = decimalToHundredths(taxRatePercent);
+  if (inclusiveHundredths < 0n || rateHundredths < 0n) {
+    throw new Error("Inclusive amount and tax rate cannot be negative");
+  }
+  return hundredthsToDecimal(
+    divideRounded(inclusiveHundredths * 10000n, 10000n + rateHundredths),
+  );
+}
+
 /** Bill elapsed seconds at an hourly rate, rounded to the nearest cent. */
 export function calculateTimedAmount(hourlyRate: string, durationSeconds: number): string {
   if (!Number.isSafeInteger(durationSeconds) || durationSeconds < 0) {
