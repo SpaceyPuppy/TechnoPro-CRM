@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -139,7 +139,8 @@ class _UploadButtonState extends ConsumerState<_UploadButton> {
   String _uploadErrorMessage(Object error) {
     if (error is DioException) {
       final data = error.response?.data;
-      final code = data is Map ? data['error']?['code'] : null;
+      final errorData = data is Map ? data['error'] : null;
+      final code = errorData is Map ? errorData['code'] : null;
       return switch (code) {
         'UNSUPPORTED_ATTACHMENT_TYPE' => 'This file type is not supported. Choose an image, PDF, Office document, spreadsheet, or text file.',
         'ATTACHMENT_TOO_LARGE' => 'This file is larger than the attachment size limit.',
