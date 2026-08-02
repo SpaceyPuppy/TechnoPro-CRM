@@ -85,17 +85,54 @@ class _PdfButton extends ConsumerStatefulWidget {
 class _PdfButtonState extends ConsumerState<_PdfButton> {
   bool _generating = false;
 
+  Future<AppSettings?> _loadPdfSettings() async {
+    try {
+      // Await the provider rather than reading its current value so the first
+      // share attempt works while settings are still loading.
+      final settings = await ref.read(appSettingsProvider.future);
+      if (settings.businessName.trim().isNotEmpty) return settings;
+
+      if (!mounted) return null;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Business name required'),
+          content: const Text(
+            'Add your business name before generating a customer-facing PDF. '
+            'ABN, email, address and phone are optional.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                context.push('/settings/business');
+              },
+              child: const Text('Business Settings'),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load business settings. Check your connection and try again.'),
+          ),
+        );
+      }
+    }
+    return null;
+  }
+
   Future<void> _generate() async {
     setState(() => _generating = true);
     try {
-      final settingsAsync = ref.read(appSettingsProvider);
-      final settings = settingsAsync.valueOrNull;
-      if (settings == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings not loaded — try again')),
-        );
-        return;
-      }
+      final settings = await _loadPdfSettings();
+      if (settings == null) return;
 
       // Try to get customer from linked ticket
       CustomerModel? customer;
@@ -131,8 +168,7 @@ class _PdfButtonState extends ConsumerState<_PdfButton> {
   Future<void> _print() async {
     setState(() => _generating = true);
     try {
-      final settingsAsync = ref.read(appSettingsProvider);
-      final settings = settingsAsync.valueOrNull;
+      final settings = await _loadPdfSettings();
       if (settings == null) return;
 
       CustomerModel? customer;
