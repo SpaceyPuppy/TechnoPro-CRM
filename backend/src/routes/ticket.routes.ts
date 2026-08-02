@@ -15,6 +15,7 @@ import {
 } from "../services/ticket.service.js";
 import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import type { CreateTicketRequest, UpdateTicketRequest, CreateTicketEventRequest } from "@technopro/shared";
+import { recordAuditEvent } from "../services/audit.service.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getTicketById>>>) {
   return {
@@ -259,6 +260,9 @@ export async function ticketRoutes(app: FastifyInstance) {
     { schema: createSchema },
     async (request, reply) => {
       const ticket = await createTicket(request.body, request.user.id);
+      await recordAuditEvent("ticket", ticket!.id, "created", request.user.id, {
+        after: toResponse(ticket!),
+      });
       return reply.code(201).send({ data: toResponse(ticket!) });
     },
   );
@@ -268,12 +272,17 @@ export async function ticketRoutes(app: FastifyInstance) {
     "/tickets/:id",
     { schema: updateSchema },
     async (request, reply) => {
+      const before = await getTicketById(request.params.id);
       const ticket = await updateTicket(request.params.id, request.body, request.user.id);
       if (!ticket) {
         return reply.code(404).send({
           error: { code: "NOT_FOUND", message: "Ticket not found" },
         });
       }
+      await recordAuditEvent("ticket", ticket.id, "updated", request.user.id, {
+        before: before ? toResponse(before) : null,
+        after: toResponse(ticket),
+      });
       return reply.send({ data: toResponse(ticket) });
     },
   );

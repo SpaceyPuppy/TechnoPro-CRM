@@ -8,6 +8,7 @@ import {
 } from "../services/purchase-orders.service.js";
 import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import type { CreatePurchaseOrderRequest, UpdatePurchaseOrderRequest } from "@technopro/shared";
+import { recordAuditEvent } from "../services/audit.service.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getPurchaseOrderById>>>) {
   return {
@@ -120,6 +121,9 @@ export async function purchaseOrderRoutes(app: FastifyInstance) {
     { schema: createSchema },
     async (request, reply) => {
       const item = await createPurchaseOrder(request.body);
+      await recordAuditEvent("purchase_order", item.id, "created", request.user.id, {
+        after: toResponse(item),
+      });
       return reply.code(201).send({ data: toResponse(item) });
     },
   );
@@ -129,10 +133,15 @@ export async function purchaseOrderRoutes(app: FastifyInstance) {
     { schema: updateSchema },
     async (request, reply) => {
       try {
+        const before = await getPurchaseOrderById(request.params.id);
         const item = await updatePurchaseOrder(request.params.id, request.body);
         if (!item) {
           return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Purchase Order not found" } });
         }
+        await recordAuditEvent("purchase_order", item.id, "updated", request.user.id, {
+          before: before ? toResponse(before) : null,
+          after: toResponse(item),
+        });
         return reply.send({ data: toResponse(item) });
       } catch (err: any) {
         return reply.code(400).send({ error: { code: "BAD_REQUEST", message: err.message } });
@@ -145,7 +154,12 @@ export async function purchaseOrderRoutes(app: FastifyInstance) {
     { preHandler: app.requireRole("admin", "manager") }, 
     async (request, reply) => {
       try {
+        const before = await getPurchaseOrderById(request.params.id);
         const item = await receivePurchaseOrder(request.params.id);
+        await recordAuditEvent("purchase_order", item.id, "received", request.user.id, {
+          before: before ? toResponse(before) : null,
+          after: toResponse(item),
+        });
         return reply.send({ data: toResponse(item) });
       } catch (err: any) {
         return reply.code(400).send({ error: { code: "BAD_REQUEST", message: err.message } });

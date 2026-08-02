@@ -10,6 +10,7 @@ import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import { getDb, schema } from "../db/index.js";
 import { generateId } from "../utils/id.js";
 import type { CreateInventoryItemRequest, UpdateInventoryItemRequest } from "@technopro/shared";
+import { recordAuditEvent } from "../services/audit.service.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getInventoryItemById>>>) {
   return {
@@ -91,6 +92,9 @@ export async function inventoryRoutes(app: FastifyInstance) {
     { schema: createSchema, preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
       const item = await createInventoryItem(request.body);
+      await recordAuditEvent("inventory_item", item!.id, "created", request.user.id, {
+        after: toResponse(item!),
+      });
       return reply.code(201).send({ data: toResponse(item!) });
     },
   );
@@ -99,10 +103,15 @@ export async function inventoryRoutes(app: FastifyInstance) {
     "/inventory/:id",
     { schema: updateSchema, preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
+      const before = await getInventoryItemById(request.params.id);
       const item = await updateInventoryItem(request.params.id, request.body);
       if (!item) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Item not found" } });
       }
+      await recordAuditEvent("inventory_item", item.id, "updated", request.user.id, {
+        before: before ? toResponse(before) : null,
+        after: toResponse(item),
+      });
       return reply.send({ data: toResponse(item) });
     },
   );
@@ -185,10 +194,14 @@ export async function inventoryRoutes(app: FastifyInstance) {
   );
 
   app.delete<{ Params: { id: string } }>("/inventory/:id", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
+    const before = await getInventoryItemById(request.params.id);
     const deleted = await deleteInventoryItem(request.params.id);
     if (!deleted) {
       return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Item not found" } });
     }
+    await recordAuditEvent("inventory_item", request.params.id, "deleted", request.user.id, {
+      before: before ? toResponse(before) : null,
+    });
     return reply.code(204).send();
   });
 }
