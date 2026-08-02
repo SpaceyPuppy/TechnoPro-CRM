@@ -6,6 +6,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
+import '../dashboard/dashboard_provider.dart';
 import 'tickets_provider.dart';
 import 'widgets/customer_search_section.dart';
 import 'widgets/device_section.dart';
@@ -183,6 +184,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 
       ref.invalidate(ticketListProvider);
       if (widget.id != null) ref.invalidate(ticketDetailProvider(widget.id!));
+      ref.read(dashboardProvider.notifier).refresh();
       if (mounted) context.pop();
     } catch (e) {
       setState(() => _error = e.toString());

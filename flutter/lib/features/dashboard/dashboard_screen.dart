@@ -8,11 +8,39 @@ import '../../shared/models/enums.dart';
 import '../../shared/widgets/error_view.dart';
 import 'dashboard_provider.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(dashboardProvider.notifier).refresh();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(dashboardProvider.notifier).refresh();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final statsAsync = ref.watch(dashboardProvider);
 
     return Scaffold(

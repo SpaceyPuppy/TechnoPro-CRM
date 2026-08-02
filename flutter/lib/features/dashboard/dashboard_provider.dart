@@ -11,7 +11,9 @@ class DashboardNotifier extends StateNotifier<AsyncValue<DashboardStats>> {
   final Dio _dio;
 
   Future<void> fetch() async {
-    state = const AsyncValue.loading();
+    // Preserve visible values while revalidating so navigation and resume do
+    // not replace the dashboard with a loading spinner.
+    if (!state.hasValue) state = const AsyncValue.loading();
     try {
       final res = await _dio.get<Map<String, dynamic>>('/dashboard/stats');
       final stats = DashboardStats.fromJson(res.data!['data'] as Map<String, dynamic>);
