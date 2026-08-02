@@ -145,6 +145,13 @@ const updateLineItemSchema = {
 } as const;
 
 const paymentSchema = {
+  headers: {
+    type: "object",
+    required: ["idempotency-key"],
+    properties: {
+      "idempotency-key": { type: "string", minLength: 1, maxLength: 128 },
+    },
+  },
   body: {
     type: "object",
     required: ["amount", "method"],
