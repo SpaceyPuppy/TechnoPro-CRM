@@ -1,6 +1,6 @@
 ﻿import { eq } from "drizzle-orm";
 import { createWriteStream, mkdirSync } from "node:fs";
-import { unlink, stat } from "node:fs/promises";
+import { rename, unlink, stat } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { MultipartFile } from "@fastify/multipart";
@@ -22,6 +22,35 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "text/plain",
 ]);
+
+export class AttachmentValidationError extends Error {
+  readonly statusCode = 400;
+
+  constructor(
+    readonly code: "UNSUPPORTED_ATTACHMENT_TYPE" | "ATTACHMENT_TOO_LARGE",
+    message: string,
+  ) {
+    super(message);
+    this.name = "AttachmentValidationError";
+  }
+}
+
+export const maxAttachmentBytes = env.MAX_FILE_SIZE_MB * 1024 * 1024;
+
+export function validateAttachmentMetadata(mimeType: string, size: number) {
+  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+    throw new AttachmentValidationError(
+      "UNSUPPORTED_ATTACHMENT_TYPE",
+      "This file type is not supported. Use an image, PDF, Office document, spreadsheet, or text file.",
+    );
+  }
+  if (size > maxAttachmentBytes) {
+    throw new AttachmentValidationError(
+      "ATTACHMENT_TOO_LARGE",
+      `Attachments must be ${env.MAX_FILE_SIZE_MB} MB or smaller.`,
+    );
+  }
+}
 
 export async function listAttachments(ticketId: string) {
   const db = getDb();
@@ -56,8 +85,11 @@ export async function uploadAttachment(
   file: MultipartFile,
   userId: string,
 ) {
-  if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-    throw new Error(`File type not allowed: ${file.mimetype}`);
+  try {
+    validateAttachmentMetadata(file.mimetype, 0);
+  } catch (error) {
+    file.file.resume();
+    throw error;
   }
 
   const id = generateId();
@@ -67,27 +99,51 @@ export async function uploadAttachment(
   mkdirSync(ticketDir, { recursive: true });
 
   const destPath = join(ticketDir, storedName);
-  await pipeline(file.file, createWriteStream(destPath));
-
-  const fileStats = await stat(destPath);
-
+  const tempPath = join(UPLOADS_DIR, `.upload-${id}.tmp`);
   const db = getDb();
-  await db.insert(schema.ticketAttachments).values({
-    id,
-    ticketId,
-    uploadedById: userId,
-    fileName: file.filename,
-    filePath: `${ticketId}/${storedName}`,
-    mimeType: file.mimetype,
-    fileSize: fileStats.size,
-  });
+  let attachmentInserted = false;
+  let attachmentStored = false;
 
-  const result = await db
-    .select()
-    .from(schema.ticketAttachments)
-    .where(eq(schema.ticketAttachments.id, id))
-    .limit(1);
-  return result[0] ?? null;
+  try {
+    // Multipart writes to a temporary file first; rejected uploads never reach
+    // the ticket attachment directory or its database record.
+    await pipeline(file.file, createWriteStream(tempPath));
+    const fileStats = await stat(tempPath);
+    if (file.file.truncated) {
+      throw new AttachmentValidationError(
+        "ATTACHMENT_TOO_LARGE",
+        `Attachments must be ${env.MAX_FILE_SIZE_MB} MB or smaller.`,
+      );
+    }
+    validateAttachmentMetadata(file.mimetype, fileStats.size);
+
+    await db.insert(schema.ticketAttachments).values({
+      id,
+      ticketId,
+      uploadedById: userId,
+      fileName: file.filename,
+      filePath: `${ticketId}/${storedName}`,
+      mimeType: file.mimetype,
+      fileSize: fileStats.size,
+    });
+    attachmentInserted = true;
+    await rename(tempPath, destPath);
+    attachmentStored = true;
+
+    const result = await db
+      .select()
+      .from(schema.ticketAttachments)
+      .where(eq(schema.ticketAttachments.id, id))
+      .limit(1);
+    return result[0] ?? null;
+  } catch (error) {
+    await unlink(tempPath).catch(() => {});
+    if (attachmentStored) await unlink(destPath).catch(() => {});
+    if (attachmentInserted) {
+      await db.delete(schema.ticketAttachments).where(eq(schema.ticketAttachments.id, id));
+    }
+    throw error;
+  }
 }
 
 export async function deleteAttachment(ticketId: string, attachmentId: string) {
