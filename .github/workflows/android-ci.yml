@@ -1,0 +1,41 @@
+name: Android CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "flutter/**"
+      - "packages/shared/**"
+      - ".github/workflows/android-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: chmod +x flutter/android/gradlew
+      - working-directory: flutter
+        run: flutter pub get
+      - working-directory: flutter
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
+      - working-directory: flutter
+        run: flutter test
+      - working-directory: flutter
+        run: flutter build apk --debug
+      - uses: actions/upload-artifact@v7
+        with:
+          name: technopro-android-debug
+          path: flutter/build/app/outputs/flutter-apk/app-debug.apk

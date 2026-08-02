@@ -1,15 +1,28 @@
-name: MVP CI
+name: Backend CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "backend/**"
+      - "packages/shared/**"
+      - "deploy/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".dockerignore"
+      - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: backend-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -48,25 +61,3 @@ jobs:
       - run: docker build --target api -f backend/Dockerfile -t technopro-api:ci .
       - run: docker build --target migration -f backend/Dockerfile -t technopro-migration:ci .
       - run: docker compose --env-file deploy/.env.example -f deploy/compose.vps.yml config --quiet
-
-  android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - run: chmod +x flutter/android/gradlew
-      - working-directory: flutter
-        run: flutter pub get
-      - working-directory: flutter
-        run: flutter analyze --no-fatal-warnings --no-fatal-infos
-      - working-directory: flutter
-        run: flutter test
-      - working-directory: flutter
-        run: flutter build apk --debug
-      - uses: actions/upload-artifact@v7
-        with:
-          name: technopro-android-debug
-          path: flutter/build/app/outputs/flutter-apk/app-debug.apk
