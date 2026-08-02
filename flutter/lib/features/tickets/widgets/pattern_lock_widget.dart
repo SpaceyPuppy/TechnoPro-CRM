@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Shows the pattern lock dialog and returns the pattern as a comma-separated
 /// string e.g. "1,2,3,5,7,8,9", or null if cancelled.
@@ -90,6 +91,7 @@ class _PatternLockDialogState extends State<_PatternLockDialog> {
       _pattern = hit != null ? [hit] : [];
       _currentPos = local;
     });
+    if (hit != null) HapticFeedback.selectionClick();
   }
 
   void _onPanUpdate(DragUpdateDetails d) {
@@ -97,10 +99,12 @@ class _PatternLockDialogState extends State<_PatternLockDialog> {
     if (box == null) return;
     final local = box.globalToLocal(d.globalPosition);
     final hit = _hitTest(local);
+    final selectedNewNode = hit != null && !_pattern.contains(hit);
     setState(() {
-      if (hit != null && !_pattern.contains(hit)) _pattern.add(hit);
+      if (selectedNewNode) _pattern.add(hit!);
       _currentPos = local;
     });
+    if (selectedNewNode) HapticFeedback.selectionClick();
   }
 
   void _onPanEnd(DragEndDetails _) => setState(() => _currentPos = null);
@@ -116,7 +120,7 @@ class _PatternLockDialogState extends State<_PatternLockDialog> {
           Text(
             _pattern.isEmpty
                 ? 'Draw your unlock pattern (min 3 points)'
-                : 'Pattern: ${_pattern.join(",")}',
+                : '${_pattern.length} points selected',
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -155,10 +159,13 @@ class _PatternLockDialogState extends State<_PatternLockDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => setState(() {
-            _pattern = [];
-            _currentPos = null;
-          }),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            setState(() {
+              _pattern = [];
+              _currentPos = null;
+            });
+          },
           child: const Text('Clear'),
         ),
         TextButton(
@@ -203,7 +210,9 @@ class _NodeDot extends StatelessWidget {
     return Positioned(
       left: cx - r,
       top: cy - r,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
         width: r * 2,
         height: r * 2,
         decoration: BoxDecoration(
@@ -212,16 +221,6 @@ class _NodeDot extends StatelessWidget {
           border: Border.all(
             color: isActive ? colorScheme.primary : colorScheme.outlineVariant,
             width: isLast ? 2.5 : 1.5,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            '$node',
-            style: TextStyle(
-              fontSize: size > 100 ? 12 : 8,
-              fontWeight: FontWeight.w600,
-              color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,
-            ),
           ),
         ),
       ),
