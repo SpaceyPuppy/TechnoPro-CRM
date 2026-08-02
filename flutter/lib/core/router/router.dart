@@ -6,6 +6,7 @@ import '../../features/auth/login_screen.dart';
 import '../../features/tickets/ticket_list_screen.dart';
 import '../../features/tickets/ticket_detail_screen.dart';
 import '../../features/tickets/ticket_form_screen.dart';
+import '../../features/tickets/current_work_screen.dart';
 import '../../features/customers/customer_list_screen.dart';
 import '../../features/customers/customer_detail_screen.dart';
 import '../../features/customers/customer_form_screen.dart';
@@ -18,12 +19,10 @@ import '../../features/invoices/finance_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/device_models_screen.dart';
 import '../../features/settings/business_settings_screen.dart';
-import '../../features/settings/offline_sync_screen.dart';
+import '../../features/settings/staff_admin_screen.dart';
 import '../../shared/widgets/side_panel.dart';
 import '../../shared/widgets/app_shell.dart';
 import '../../features/dashboard/dashboard_screen.dart';
-import '../../features/procurement/purchase_orders_list_screen.dart';
-import '../../features/procurement/purchase_order_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.read(authProvider.notifier);
@@ -55,6 +54,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/dashboard',
             builder: (_, __) => const DashboardScreen(),
+          ),
+          GoRoute(
+            path: '/current-work',
+            builder: (_, __) => const CurrentWorkScreen(),
           ),
           GoRoute(
             path: '/tickets',
@@ -160,21 +163,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             redirect: (_, state) => '/finance',
           ),
           GoRoute(
-            path: '/procurement',
-            builder: (_, __) => SidePanelShell(
-              listBuilder: (selectedId, onSelect) =>
-                  PurchaseOrdersListScreen(selectedId: selectedId, onSelect: onSelect),
-              panelBuilder: (id) => PurchaseOrderDetailScreen(id: id),
-            ),
-            routes: [
-              GoRoute(
-                path: ':id',
-                builder: (_, state) =>
-                    PurchaseOrderDetailScreen(id: state.pathParameters['id']!),
-              ),
-            ],
-          ),
-          GoRoute(
             path: '/settings',
             builder: (_, __) => const SettingsScreen(),
             routes: [
@@ -187,8 +175,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, __) => const DeviceModelsScreen(),
               ),
               GoRoute(
-                path: 'offline-sync',
-                builder: (_, __) => const OfflineSyncScreen(),
+                path: 'staff',
+                builder: (_, __) => const StaffAdminScreen(),
               ),
             ],
           ),

@@ -1,14 +1,15 @@
-import type { FastifyInstance } from "fastify";
+﻿import type { FastifyInstance } from "fastify";
 import {
   listCustomers,
   getCustomerById,
   createCustomer,
   updateCustomer,
   deleteCustomer,
-} from "../services/customer.service";
-import { parsePagination, paginationMeta } from "../utils/pagination";
-import { getDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+} from "../services/customer.service.js";
+import { parsePagination, paginationMeta } from "../utils/pagination.js";
+import { getDb, schema } from "../db/index.js";
+import { generateId } from "../utils/id.js";
+import { desc } from "drizzle-orm";
 import type { CreateCustomerRequest, UpdateCustomerRequest } from "@technopro/shared";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getCustomerById>>>) {
@@ -20,6 +21,7 @@ function toResponse(row: NonNullable<Awaited<ReturnType<typeof getCustomerById>>
     company: row.company,
     email: row.email,
     phone: row.phone,
+    address: row.address,
     notes: row.notes,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -33,12 +35,14 @@ const customerBodyProperties = {
   company: { type: "string", maxLength: 255 },
   email: { type: "string", format: "email", maxLength: 255 },
   phone: { type: "string", maxLength: 50 },
+  address: { type: "string", maxLength: 500 },
   notes: { type: "string", maxLength: 5000 },
 } as const;
 
 const createSchema = {
   body: {
     type: "object",
+    required: ["name"],
     properties: customerBodyProperties,
     additionalProperties: false,
   },
@@ -55,6 +59,28 @@ const updateSchema = {
 export async function customerRoutes(app: FastifyInstance) {
   // All customer routes require authentication
   app.addHook("preHandler", app.authenticate);
+
+  // Flat device feed used by the native client's read-through cache.
+  app.get<{ Querystring: { page?: number; pageSize?: number } }>(
+    "/devices",
+    async (request, reply) => {
+      const { page, pageSize } = parsePagination(request.query);
+      const db = getDb();
+      const rows = await db
+        .select()
+        .from(schema.devices)
+        .orderBy(desc(schema.devices.updatedAt))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+      return reply.send({
+        data: rows.map((device) => ({
+          ...device,
+          createdAt: device.createdAt.toISOString(),
+          updatedAt: device.updatedAt.toISOString(),
+        })),
+      });
+    },
+  );
 
   // List customers
   app.get<{
@@ -108,7 +134,7 @@ export async function customerRoutes(app: FastifyInstance) {
     },
   );
 
-  // Bulk import customers — managers and admins only
+  // Bulk import customers â€” managers and admins only
   app.post<{
     Body: {
       rows: Array<{ name: string; email?: string; phone?: string; notes?: string }>;
@@ -173,7 +199,7 @@ export async function customerRoutes(app: FastifyInstance) {
     },
   );
 
-  // Delete customer — managers and admins only
+  // Delete customer â€” managers and admins only
   app.delete<{ Params: { id: string } }>("/customers/:id", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
     const deleted = await deleteCustomer(request.params.id);
     if (!deleted) {

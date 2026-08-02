@@ -1,9 +1,13 @@
-import type { FastifyInstance } from "fastify";
+﻿import type { FastifyInstance } from "fastify";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 import {
+  attachmentDiskPath,
+  getAttachment,
   listAttachments,
   uploadAttachment,
   deleteAttachment,
-} from "../services/attachment.service";
+} from "../services/attachment.service.js";
 
 type AttachmentRow = Awaited<ReturnType<typeof listAttachments>>[number];
 
@@ -28,6 +32,34 @@ export async function attachmentRoutes(app: FastifyInstance) {
     const attachments = await listAttachments(request.params.id);
     return reply.send({ data: attachments.map(toResponse) });
   });
+
+  // Customer and device photos are only available to authenticated staff.
+  app.get<{ Params: { id: string; attachmentId: string } }>(
+    "/tickets/:id/attachments/:attachmentId/file",
+    async (request, reply) => {
+      const attachment = await getAttachment(request.params.id, request.params.attachmentId);
+      if (!attachment) {
+        return reply.code(404).send({
+          error: { code: "NOT_FOUND", message: "Attachment not found" },
+        });
+      }
+
+      const diskPath = attachmentDiskPath(attachment.filePath);
+      try {
+        await stat(diskPath);
+      } catch {
+        return reply.code(404).send({
+          error: { code: "NOT_FOUND", message: "Attachment file is missing" },
+        });
+      }
+
+      const safeName = attachment.fileName.replace(/[\r\n"\\]/g, "_");
+      return reply
+        .type(attachment.mimeType)
+        .header("Content-Disposition", `inline; filename="${safeName}"`)
+        .send(createReadStream(diskPath));
+    },
+  );
 
   // Upload attachment
   app.post<{ Params: { id: string } }>("/tickets/:id/attachments", async (request, reply) => {

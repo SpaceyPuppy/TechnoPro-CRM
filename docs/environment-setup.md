@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js** >= 20.x ([download](https://nodejs.org/))
+- **Node.js** >= 22.x LTS ([download](https://nodejs.org/))
 - **Docker Desktop** — for local MySQL (`choco install docker-desktop -y`, restart after install)
 - **Git**
 - **Flutter SDK** >= 3.x ([install](https://docs.flutter.dev/get-started/install)) — for Stage 5+ native app development

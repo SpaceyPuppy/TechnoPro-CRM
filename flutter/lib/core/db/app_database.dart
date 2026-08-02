@@ -30,7 +30,7 @@ class Tickets extends Table {
   TextColumn get customerId => text()();
   TextColumn get deviceId => text().nullable()();
   TextColumn get assignedToId => text().nullable()();
-  TextColumn get status => text()(); // 'open', 'in_progress', 'closed', etc.
+  TextColumn get status => text()(); // 'new', 'in_progress', 'closed', etc.
   TextColumn get priority => text()(); // 'low', 'medium', 'high'
   TextColumn get summary => text()();
   TextColumn get description => text().nullable()();

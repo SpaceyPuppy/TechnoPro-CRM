@@ -7,15 +7,25 @@ export const UserRole = {
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const TicketStatus = {
-  OPEN: "open",
+  NEW: "new",
+  TRIAGE: "triage",
+  SCHEDULED: "scheduled",
   IN_PROGRESS: "in_progress",
-  WAITING_PARTS: "waiting_parts",
-  WAITING_CUSTOMER: "waiting_customer",
+  AWAITING_CUSTOMER: "awaiting_customer",
+  AWAITING_PARTS: "awaiting_parts",
+  READY: "ready",
   RESOLVED: "resolved",
   CLOSED: "closed",
   CANCELLED: "cancelled",
 } as const;
 export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
+
+export const TicketType = {
+  REPAIR: "repair",
+  ONSITE: "onsite",
+  REMOTE: "remote",
+} as const;
+export type TicketType = (typeof TicketType)[keyof typeof TicketType];
 
 export const TicketPriority = {
   LOW: "low",

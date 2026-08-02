@@ -7,6 +7,7 @@ import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
 import '../invoices/invoices_provider.dart';
 import 'ticket_attachments.dart';
+import 'ticket_checklist.dart';
 import 'tickets_provider.dart';
 import 'widgets/time_entry_widget.dart';
 
@@ -41,6 +42,8 @@ class TicketDetailScreen extends ConsumerWidget {
             _InvoiceSection(ticketId: id),
             const SizedBox(height: 16),
             TimeEntryTimerWidget(ticketId: id),
+            const SizedBox(height: 16),
+            TicketChecklistSection(ticketId: id),
             const SizedBox(height: 16),
             TicketAttachmentsSection(ticketId: id),
             const SizedBox(height: 16),
@@ -82,6 +85,7 @@ class _InfoCard extends StatelessWidget {
           children: [
             Text(ticket.summary, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
+            _Row('Type', ticket.ticketType.label),
             _Row('Status', ticket.status.label),
             _Row('Priority', ticket.priority.label),
             if (ticket.customer != null) _Row('Customer', ticket.customer!.name),
@@ -89,7 +93,11 @@ class _InfoCard extends StatelessWidget {
               _Row('Device', ticket.device!.displayName),
             if (ticket.assignedTo != null)
               _Row('Assigned To', ticket.assignedTo!.name),
-            if (ticket.dueDate != null) _Row('Due', ticket.dueDate!),
+            if (ticket.scheduledAt != null)
+              _Row('Scheduled', _formatDateTime(ticket.scheduledAt!)),
+            if (ticket.dueDate != null) _Row('Due', _formatDateTime(ticket.dueDate!)),
+            if (ticket.serviceLocation?.isNotEmpty == true)
+              _Row('Location', ticket.serviceLocation!),
             if (ticket.description != null && ticket.description!.isNotEmpty) ...[
               const Divider(height: 24),
               Text('Description', style: Theme.of(context).textTheme.labelMedium),
@@ -112,6 +120,14 @@ class _InfoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatDateTime(String value) {
+    final date = DateTime.parse(value).toLocal();
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year} '
+        '${date.hour.toString().padLeft(2, '0')}:'
+        '${date.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -166,8 +182,7 @@ class _AddNoteCardState extends ConsumerState<_AddNoteCard> {
     setState(() => _loading = true);
     try {
       final dio = ref.read(apiClientProvider);
-      await dio.post('/tickets/${widget.ticketId}/events', data: {
-        'eventType': TicketEventType.note.value,
+      await dio.post('/tickets/${widget.ticketId}/notes', data: {
         'content': _ctrl.text.trim(),
       });
       _ctrl.clear();

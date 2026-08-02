@@ -1,7 +1,10 @@
 import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
-  schema: "./src/db/schema/index.ts",
+  // The backend uses NodeNext-style `.js` specifiers in TypeScript. Point
+  // Drizzle Kit at the compiled schema so generation and migration resolve
+  // imports the same way as production Node.
+  schema: "./dist/db/schema/index.js",
   out: "./src/db/migrations",
   dialect: "mysql",
   dbCredentials: {

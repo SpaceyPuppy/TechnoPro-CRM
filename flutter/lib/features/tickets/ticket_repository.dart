@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/api/api_client.dart';
@@ -6,12 +5,17 @@ import '../../core/db/app_database.dart';
 import '../../core/db/database_provider.dart';
 import '../../core/sync/queue_manager.dart';
 import '../../core/sync/sync_service.dart';
-import '../../shared/models/models.dart';
 
 class TicketRepository {
   TicketRepository(this._ref);
 
   final Ref _ref;
+
+  void _requireConnection() {
+    if (!_ref.read(serverReachableProvider)) {
+      throw StateError('A server connection is required to save changes.');
+    }
+  }
 
   /// Returns a stream of all tickets from the local database.
   /// The stream updates whenever the database changes.
@@ -33,6 +37,7 @@ class TicketRepository {
   /// Creates a new ticket. If offline, queues the mutation with device handling.
   /// If device data is provided and offline, creates a local device record first.
   Future<String> create(Map<String, dynamic> payload) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       // Offline path: handle device creation if device data is in payload
       final db = _ref.read(databaseProvider);
@@ -62,6 +67,7 @@ class TicketRepository {
           notes: deviceData['notes'] as String?,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
+          syncedAt: DateTime.now(),
         ));
 
         // Queue device creation (must sync before ticket references it)
@@ -80,7 +86,7 @@ class TicketRepository {
         customerId: customerId,
         deviceId: deviceId,
         assignedToId: payload['assignedToId'] as String?,
-        status: payload['status'] as String? ?? 'open',
+        status: payload['status'] as String? ?? 'new',
         priority: payload['priority'] as String? ?? 'medium',
         summary: payload['summary'] as String? ?? '',
         description: payload['description'] as String?,
@@ -89,6 +95,7 @@ class TicketRepository {
         dueDate: payload['dueDate'] as String?,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        syncedAt: DateTime.now(),
       ));
 
       // Queue ticket creation
@@ -108,7 +115,7 @@ class TicketRepository {
         customerId: payload['customerId'] as String,
         deviceId: response.data?['data']?['deviceId'] as String?,
         assignedToId: payload['assignedToId'] as String?,
-        status: payload['status'] as String? ?? 'open',
+        status: payload['status'] as String? ?? 'new',
         priority: payload['priority'] as String? ?? 'medium',
         summary: payload['summary'] as String? ?? '',
         description: payload['description'] as String?,
@@ -117,6 +124,7 @@ class TicketRepository {
         dueDate: payload['dueDate'] as String?,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        syncedAt: DateTime.now(),
       ));
 
       return ticketId;
@@ -125,6 +133,7 @@ class TicketRepository {
 
   /// Updates a ticket. If offline, queues the mutation; if online, PATCHes immediately.
   Future<void> update(String id, Map<String, dynamic> payload) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       // Queue for later
       await _ref.read(queueManagerProvider).queueUpdate('ticket', id, payload);
@@ -154,6 +163,7 @@ class TicketRepository {
 
   /// Deletes a ticket. If offline, queues the mutation; if online, DELETEs immediately.
   Future<void> delete(String id) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       // Queue for later
       await _ref.read(queueManagerProvider).queueDelete('ticket', id);

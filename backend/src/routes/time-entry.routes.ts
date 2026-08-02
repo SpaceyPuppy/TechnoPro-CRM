@@ -1,11 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import {
   startTimeEntry,
+  createManualTimeEntry,
   stopTimeEntry,
   listTimeEntries,
+  getRunningTimeEntryForUser,
   billTimeEntry,
 } from "../services/time-entry.service.js";
 import type { StartTimeEntryRequest, BillTimeEntryRequest } from "@technopro/shared";
+import { recordAuditEvent } from "../services/audit.service.js";
 
 const startTimeEntrySchema = {
   body: {
@@ -28,8 +31,27 @@ const billTimeEntrySchema = {
   },
 } as const;
 
+const manualTimeEntrySchema = {
+  body: {
+    type: "object",
+    required: ["durationSeconds"],
+    properties: {
+      durationSeconds: { type: "integer", minimum: 60, maximum: 604800 },
+      note: { type: "string", maxLength: 500 },
+      labourRate: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
+      startedAt: { type: "string", format: "date-time" },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
 export async function timeEntryRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
+
+  app.get("/time-entries/current", async (request, reply) => {
+    const entry = await getRunningTimeEntryForUser(request.user.id);
+    return reply.send({ data: entry });
+  });
 
   // List time entries for a ticket
   app.get<{ Params: { ticketId: string } }>(
@@ -48,7 +70,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
   // Start a timer — technicians and above
   app.post<{ Params: { ticketId: string }; Body: StartTimeEntryRequest }>(
     "/tickets/:ticketId/time-entries/start",
-    { schema: startTimeEntrySchema, preHandler: app.requireRole("technician", "manager", "admin") },
+    { schema: startTimeEntrySchema, preHandler: app.requireRole("technician", "counter", "manager", "admin") },
     async (request, reply) => {
       try {
         const entry = await startTimeEntry(request.params.ticketId, request.user.id, {
@@ -69,10 +91,38 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     },
   );
 
+  app.post<{
+    Params: { ticketId: string };
+    Body: { durationSeconds: number; note?: string; labourRate?: string; startedAt?: string };
+  }>(
+    "/tickets/:ticketId/time-entries/manual",
+    { schema: manualTimeEntrySchema, preHandler: app.requireRole("technician", "counter", "manager", "admin") },
+    async (request, reply) => {
+      try {
+        const entry = await createManualTimeEntry(
+          request.params.ticketId,
+          request.user.id,
+          request.body,
+        );
+        return reply.code(201).send({ data: entry });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Invalid manual time entry";
+        const status = message.includes("not found") ? 404 : 400;
+        return reply.code(status).send({
+          error: { code: status === 404 ? "NOT_FOUND" : "INVALID_TIME_ENTRY", message },
+        });
+      }
+    },
+  );
+
   // Stop a timer — technicians and above
-  app.post<{ Params: { id: string } }>("/time-entries/:id/stop", { preHandler: app.requireRole("technician", "manager", "admin") }, async (request, reply) => {
+  app.post<{ Params: { id: string } }>("/time-entries/:id/stop", { preHandler: app.requireRole("technician", "counter", "manager", "admin") }, async (request, reply) => {
     try {
-      const entry = await stopTimeEntry(request.params.id);
+      const entry = await stopTimeEntry(
+        request.params.id,
+        request.user.id,
+        request.user.role === "manager" || request.user.role === "admin",
+      );
       return reply.send({ data: entry });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -82,6 +132,9 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       if (message.includes("already stopped")) {
         return reply.code(400).send({ error: { code: "INVALID_STATE", message } });
       }
+      if (message.includes("cannot stop")) {
+        return reply.code(403).send({ error: { code: "FORBIDDEN", message } });
+      }
       return reply.code(500).send({ error: { code: "INTERNAL_ERROR", message } });
     }
   });
@@ -89,10 +142,15 @@ export async function timeEntryRoutes(app: FastifyInstance) {
   // Bill a time entry — technicians and above
   app.post<{ Params: { id: string }; Body: BillTimeEntryRequest }>(
     "/time-entries/:id/bill",
-    { schema: billTimeEntrySchema, preHandler: app.requireRole("technician", "manager", "admin") },
+    { schema: billTimeEntrySchema, preHandler: app.requireRole("technician", "counter", "manager", "admin") },
     async (request, reply) => {
       try {
         const invoice = await billTimeEntry(request.params.id, undefined, request.body.description);
+        if (invoice) {
+          await recordAuditEvent("time_entry", request.params.id, "billed", request.user.id, {
+            invoiceId: invoice.id,
+          });
+        }
         return reply.send({ data: invoice });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";

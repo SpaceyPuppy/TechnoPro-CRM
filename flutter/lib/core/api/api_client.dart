@@ -3,10 +3,42 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/logout_callback_provider.dart';
 
+const _kApiBaseUrl = String.fromEnvironment('API_BASE_URL');
 const _kApiHost = String.fromEnvironment('API_HOST');
 
+/// Normalises a host or URL to the API base expected by the native app.
+String normalizeServerUrl(String raw) {
+  var value = raw.trim();
+  if (value.isEmpty) return value;
+
+  if (!RegExp(r'^https?://', caseSensitive: false).hasMatch(value)) {
+    value = 'https://$value';
+  }
+
+  final parsed = Uri.tryParse(value);
+  if (parsed == null || parsed.host.isEmpty) {
+    return value.replaceFirst(RegExp(r'/+$'), '');
+  }
+
+  var path = parsed.path.replaceFirst(RegExp(r'/+$'), '');
+  if (!path.endsWith('/api/v1')) {
+    path = '$path/api/v1';
+  }
+
+  return parsed
+      .replace(path: path, query: null, fragment: null)
+      .toString()
+      .replaceFirst(RegExp(r'/+$'), '');
+}
+
 String get _defaultBaseUrl {
-  if (_kApiHost.isNotEmpty) return 'http://$_kApiHost:3000/api/v1';
+  if (_kApiBaseUrl.isNotEmpty) return normalizeServerUrl(_kApiBaseUrl);
+  if (_kApiHost.isNotEmpty) {
+    final legacyUrl = _kApiHost.contains('://')
+        ? _kApiHost
+        : 'http://$_kApiHost:3000';
+    return normalizeServerUrl(legacyUrl);
+  }
   if (Platform.isAndroid) return 'http://10.0.2.2:3000/api/v1';
   return 'http://localhost:3000/api/v1';
 }
@@ -14,9 +46,6 @@ String get _defaultBaseUrl {
 /// Configurable server URL — set from login screen, persisted in AuthStorage.
 /// Falls back to platform default if not set.
 final serverUrlProvider = StateProvider<String>((ref) => _defaultBaseUrl);
-
-/// Base URL for constructing file/attachment URLs.
-String get apiBaseUrl => _defaultBaseUrl;
 
 /// In-memory token — updated by AuthNotifier on login/logout/init.
 /// The interceptor reads this synchronously, avoiding async storage race conditions.

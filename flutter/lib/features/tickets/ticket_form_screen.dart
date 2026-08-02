@@ -26,7 +26,8 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   String? _error;
 
   // — Edit-only fields —
-  TicketStatus _status = TicketStatus.open;
+  TicketStatus _status = TicketStatus.new_;
+  TicketType _ticketType = TicketType.repair;
   bool _initialized = false;
 
   // — Create fields —
@@ -37,9 +38,11 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   // — Shared ticket fields —
   TicketPriority _priority = TicketPriority.normal;
   String? _assignedToId;
+  DateTime? _scheduledAt;
   DateTime? _dueDate;
   final _summaryCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  final _serviceLocationCtrl = TextEditingController();
 
   // — Edit-only extra fields —
   final _diagnosisCtrl = TextEditingController();
@@ -49,6 +52,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   void dispose() {
     _summaryCtrl.dispose();
     _descCtrl.dispose();
+    _serviceLocationCtrl.dispose();
     _diagnosisCtrl.dispose();
     _resolutionCtrl.dispose();
     super.dispose();
@@ -58,22 +62,48 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
     if (_initialized) return;
     _initialized = true;
     _status = t.status;
+    _ticketType = t.ticketType;
     _priority = t.priority;
     _assignedToId = t.assignedToId;
     _summaryCtrl.text = t.summary;
     _descCtrl.text = t.description ?? '';
+    _serviceLocationCtrl.text = t.serviceLocation ?? '';
     _diagnosisCtrl.text = t.diagnosis ?? '';
     _resolutionCtrl.text = t.resolution ?? '';
+    _scheduledAt = t.scheduledAt == null ? null : DateTime.parse(t.scheduledAt!).toLocal();
+    _dueDate = t.dueDate == null ? null : DateTime.parse(t.dueDate!).toLocal();
   }
 
-  Future<void> _pickDueDate() async {
+  Future<void> _pickDateTime({required bool scheduled}) async {
+    final current = scheduled ? _scheduledAt : _dueDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 3)),
+      initialDate: current ?? DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (picked != null) setState(() => _dueDate = picked);
+    if (picked == null || !mounted) return;
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+        current ?? DateTime.now().add(const Duration(hours: 1)),
+      ),
+    );
+    if (pickedTime == null) return;
+    final value = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    setState(() {
+      if (scheduled) {
+        _scheduledAt = value;
+      } else {
+        _dueDate = value;
+      }
+    });
   }
 
   Future<void> _save() async {
@@ -93,12 +123,17 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
       if (isNew) {
         final body = <String, dynamic>{
           'customerId': _selectedCustomer!.id,
+          'ticketType': _ticketType.value,
           'priority': _priority.value,
           'summary': _summaryCtrl.text.trim(),
           if (_assignedToId != null) 'assignedToId': _assignedToId,
           if (_descCtrl.text.isNotEmpty) 'description': _descCtrl.text.trim(),
+          if (_serviceLocationCtrl.text.isNotEmpty)
+            'serviceLocation': _serviceLocationCtrl.text.trim(),
+          if (_scheduledAt != null)
+            'scheduledAt': _scheduledAt!.toUtc().toIso8601String(),
           if (_dueDate != null)
-            'dueDate': _dueDate!.toIso8601String().substring(0, 10),
+            'dueDate': _dueDate!.toUtc().toIso8601String(),
         };
 
         // Device — only include if at least one field is filled
@@ -127,15 +162,21 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
         await dio.post('/tickets', data: body);
       } else {
         await dio.patch('/tickets/${widget.id}', data: {
+          'ticketType': _ticketType.value,
           'status': _status.value,
           'priority': _priority.value,
-          if (_assignedToId != null) 'assignedToId': _assignedToId,
+          'assignedToId': _assignedToId,
           'summary': _summaryCtrl.text.trim(),
           if (_descCtrl.text.isNotEmpty) 'description': _descCtrl.text.trim(),
+          'serviceLocation': _serviceLocationCtrl.text.trim().isEmpty
+              ? null
+              : _serviceLocationCtrl.text.trim(),
           if (_diagnosisCtrl.text.isNotEmpty)
             'diagnosis': _diagnosisCtrl.text.trim(),
           if (_resolutionCtrl.text.isNotEmpty)
             'resolution': _resolutionCtrl.text.trim(),
+          'scheduledAt': _scheduledAt?.toUtc().toIso8601String(),
+          'dueDate': _dueDate?.toUtc().toIso8601String(),
         });
       }
 
@@ -184,8 +225,15 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                     ),
                     const SizedBox(height: 10),
                     CustomerSearchSection(
-                      onCustomerSelected: (c) =>
-                          setState(() => _selectedCustomer = c),
+                      onCustomerSelected: (customer) {
+                        setState(() {
+                          _selectedCustomer = customer;
+                          if (_serviceLocationCtrl.text.isEmpty &&
+                              customer?.address?.isNotEmpty == true) {
+                            _serviceLocationCtrl.text = customer!.address!;
+                          }
+                        });
+                      },
                     ),
                     const SizedBox(height: 24),
 
@@ -223,6 +271,33 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                     ),
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? 'Summary is required' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<TicketType>(
+                    value: _ticketType,
+                    decoration: const InputDecoration(
+                      labelText: 'Service Type',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: TicketType.values
+                        .map((type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(type.label),
+                            ))
+                        .toList(),
+                    onChanged: (value) => setState(() => _ticketType = value!),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _serviceLocationCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Service Location (optional)',
+                      hintText: 'Customer address, site or remote connection details',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    maxLines: 2,
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -271,31 +346,20 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                     value: _assignedToId,
                     onChanged: (v) => setState(() => _assignedToId = v),
                   ),
-                  if (!isEdit) ...[
-                    const SizedBox(height: 10),
-                    InkWell(
-                      onTap: _pickDueDate,
-                      borderRadius: BorderRadius.circular(6),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Due Date',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                          suffixIcon: Icon(Icons.calendar_today_outlined, size: 18),
-                        ),
-                        child: Text(
-                          _dueDate != null
-                              ? '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
-                              : 'Not set',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: _dueDate == null
-                                    ? Theme.of(context).colorScheme.outline
-                                    : null,
-                              ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  const SizedBox(height: 10),
+                  _DateTimeField(
+                    label: 'Scheduled For',
+                    value: _scheduledAt,
+                    onTap: () => _pickDateTime(scheduled: true),
+                    onClear: () => setState(() => _scheduledAt = null),
+                  ),
+                  const SizedBox(height: 10),
+                  _DateTimeField(
+                    label: 'Due Date',
+                    value: _dueDate,
+                    onTap: () => _pickDateTime(scheduled: false),
+                    onClear: () => setState(() => _dueDate = null),
+                  ),
                   const SizedBox(height: 24),
 
                   // ── Notes ─────────────────────────────────────────
@@ -391,6 +455,54 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(child: Divider(color: colorScheme.outlineVariant)),
       ],
+    );
+  }
+}
+
+class _DateTimeField extends StatelessWidget {
+  const _DateTimeField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  final String label;
+  final DateTime? value;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final formatted = value == null
+        ? 'Not set'
+        : '${value!.day.toString().padLeft(2, '0')}/'
+            '${value!.month.toString().padLeft(2, '0')}/${value!.year} '
+            '${value!.hour.toString().padLeft(2, '0')}:'
+            '${value!.minute.toString().padLeft(2, '0')}';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          suffixIcon: value == null
+              ? const Icon(Icons.calendar_today_outlined, size: 18)
+              : IconButton(
+                  tooltip: 'Clear',
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: onClear,
+                ),
+        ),
+        child: Text(
+          formatted,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: value == null ? Theme.of(context).colorScheme.outline : null,
+              ),
+        ),
+      ),
     );
   }
 }

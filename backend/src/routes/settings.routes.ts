@@ -1,7 +1,7 @@
-import type { FastifyInstance } from "fastify";
+﻿import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
-import { getDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+import { getDb, schema } from "../db/index.js";
+import { generateId } from "../utils/id.js";
 import { getAllSettings, updateSettings } from "../services/settings.service.js";
 import type {
   CreateDeviceModelRequest,
@@ -45,7 +45,7 @@ const updateSchema = {
 export async function settingsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
-  // ── App settings (business details + GST) ──────────────────────────────────
+  // â”€â”€ App settings (business details + GST) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   app.get("/settings", async (_request, reply) => {
     const settings = await getAllSettings();
@@ -68,6 +68,7 @@ export async function settingsRoutes(app: FastifyInstance) {
       const allowed = new Set([
         "business_name", "business_abn", "business_address",
         "business_phone", "business_email", "gst_rate", "invoice_notes",
+        "labour_rate",
       ]);
       const filtered = Object.fromEntries(
         Object.entries(request.body).filter(([k]) => allowed.has(k))
@@ -78,7 +79,7 @@ export async function settingsRoutes(app: FastifyInstance) {
     },
   );
 
-  // ── Device models ───────────────────────────────────────────────────────────
+  // â”€â”€ Device models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // List all device models
   app.get("/settings/device-models", async (_request, reply) => {

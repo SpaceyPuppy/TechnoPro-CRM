@@ -168,20 +168,26 @@ class _AttachmentGrid extends ConsumerWidget {
   final String ticketId;
   final VoidCallback onDeleted;
 
-  String _fileUrl(AttachmentModel a) {
-    // apiBaseUrl is e.g. http://localhost:3000/api/v1 — strip /api/v1 for uploads
-    final base = apiBaseUrl.replaceAll('/api/v1', '');
-    return '$base/uploads/${a.filePath}';
+  String _fileUrl(AttachmentModel a, String apiBase) {
+    // Attachment bytes are authenticated and served from the API.
+    return '$apiBase/tickets/$ticketId/attachments/${a.id}/file';
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final apiBase = ref.watch(serverUrlProvider);
+    final token = ref.watch(tokenProvider);
+    final headers = token == null
+        ? const <String, String>{}
+        : <String, String>{'Authorization': 'Bearer $token'};
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: attachments.map((a) => _AttachmentTile(
             attachment: a,
-            url: _fileUrl(a),
+            url: _fileUrl(a, apiBase),
+            headers: headers,
             onDelete: () async {
               try {
                 final dio = ref.read(apiClientProvider);
@@ -203,11 +209,13 @@ class _AttachmentTile extends StatelessWidget {
   const _AttachmentTile({
     required this.attachment,
     required this.url,
+    required this.headers,
     required this.onDelete,
   });
 
   final AttachmentModel attachment;
   final String url;
+  final Map<String, String> headers;
   final VoidCallback onDelete;
 
   @override
@@ -226,6 +234,7 @@ class _AttachmentTile extends StatelessWidget {
                   child: attachment.isImage
                       ? Image.network(
                           url,
+                          headers: headers,
                           width: 120,
                           height: 90,
                           fit: BoxFit.cover,
@@ -271,7 +280,13 @@ class _AttachmentTile extends StatelessWidget {
         insetPadding: const EdgeInsets.all(16),
         child: Stack(
           children: [
-            InteractiveViewer(child: Image.network(url, fit: BoxFit.contain)),
+            InteractiveViewer(
+              child: Image.network(
+                url,
+                headers: headers,
+                fit: BoxFit.contain,
+              ),
+            ),
             Positioned(
               top: 8,
               right: 8,

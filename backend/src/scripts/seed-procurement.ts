@@ -1,6 +1,6 @@
-import "dotenv/config";
-import { getDb, closeDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+﻿import "dotenv/config";
+import { getDb, closeDb, schema } from "../db/index.js";
+import { generateId } from "../utils/id.js";
 import { eq } from "drizzle-orm";
 
 async function seedProcurement() {

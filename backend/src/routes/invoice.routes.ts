@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+﻿import type { FastifyInstance } from "fastify";
 import {
   listInvoices,
   getInvoiceById,
@@ -10,8 +10,9 @@ import {
   updateLineItem,
   removeLineItem,
   addPayment,
-} from "../services/invoice.service";
-import { parsePagination, paginationMeta } from "../utils/pagination";
+} from "../services/invoice.service.js";
+import { parsePagination, paginationMeta } from "../utils/pagination.js";
+import { recordAuditEvent } from "../services/audit.service.js";
 import type {
   CreateInvoiceRequest,
   CreateLineItemRequest,
@@ -45,6 +46,7 @@ function invoiceToResponse(inv: NonNullable<Awaited<ReturnType<typeof getInvoice
       description: li.description,
       quantity: li.quantity,
       unitPrice: li.unitPrice,
+      unitCost: li.unitCost,
       discount: li.discount,
       total: li.total,
       createdAt: li.createdAt.toISOString(),
@@ -187,17 +189,21 @@ export async function invoiceRoutes(app: FastifyInstance) {
     return reply.send({ data: invoiceToResponse(inv) });
   });
 
-  // Create invoice or quote — counter and above
+  // Create invoice or quote â€” counter and above
   app.post<{ Body: CreateInvoiceRequest & { type?: "invoice" | "quote" } }>(
     "/invoices",
     { schema: createInvoiceSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
       const inv = await createInvoice(request.body);
+      await recordAuditEvent("invoice", inv!.id, "created", request.user.id, {
+        type: inv!.type,
+        ticketId: inv!.ticketId,
+      });
       return reply.code(201).send({ data: invoiceToResponse(inv!) });
     },
   );
 
-  // Update invoice status — managers and admins only
+  // Update invoice status â€” managers and admins only
   app.patch<{ Params: { id: string }; Body: { status: "draft" | "open" | "paid" | "void" } }>(
     "/invoices/:id/status",
     { schema: statusSchema, preHandler: app.requireRole("manager", "admin") },
@@ -206,11 +212,14 @@ export async function invoiceRoutes(app: FastifyInstance) {
       if (!inv) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Invoice not found" } });
       }
+      await recordAuditEvent("invoice", request.params.id, "status_changed", request.user.id, {
+        status: request.body.status,
+      });
       return reply.send({ data: invoiceToResponse(inv) });
     },
   );
 
-  // Update quote status — counter and above
+  // Update quote status â€” counter and above
   app.patch<{ Params: { id: string }; Body: { quoteStatus: "draft" | "sent" | "accepted" | "declined" } }>(
     "/invoices/:id/quote-status",
     { schema: quoteStatusSchema, preHandler: app.requireRole("counter", "manager", "admin") },
@@ -219,11 +228,14 @@ export async function invoiceRoutes(app: FastifyInstance) {
       if (!inv) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Quote not found" } });
       }
+      await recordAuditEvent("invoice", request.params.id, "quote_status_changed", request.user.id, {
+        quoteStatus: request.body.quoteStatus,
+      });
       return reply.send({ data: invoiceToResponse(inv) });
     },
   );
 
-  // Convert accepted quote to a new ticket — managers and admins only
+  // Convert accepted quote to a new ticket â€” managers and admins only
   app.patch<{ Params: { id: string } }>(
     "/invoices/:id/convert-to-ticket",
     { preHandler: app.requireRole("manager", "admin") },
@@ -234,24 +246,36 @@ export async function invoiceRoutes(app: FastifyInstance) {
           error: { code: "INVALID_STATE", message: "Quote must be accepted before converting to ticket" },
         });
       }
+      await recordAuditEvent("invoice", request.params.id, "converted_to_ticket", request.user.id, {
+        ticketId: result.ticketId,
+      });
       return reply.send({ data: result });
     },
   );
 
-  // Add line item — counter and above
+  // Add line item â€” counter and above
   app.post<{ Params: { id: string }; Body: CreateLineItemRequest }>(
     "/invoices/:id/line-items",
     { schema: lineItemSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
-      const inv = await addLineItem(request.params.id, request.body);
-      if (!inv) {
+      const result = await addLineItem(request.params.id, request.body);
+      if (!result) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Invoice not found" } });
       }
-      return reply.send({ data: invoiceToResponse(inv) });
+      await recordAuditEvent("invoice", request.params.id, "line_item_added", request.user.id, {
+        lineItemId: result.lineItemId,
+        inventoryItemId: request.body.inventoryItemId ?? null,
+      });
+      return reply.code(201).send({
+        data: {
+          ...invoiceToResponse(result.invoice),
+          lineItemId: result.lineItemId,
+        },
+      });
     },
   );
 
-  // Update line item — counter and above
+  // Update line item â€” counter and above
   app.patch<{ Params: { id: string; lineItemId: string }; Body: UpdateLineItemRequest }>(
     "/invoices/:id/line-items/:lineItemId",
     { schema: updateLineItemSchema, preHandler: app.requireRole("counter", "manager", "admin") },
@@ -264,11 +288,14 @@ export async function invoiceRoutes(app: FastifyInstance) {
       if (!inv) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Line item not found" } });
       }
+      await recordAuditEvent("invoice", request.params.id, "line_item_updated", request.user.id, {
+        lineItemId: request.params.lineItemId,
+      });
       return reply.send({ data: invoiceToResponse(inv) });
     },
   );
 
-  // Remove line item — counter and above
+  // Remove line item â€” counter and above
   app.delete<{ Params: { id: string; lineItemId: string } }>(
     "/invoices/:id/line-items/:lineItemId",
     { preHandler: app.requireRole("counter", "manager", "admin") },
@@ -277,24 +304,55 @@ export async function invoiceRoutes(app: FastifyInstance) {
       if (!removed) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Line item not found" } });
       }
+      await recordAuditEvent("invoice", request.params.id, "line_item_removed", request.user.id, {
+        lineItemId: request.params.lineItemId,
+      });
       return reply.code(204).send();
     },
   );
 
-  // Add payment — counter and above
-  app.post<{ Params: { id: string }; Body: CreatePaymentRequest & { type?: string } }>(
+  // Add payment â€” counter and above
+  app.post<{
+    Params: { id: string };
+    Headers: { "idempotency-key"?: string };
+    Body: CreatePaymentRequest & { type?: string };
+  }>(
     "/invoices/:id/payments",
     { schema: paymentSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
-      const inv = await addPayment(
+      const result = await addPayment(
         request.params.id,
         request.body as CreatePaymentRequest & { type?: "deposit" | "payment" | "refund" },
         request.user.id,
+        request.headers["idempotency-key"],
       );
-      if (!inv) {
+      if (!result) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Invoice not found" } });
       }
-      return reply.send({ data: invoiceToResponse(inv) });
+      await recordAuditEvent(
+        "invoice",
+        request.params.id,
+        result.replayed
+          ? "payment_replayed"
+          : request.body.type === "refund"
+            ? "payment_refunded"
+            : "payment_recorded",
+        request.user.id,
+        {
+          paymentId: result.paymentId,
+          type: request.body.type ?? "payment",
+          method: request.body.method,
+          amount: request.body.amount,
+          replayed: result.replayed,
+        },
+      );
+      return reply.code(result.replayed ? 200 : 201).send({
+        data: {
+          ...invoiceToResponse(result.invoice),
+          paymentId: result.paymentId,
+          replayed: result.replayed,
+        },
+      });
     },
   );
 }

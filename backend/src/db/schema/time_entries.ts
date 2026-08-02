@@ -1,7 +1,7 @@
-import { char, mysqlTable, varchar, int, decimal, timestamp } from "drizzle-orm/mysql-core";
-import { tickets } from "./tickets";
-import { users } from "./users";
-import { lineItems } from "./billing";
+﻿import { char, mysqlTable, varchar, int, decimal, timestamp } from "drizzle-orm/mysql-core";
+import { tickets } from "./tickets.js";
+import { users } from "./users.js";
+import { lineItems } from "./billing.js";
 
 export const timeEntries = mysqlTable("time_entries", {
   id: char("id", { length: 36 }).primaryKey(),
@@ -10,6 +10,11 @@ export const timeEntries = mysqlTable("time_entries", {
     .references(() => tickets.id),
   userId: char("user_id", { length: 36 })
     .notNull()
+    .references(() => users.id),
+  // MySQL permits multiple NULL values in a unique index. A running entry
+  // stores its user ID here; stopping it clears the value atomically.
+  runningUserId: char("running_user_id", { length: 36 })
+    .unique()
     .references(() => users.id),
   startedAt: timestamp("started_at").notNull(),
   stoppedAt: timestamp("stopped_at"),

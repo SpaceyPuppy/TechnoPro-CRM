@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
@@ -15,7 +16,6 @@ class CustomerDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final customerAsync = ref.watch(customerDetailProvider(id));
-    final ticketsAsync = ref.watch(customerTicketsProvider(id));
 
     return customerAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -68,6 +68,7 @@ class _CustomerDetailView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ticketsAsync = ref.watch(customerTicketsProvider(id));
+    final canManage = ref.watch(authProvider).user?.role.canManage ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -77,11 +78,12 @@ class _CustomerDetailView extends ConsumerWidget {
             icon: const Icon(Icons.edit),
             onPressed: () => context.go('/customers/$id/edit'),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            color: Colors.red,
-            onPressed: () => _deleteCustomer(context, ref),
-          ),
+          if (canManage)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              color: Colors.red,
+              onPressed: () => _deleteCustomer(context, ref),
+            ),
         ],
       ),
       body: ListView(
@@ -134,8 +136,15 @@ class _InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (customer.company?.isNotEmpty == true)
+              _Row('Business', customer.company!),
+            if (customer.firstName?.isNotEmpty == true ||
+                customer.lastName?.isNotEmpty == true)
+              _Row('Contact', customer.displayName),
             if (customer.phone != null) _Row('Phone', customer.phone!),
             if (customer.email != null) _Row('Email', customer.email!),
+            if (customer.address?.isNotEmpty == true)
+              _Row('Address', customer.address!),
             if (customer.notes != null && customer.notes!.isNotEmpty) ...[
               const Divider(height: 24),
               Text('Notes', style: Theme.of(context).textTheme.labelMedium),

@@ -409,13 +409,17 @@ class _StatusChip extends StatelessWidget {
   final TicketStatus status;
 
   ({Color bg, Color text}) get _colors => switch (status) {
-        TicketStatus.open =>
+        TicketStatus.new_ ||
+        TicketStatus.triage ||
+        TicketStatus.scheduled =>
           (bg: const Color(0xFFDBEAFE), text: const Color(0xFF1D4ED8)),
         TicketStatus.inProgress =>
           (bg: const Color(0xFFFEF3C7), text: const Color(0xFFD97706)),
-        TicketStatus.waitingParts ||
-        TicketStatus.waitingCustomer =>
+        TicketStatus.awaitingParts ||
+        TicketStatus.awaitingCustomer =>
           (bg: const Color(0xFFEDE9FE), text: const Color(0xFF7C3AED)),
+        TicketStatus.ready =>
+          (bg: const Color(0xFFCCFBF1), text: const Color(0xFF0F766E)),
         TicketStatus.resolved =>
           (bg: const Color(0xFFDCFCE7), text: const Color(0xFF16A34A)),
         TicketStatus.closed ||

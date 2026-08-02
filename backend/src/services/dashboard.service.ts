@@ -1,5 +1,7 @@
-import { eq, and, lt, gte, sql, desc } from "drizzle-orm";
-import { getDb, schema } from "../db/index";
+﻿import { eq, and, lt, gte, sql, desc } from "drizzle-orm";
+import { getDb, schema } from "../db/index.js";
+import { isNull, isNotNull } from "drizzle-orm";
+import { decimalToHundredths, hundredthsToDecimal } from "../utils/money.js";
 
 export async function getDashboardStats(userId: string, userRole: string) {
   const db = getDb();
@@ -10,7 +12,15 @@ export async function getDashboardStats(userId: string, userRole: string) {
   const tomorrowStart = new Date(todayStart);
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);
 
-  const [ticketCountRows, overdueResult, todayTicketsResult, todayRevenueResult, recentEvents] =
+  const [
+    ticketCountRows,
+    overdueResult,
+    unassignedResult,
+    unbilledResult,
+    todayTicketsResult,
+    todayRevenueResult,
+    recentEvents,
+  ] =
     await Promise.all([
       // Ticket counts by status
       db
@@ -28,7 +38,27 @@ export async function getDashboardStats(userId: string, userRole: string) {
         .where(
           and(
             lt(schema.tickets.dueDate, now),
-            sql`${schema.tickets.status} NOT IN ('closed', 'cancelled')`,
+            sql`${schema.tickets.status} NOT IN ('resolved', 'closed', 'cancelled')`,
+          ),
+        ),
+
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.tickets)
+        .where(
+          and(
+            isNull(schema.tickets.assignedToId),
+            sql`${schema.tickets.status} NOT IN ('resolved', 'closed', 'cancelled')`,
+          ),
+        ),
+
+      db
+        .select({ count: sql<number>`count(DISTINCT ${schema.timeEntries.ticketId})` })
+        .from(schema.timeEntries)
+        .where(
+          and(
+            isNotNull(schema.timeEntries.stoppedAt),
+            isNull(schema.timeEntries.billedAs),
           ),
         ),
 
@@ -45,7 +75,9 @@ export async function getDashboardStats(userId: string, userRole: string) {
 
       // Today's revenue
       db
-        .select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
+        .select({
+          total: sql<string>`COALESCE(SUM(CASE WHEN ${schema.payments.type} = 'refund' THEN -${schema.payments.amount} ELSE ${schema.payments.amount} END), 0)`,
+        })
         .from(schema.payments)
         .where(
           and(
@@ -80,7 +112,7 @@ export async function getDashboardStats(userId: string, userRole: string) {
       .where(
         and(
           eq(schema.tickets.assignedToId, userId),
-          sql`${schema.tickets.status} NOT IN ('closed', 'cancelled')`,
+          sql`${schema.tickets.status} NOT IN ('resolved', 'closed', 'cancelled')`,
         ),
       )
       .orderBy(desc(schema.tickets.createdAt))
@@ -93,8 +125,12 @@ export async function getDashboardStats(userId: string, userRole: string) {
       count: Number(r.count),
     })),
     overdueCount: Number(overdueResult[0]?.count ?? 0),
+    unassignedCount: Number(unassignedResult[0]?.count ?? 0),
+    unbilledCount: Number(unbilledResult[0]?.count ?? 0),
     todayNewTickets: Number(todayTicketsResult[0]?.count ?? 0),
-    todayRevenue: Number(todayRevenueResult[0]?.total ?? 0).toFixed(2),
+    todayRevenue: hundredthsToDecimal(
+      decimalToHundredths(String(todayRevenueResult[0]?.total ?? "0.00")),
+    ),
     recentEvents: recentEvents.map((e) => ({
       ...e,
       createdAt: e.createdAt.toISOString(),
@@ -105,12 +141,14 @@ export async function getDashboardStats(userId: string, userRole: string) {
       customerId: t.customerId,
       deviceId: t.deviceId,
       assignedToId: t.assignedToId,
+      ticketType: t.ticketType,
       status: t.status,
       priority: t.priority,
       summary: t.summary,
       description: t.description,
       diagnosis: t.diagnosis,
       resolution: t.resolution,
+      scheduledAt: t.scheduledAt?.toISOString() ?? null,
       dueDate: t.dueDate?.toISOString() ?? null,
       createdAt: t.createdAt.toISOString(),
       updatedAt: t.updatedAt.toISOString(),

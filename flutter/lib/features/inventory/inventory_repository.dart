@@ -10,6 +10,12 @@ class InventoryRepository {
 
   final Ref _ref;
 
+  void _requireConnection() {
+    if (!_ref.read(serverReachableProvider)) {
+      throw StateError('A server connection is required to save changes.');
+    }
+  }
+
   /// Returns a stream of all inventory items from the local database.
   Stream<List<InventoryItemDb>> watchAll() =>
       _ref.read(databaseProvider).watchAllInventory();
@@ -23,6 +29,7 @@ class InventoryRepository {
 
   /// Creates a new inventory item. If offline, queues; if online, POSTs immediately.
   Future<String> create(Map<String, dynamic> payload) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       return _ref.read(queueManagerProvider).queueCreate('inventory', payload);
     } else {
@@ -34,6 +41,7 @@ class InventoryRepository {
 
   /// Updates an inventory item. If offline, queues; if online, PATCHes immediately.
   Future<void> update(String id, Map<String, dynamic> payload) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       await _ref.read(queueManagerProvider).queueUpdate('inventory', id, payload);
     } else {
@@ -59,6 +67,7 @@ class InventoryRepository {
 
   /// Deletes an inventory item. If offline, queues; if online, DELETEs immediately.
   Future<void> delete(String id) async {
+    _requireConnection();
     if (!_ref.read(serverReachableProvider)) {
       await _ref.read(queueManagerProvider).queueDelete('inventory', id);
     } else {

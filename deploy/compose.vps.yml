@@ -1,0 +1,185 @@
+name: technopro
+
+services:
+  db:
+    image: mysql:8.4.10
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:?Set DB_NAME in deploy/.env}
+      MYSQL_USER: ${DB_USER:?Set DB_USER in deploy/.env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in deploy/.env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in deploy/.env}
+      # Root is reachable only on the private backend network and is used by
+      # the explicit restore job; the API receives only the app credentials.
+      MYSQL_ROOT_HOST: "%"
+      TZ: ${TZ:-Australia/Sydney}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -u"$$MYSQL_USER" -p"$$MYSQL_PASSWORD" --silent
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    image: ${TECHNOPRO_MIGRATION_IMAGE:-ghcr.io/spaceypuppy/technopro-crm-migration}:${TECHNOPRO_VERSION:?Set TECHNOPRO_VERSION in deploy/.env}
+    pull_policy: always
+    restart: "no"
+    environment: &api-environment
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:?Set DB_NAME in deploy/.env}
+      DB_USER: ${DB_USER:?Set DB_USER in deploy/.env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in deploy/.env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/.env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-12h}
+      CORS_ORIGIN: https://${TECHNOPRO_DOMAIN:?Set TECHNOPRO_DOMAIN in deploy/.env}
+      UPLOAD_DIR: /app/backend/uploads
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
+      TZ: ${TZ:-Australia/Sydney}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    image: ${TECHNOPRO_API_IMAGE:-ghcr.io/spaceypuppy/technopro-crm-api}:${TECHNOPRO_VERSION:?Set TECHNOPRO_VERSION in deploy/.env}
+    pull_policy: always
+    restart: unless-stopped
+    environment: *api-environment
+    volumes:
+      - uploads:/app/backend/uploads
+    expose:
+      - "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+      - proxy
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    environment:
+      TECHNOPRO_DOMAIN: ${TECHNOPRO_DOMAIN:?Set TECHNOPRO_DOMAIN in deploy/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - proxy
+    security_opt:
+      - no-new-privileges:true
+
+  admin:
+    image: ${TECHNOPRO_API_IMAGE:-ghcr.io/spaceypuppy/technopro-crm-api}:${TECHNOPRO_VERSION:?Set TECHNOPRO_VERSION in deploy/.env}
+    pull_policy: always
+    profiles: ["tools"]
+    command: ["npm", "run", "create-admin"]
+    environment:
+      <<: *api-environment
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_NAME: ${ADMIN_NAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      - uploads:/app/backend/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+
+  backup:
+    image: mysql:8.4.10
+    profiles: ["tools"]
+    entrypoint: ["/bin/bash", "/scripts/backup.sh"]
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:?Set DB_NAME in deploy/.env}
+      # The backup must include all schema objects. This tools-only container
+      # receives root credentials; the long-running API never does.
+      DB_USER: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in deploy/.env}
+      TZ: ${TZ:-Australia/Sydney}
+    volumes:
+      - uploads:/uploads:ro
+      - ${BACKUP_PATH:?Set BACKUP_PATH in deploy/.env}:/backups
+      - ./scripts:/scripts:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+  restore:
+    image: mysql:8.4.10
+    profiles: ["tools"]
+    entrypoint: ["/bin/bash", "/scripts/restore.sh"]
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:?Set DB_NAME in deploy/.env}
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in deploy/.env}
+      BACKUP_SET: ${BACKUP_SET:-}
+      UPLOAD_UID: ${UPLOAD_UID:-1000}
+      UPLOAD_GID: ${UPLOAD_GID:-1000}
+    volumes:
+      - uploads:/uploads
+      - ${BACKUP_PATH:?Set BACKUP_PATH in deploy/.env}:/backups:ro
+      - ./scripts:/scripts:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  db_data:
+  uploads:
+  caddy_data:
+  caddy_config:
+
+networks:
+  backend:
+    internal: true
+  proxy:

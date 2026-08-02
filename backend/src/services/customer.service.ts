@@ -1,6 +1,6 @@
-import { eq, like, or, sql } from "drizzle-orm";
-import { getDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+﻿import { eq, like, or, sql } from "drizzle-orm";
+import { getDb, schema } from "../db/index.js";
+import { generateId } from "../utils/id.js";
 import type { CreateCustomerRequest, UpdateCustomerRequest } from "@technopro/shared";
 
 export async function listCustomers(options: {
@@ -51,7 +51,9 @@ function buildDisplayName(data: {
   name?: string;
   firstName?: string;
   lastName?: string;
+  company?: string;
 }): string {
+  if (data.company?.trim()) return data.company.trim();
   if (data.firstName || data.lastName) {
     return [data.firstName, data.lastName].filter(Boolean).join(" ");
   }
@@ -69,6 +71,7 @@ export async function createCustomer(data: CreateCustomerRequest) {
     company: data.company ?? null,
     email: data.email ?? null,
     phone: data.phone ?? null,
+    address: data.address ?? null,
     notes: data.notes ?? null,
   });
   return getCustomerById(id);
@@ -80,19 +83,25 @@ export async function updateCustomer(id: string, data: UpdateCustomerRequest) {
   if (!existing) return null;
 
   const updates: Record<string, unknown> = {};
-  if (data.firstName !== undefined || data.lastName !== undefined) {
+  if (
+    data.name !== undefined ||
+    data.firstName !== undefined ||
+    data.lastName !== undefined ||
+    data.company !== undefined
+  ) {
     updates.firstName = data.firstName ?? existing.firstName;
     updates.lastName = data.lastName ?? existing.lastName;
+    updates.company = data.company ?? existing.company;
     updates.name = buildDisplayName({
+      name: data.name ?? existing.name,
       firstName: (updates.firstName as string | null) ?? undefined,
       lastName: (updates.lastName as string | null) ?? undefined,
+      company: (updates.company as string | null) ?? undefined,
     });
-  } else if (data.name !== undefined) {
-    updates.name = data.name;
   }
-  if (data.company !== undefined) updates.company = data.company;
   if (data.email !== undefined) updates.email = data.email;
   if (data.phone !== undefined) updates.phone = data.phone;
+  if (data.address !== undefined) updates.address = data.address;
   if (data.notes !== undefined) updates.notes = data.notes;
 
   if (Object.keys(updates).length > 0) {

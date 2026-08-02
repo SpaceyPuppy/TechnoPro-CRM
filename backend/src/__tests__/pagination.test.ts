@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parsePagination, paginationMeta } from "../utils/pagination";
+﻿import { describe, it, expect } from "vitest";
+import { parsePagination, paginationMeta } from "../utils/pagination.js";
 
 describe("pagination", () => {
   describe("parsePagination", () => {

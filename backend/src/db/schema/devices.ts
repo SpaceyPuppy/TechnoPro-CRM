@@ -1,5 +1,5 @@
-import { char, mysqlTable, varchar, text, timestamp } from "drizzle-orm/mysql-core";
-import { customers } from "./customers";
+﻿import { char, mysqlTable, varchar, text, timestamp } from "drizzle-orm/mysql-core";
+import { customers } from "./customers.js";
 
 export const devices = mysqlTable("devices", {
   id: char("id", { length: 36 }).primaryKey(),

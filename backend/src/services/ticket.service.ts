@@ -1,6 +1,7 @@
-import { eq, like, and, or, sql, desc } from "drizzle-orm";
-import { getDb, schema } from "../db/index";
-import { generateId } from "../utils/id";
+﻿import { eq, like, and, or, sql, desc } from "drizzle-orm";
+import { getDb, schema } from "../db/index.js";
+import { getTableColumns } from "drizzle-orm";
+import { generateId } from "../utils/id.js";
 import type { CreateTicketRequest, UpdateTicketRequest, TicketStatus } from "@technopro/shared";
 import { createInvoiceWithItems } from "./invoice.service.js";
 
@@ -74,6 +75,59 @@ export async function getTicketById(id: string) {
   return results[0] ?? null;
 }
 
+export async function getTicketDetails(id: string) {
+  const db = getDb();
+  const [ticket] = await db
+    .select({
+      ...getTableColumns(schema.tickets),
+      customer: {
+        id: schema.customers.id,
+        name: schema.customers.name,
+        firstName: schema.customers.firstName,
+        lastName: schema.customers.lastName,
+        company: schema.customers.company,
+        email: schema.customers.email,
+        phone: schema.customers.phone,
+        address: schema.customers.address,
+        notes: schema.customers.notes,
+        createdAt: schema.customers.createdAt,
+        updatedAt: schema.customers.updatedAt,
+      },
+      device: {
+        id: schema.devices.id,
+        customerId: schema.devices.customerId,
+        type: schema.devices.type,
+        brand: schema.devices.brand,
+        model: schema.devices.model,
+        serial: schema.devices.serial,
+        imei: schema.devices.imei,
+        password: schema.devices.password,
+        patternLock: schema.devices.patternLock,
+        storage: schema.devices.storage,
+        color: schema.devices.color,
+        carrier: schema.devices.carrier,
+        notes: schema.devices.notes,
+        createdAt: schema.devices.createdAt,
+        updatedAt: schema.devices.updatedAt,
+      },
+      assignedTo: {
+        id: schema.users.id,
+        email: schema.users.email,
+        name: schema.users.name,
+        role: schema.users.role,
+        active: schema.users.active,
+        createdAt: schema.users.createdAt,
+      },
+    })
+    .from(schema.tickets)
+    .innerJoin(schema.customers, eq(schema.tickets.customerId, schema.customers.id))
+    .leftJoin(schema.devices, eq(schema.tickets.deviceId, schema.devices.id))
+    .leftJoin(schema.users, eq(schema.tickets.assignedToId, schema.users.id))
+    .where(eq(schema.tickets.id, id))
+    .limit(1);
+  return ticket ?? null;
+}
+
 export async function createTicket(data: CreateTicketRequest, createdByUserId: string) {
   const db = getDb();
   const id = generateId();
@@ -104,9 +158,12 @@ export async function createTicket(data: CreateTicketRequest, createdByUserId: s
     customerId: data.customerId,
     deviceId,
     assignedToId: data.assignedToId ?? null,
+    ticketType: data.ticketType ?? "repair",
     priority: data.priority ?? "normal",
     summary: data.summary,
     description: data.description ?? null,
+    serviceLocation: data.serviceLocation ?? null,
+    scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
     dueDate: data.dueDate ? new Date(data.dueDate) : null,
   });
 
@@ -141,12 +198,17 @@ export async function updateTicket(
   const updates: Record<string, unknown> = {};
   if (data.summary !== undefined) updates.summary = data.summary;
   if (data.description !== undefined) updates.description = data.description;
+  if (data.serviceLocation !== undefined) updates.serviceLocation = data.serviceLocation;
   if (data.diagnosis !== undefined) updates.diagnosis = data.diagnosis;
   if (data.resolution !== undefined) updates.resolution = data.resolution;
+  if (data.ticketType !== undefined) updates.ticketType = data.ticketType;
   if (data.priority !== undefined) updates.priority = data.priority;
+  if (data.scheduledAt !== undefined) {
+    updates.scheduledAt = data.scheduledAt ? new Date(data.scheduledAt) : null;
+  }
   if (data.dueDate !== undefined) updates.dueDate = data.dueDate ? new Date(data.dueDate) : null;
 
-  // Status change — auto-create event
+  // Status change â€” auto-create event
   if (data.status !== undefined && data.status !== existing.status) {
     updates.status = data.status;
     await createTicketEvent(
@@ -157,7 +219,7 @@ export async function updateTicket(
     );
   }
 
-  // Assignment change — auto-create event
+  // Assignment change â€” auto-create event
   if (data.assignedToId !== undefined && data.assignedToId !== existing.assignedToId) {
     updates.assignedToId = data.assignedToId;
     const msg = data.assignedToId
@@ -182,7 +244,17 @@ export async function getTicketEvents(ticketId: string) {
     .orderBy(desc(schema.ticketEvents.createdAt));
 }
 
-async function createTicketEvent(
+export async function listTicketEvents(page: number, pageSize: number) {
+  const db = getDb();
+  return db
+    .select()
+    .from(schema.ticketEvents)
+    .orderBy(desc(schema.ticketEvents.createdAt))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+}
+
+export async function createTicketEvent(
   ticketId: string,
   userId: string,
   eventType: "status_change" | "note" | "assignment" | "system",
@@ -200,4 +272,103 @@ async function createTicketEvent(
 
 export async function addTicketNote(ticketId: string, userId: string, content: string) {
   await createTicketEvent(ticketId, userId, "note", content);
+}
+
+export async function listTicketChecklist(ticketId: string) {
+  const db = getDb();
+  return db
+    .select()
+    .from(schema.ticketChecklistItems)
+    .where(eq(schema.ticketChecklistItems.ticketId, ticketId))
+    .orderBy(schema.ticketChecklistItems.sortOrder, schema.ticketChecklistItems.createdAt);
+}
+
+export async function addTicketChecklistItem(
+  ticketId: string,
+  userId: string,
+  content: string,
+) {
+  const db = getDb();
+  const id = generateId();
+  const [{ nextOrder }] = await db
+    .select({
+      nextOrder: sql<number>`COALESCE(MAX(${schema.ticketChecklistItems.sortOrder}), -1) + 1`,
+    })
+    .from(schema.ticketChecklistItems)
+    .where(eq(schema.ticketChecklistItems.ticketId, ticketId));
+  await db.insert(schema.ticketChecklistItems).values({
+    id,
+    ticketId,
+    content,
+    sortOrder: Number(nextOrder ?? 0),
+  });
+  await createTicketEvent(ticketId, userId, "system", `Checklist item added: ${content}`);
+  const [created] = await db
+    .select()
+    .from(schema.ticketChecklistItems)
+    .where(eq(schema.ticketChecklistItems.id, id))
+    .limit(1);
+  return created!;
+}
+
+export async function updateTicketChecklistItem(
+  ticketId: string,
+  itemId: string,
+  userId: string,
+  updates: { content?: string; completed?: boolean },
+) {
+  const db = getDb();
+  const [existing] = await db
+    .select()
+    .from(schema.ticketChecklistItems)
+    .where(
+      and(
+        eq(schema.ticketChecklistItems.id, itemId),
+        eq(schema.ticketChecklistItems.ticketId, ticketId),
+      ),
+    )
+    .limit(1);
+  if (!existing) return null;
+  await db
+    .update(schema.ticketChecklistItems)
+    .set(updates)
+    .where(eq(schema.ticketChecklistItems.id, itemId));
+  if (updates.completed !== undefined && updates.completed !== existing.completed) {
+    await createTicketEvent(
+      ticketId,
+      userId,
+      "system",
+      `Checklist item ${updates.completed ? "completed" : "reopened"}: ${existing.content}`,
+    );
+  }
+  const [updated] = await db
+    .select()
+    .from(schema.ticketChecklistItems)
+    .where(eq(schema.ticketChecklistItems.id, itemId))
+    .limit(1);
+  return updated!;
+}
+
+export async function deleteTicketChecklistItem(
+  ticketId: string,
+  itemId: string,
+  userId: string,
+) {
+  const db = getDb();
+  const [existing] = await db
+    .select()
+    .from(schema.ticketChecklistItems)
+    .where(
+      and(
+        eq(schema.ticketChecklistItems.id, itemId),
+        eq(schema.ticketChecklistItems.ticketId, ticketId),
+      ),
+    )
+    .limit(1);
+  if (!existing) return false;
+  await db
+    .delete(schema.ticketChecklistItems)
+    .where(eq(schema.ticketChecklistItems.id, itemId));
+  await createTicketEvent(ticketId, userId, "system", `Checklist item removed: ${existing.content}`);
+  return true;
 }

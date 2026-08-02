@@ -21,10 +21,13 @@ extension UserRolePermissions on UserRole {
 }
 
 enum TicketStatus {
-  open('open'),
+  new_('new'),
+  triage('triage'),
+  scheduled('scheduled'),
   inProgress('in_progress'),
-  waitingParts('waiting_parts'),
-  waitingCustomer('waiting_customer'),
+  awaitingCustomer('awaiting_customer'),
+  awaitingParts('awaiting_parts'),
+  ready('ready'),
   resolved('resolved'),
   closed('closed'),
   cancelled('cancelled');
@@ -32,14 +35,27 @@ enum TicketStatus {
   const TicketStatus(this.value);
   final String value;
 
-  static TicketStatus fromString(String s) =>
-      TicketStatus.values.firstWhere((e) => e.value == s, orElse: () => TicketStatus.open);
+  static TicketStatus fromString(String value) {
+    final migrated = switch (value) {
+      'open' => 'new',
+      'waiting_customer' => 'awaiting_customer',
+      'waiting_parts' => 'awaiting_parts',
+      _ => value,
+    };
+    return TicketStatus.values.firstWhere(
+      (status) => status.value == migrated,
+      orElse: () => TicketStatus.new_,
+    );
+  }
 
   String get label => switch (this) {
-        TicketStatus.open => 'Open',
+        TicketStatus.new_ => 'New',
+        TicketStatus.triage => 'Triage',
+        TicketStatus.scheduled => 'Scheduled',
         TicketStatus.inProgress => 'In Progress',
-        TicketStatus.waitingParts => 'Waiting Parts',
-        TicketStatus.waitingCustomer => 'Waiting Customer',
+        TicketStatus.awaitingCustomer => 'Awaiting Customer',
+        TicketStatus.awaitingParts => 'Awaiting Parts',
+        TicketStatus.ready => 'Ready',
         TicketStatus.resolved => 'Resolved',
         TicketStatus.closed => 'Closed',
         TicketStatus.cancelled => 'Cancelled',
@@ -48,10 +64,13 @@ enum TicketStatus {
   // Primary color for the status
   Color get color {
     return switch (this) {
-      TicketStatus.open => const Color(0xFF3B82F6), // Blue
+      TicketStatus.new_ => const Color(0xFF3B82F6), // Blue
+      TicketStatus.triage => const Color(0xFF0EA5E9), // Sky
+      TicketStatus.scheduled => const Color(0xFF6366F1), // Indigo
       TicketStatus.inProgress => const Color(0xFF8B5CF6), // Purple
-      TicketStatus.waitingParts => const Color(0xFFF59E0B), // Amber
-      TicketStatus.waitingCustomer => const Color(0xFFEC4899), // Pink
+      TicketStatus.awaitingCustomer => const Color(0xFFEC4899), // Pink
+      TicketStatus.awaitingParts => const Color(0xFFF59E0B), // Amber
+      TicketStatus.ready => const Color(0xFF14B8A6), // Teal
       TicketStatus.resolved => const Color(0xFF10B981), // Emerald
       TicketStatus.closed => const Color(0xFF64748B), // Slate
       TicketStatus.cancelled => const Color(0xFFEF4444), // Red
@@ -61,15 +80,38 @@ enum TicketStatus {
   // Light background for the status card
   Color get bgColor {
     return switch (this) {
-      TicketStatus.open => const Color(0xFFEFF6FF), // Blue 50
+      TicketStatus.new_ => const Color(0xFFEFF6FF), // Blue 50
+      TicketStatus.triage => const Color(0xFFF0F9FF), // Sky 50
+      TicketStatus.scheduled => const Color(0xFFEEF2FF), // Indigo 50
       TicketStatus.inProgress => const Color(0xFFFAF5FF), // Purple 50
-      TicketStatus.waitingParts => const Color(0xFFFEFCE8), // Amber 50
-      TicketStatus.waitingCustomer => const Color(0xFFFCE7F3), // Pink 50
+      TicketStatus.awaitingCustomer => const Color(0xFFFCE7F3), // Pink 50
+      TicketStatus.awaitingParts => const Color(0xFFFEFCE8), // Amber 50
+      TicketStatus.ready => const Color(0xFFF0FDFA), // Teal 50
       TicketStatus.resolved => const Color(0xFFECFDF5), // Emerald 50
       TicketStatus.closed => const Color(0xFFF1F5F9), // Slate 50
       TicketStatus.cancelled => const Color(0xFFFEE2E2), // Red 50
     };
   }
+}
+
+enum TicketType {
+  repair('repair'),
+  onsite('onsite'),
+  remote('remote');
+
+  const TicketType(this.value);
+  final String value;
+
+  static TicketType fromString(String value) => TicketType.values.firstWhere(
+        (type) => type.value == value,
+        orElse: () => TicketType.repair,
+      );
+
+  String get label => switch (this) {
+        TicketType.repair => 'Repair',
+        TicketType.onsite => 'Onsite',
+        TicketType.remote => 'Remote',
+      };
 }
 
 enum TicketPriority {
