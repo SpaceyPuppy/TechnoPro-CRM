@@ -14,7 +14,7 @@ jobs:
   export:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Create encrypted recovery archive
         shell: bash
         env:
@@ -51,7 +51,7 @@ jobs:
             -outform DER \
             -out "$GITHUB_WORKSPACE/technopro-android-signing-recovery.cms" \
             .github/recovery/technopro-signing-recovery-certificate.pem
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: technopro-android-signing-recovery
           path: technopro-android-signing-recovery.cms
