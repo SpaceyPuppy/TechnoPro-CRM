@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
+import '../dashboard/dashboard_provider.dart';
 import '../invoices/invoices_provider.dart';
 import 'ticket_attachments.dart';
 import 'ticket_checklist.dart';
@@ -39,6 +41,8 @@ class TicketDetailScreen extends ConsumerWidget {
           children: [
             _InfoCard(ticket: ticket),
             const SizedBox(height: 16),
+            _QuickStatusControl(ticket: ticket),
+            const SizedBox(height: 16),
             _InvoiceSection(ticketId: id),
             const SizedBox(height: 16),
             TimeEntryTimerWidget(ticketId: id),
@@ -64,6 +68,157 @@ class TicketDetailScreen extends ConsumerWidget {
                           .toList(),
                     ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickStatusControl extends ConsumerStatefulWidget {
+  const _QuickStatusControl({required this.ticket});
+
+  final TicketModel ticket;
+
+  @override
+  ConsumerState<_QuickStatusControl> createState() => _QuickStatusControlState();
+}
+
+class _QuickStatusControlState extends ConsumerState<_QuickStatusControl> {
+  bool _updating = false;
+
+  bool _isTerminal(TicketStatus status) =>
+      status == TicketStatus.resolved ||
+      status == TicketStatus.closed ||
+      status == TicketStatus.cancelled;
+
+  Future<bool> _confirmTerminalTransition(TicketStatus status) async {
+    final action = status == TicketStatus.resolved ? 'resolve' : status.label.toLowerCase();
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text('${status.label} ticket?'),
+            content: Text(
+              'Are you sure you want to $action ${widget.ticket.ticketNumber}? '
+              'This is a terminal ticket status.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(status == TicketStatus.resolved ? 'Resolve' : status.label),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _setStatus(TicketStatus status) async {
+    if (_updating || status == widget.ticket.status) return;
+    if (_isTerminal(status) && !(await _confirmTerminalTransition(status))) return;
+
+    setState(() => _updating = true);
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.patch<void>(
+        '/tickets/${widget.ticket.id}',
+        data: {'status': status.value},
+      );
+      ref.invalidate(ticketDetailProvider(widget.ticket.id));
+      ref.invalidate(ticketEventsProvider(widget.ticket.id));
+      ref.read(ticketListProvider.notifier).refresh();
+      ref.read(dashboardProvider.notifier).refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ticket marked ${status.label.toLowerCase()}')),
+        );
+      }
+    } on DioException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update ticket: ${apiErrorMessage(error)}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _updating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canChangeStatus = ref.watch(authProvider).user?.role.canTech ?? false;
+    if (!canChangeStatus) return const SizedBox.shrink();
+
+    final canResolve = widget.ticket.status != TicketStatus.resolved &&
+        widget.ticket.status != TicketStatus.closed &&
+        widget.ticket.status != TicketStatus.cancelled;
+    final canClose = widget.ticket.status != TicketStatus.closed &&
+        widget.ticket.status != TicketStatus.cancelled;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Status', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Chip(label: Text(widget.ticket.status.label)),
+                const Spacer(),
+                PopupMenuButton<TicketStatus>(
+                  enabled: !_updating,
+                  tooltip: 'Change status',
+                  onSelected: _setStatus,
+                  itemBuilder: (_) => TicketStatus.values
+                      .where((status) => status != widget.ticket.status)
+                      .map(
+                        (status) => PopupMenuItem(
+                          value: status,
+                          child: Text(status.label),
+                        ),
+                      )
+                      .toList(),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.swap_horiz, size: 18),
+                        SizedBox(width: 4),
+                        Text('Change'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (canResolve || canClose) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (canResolve)
+                    FilledButton.icon(
+                      onPressed: _updating ? null : () => _setStatus(TicketStatus.resolved),
+                      icon: const Icon(Icons.task_alt, size: 18),
+                      label: const Text('Resolve'),
+                    ),
+                  if (canClose)
+                    OutlinedButton.icon(
+                      onPressed: _updating ? null : () => _setStatus(TicketStatus.closed),
+                      icon: const Icon(Icons.close, size: 18),
+                      label: const Text('Close'),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
