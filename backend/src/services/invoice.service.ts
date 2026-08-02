@@ -601,6 +601,22 @@ export async function removeLineItem(invoiceId: string, lineItemId: string) {
 
 // --- Payments ---
 
+export function normalisePaymentRequest(
+  data: CreatePaymentRequest & { type?: "deposit" | "payment" | "refund" },
+) {
+  const amountHundredths = decimalToHundredths(data.amount);
+  if (amountHundredths <= 0n) {
+    throw new InvoiceConflictError("Payment amount must be greater than zero", "INVALID_PAYMENT");
+  }
+  return {
+    amountHundredths,
+    amount: hundredthsToDecimal(amountHundredths),
+    method: data.method,
+    type: data.type ?? "payment",
+    reference: data.reference?.trim() || null,
+  };
+}
+
 export async function addPayment(
   invoiceId: string,
   data: CreatePaymentRequest & { type?: "deposit" | "payment" | "refund" },
@@ -608,25 +624,29 @@ export async function addPayment(
   idempotencyKey?: string,
 ) {
   const db = getDb();
-  const paymentType = data.type ?? "payment";
-  const key = idempotencyKey?.trim() || null;
-  if (key && key.length > 128) {
+  const key = idempotencyKey?.trim();
+  if (!key) {
+    throw new InvoiceConflictError(
+      "Idempotency-Key is required when recording a payment or refund",
+      "IDEMPOTENCY_KEY_REQUIRED",
+    );
+  }
+  if (key.length > 128) {
     throw new InvoiceConflictError(
       "Idempotency-Key must be at most 128 characters",
       "INVALID_IDEMPOTENCY_KEY",
     );
   }
 
-  const amountHundredths = decimalToHundredths(data.amount);
-  if (amountHundredths <= 0n) {
-    throw new InvoiceConflictError("Payment amount must be greater than zero", "INVALID_PAYMENT");
-  }
+  const requestPayment = normalisePaymentRequest(data);
+  const { amountHundredths, amount, reference, type: paymentType } = requestPayment;
 
-  const matchesRequest = (payment: typeof schema.payments.$inferSelect) =>
-    payment.invoiceId === invoiceId &&
-    payment.amount === data.amount &&
-    payment.method === data.method &&
-    payment.type === paymentType;
+  const matchesRequest = (storedPayment: typeof schema.payments.$inferSelect) =>
+    storedPayment.invoiceId === invoiceId &&
+    storedPayment.amount === amount &&
+    storedPayment.method === requestPayment.method &&
+    storedPayment.type === paymentType &&
+    storedPayment.reference === reference;
 
   let outcome: { paymentId: string; replayed: boolean } | null;
   try {
@@ -646,22 +666,20 @@ export async function addPayment(
         throw new InvoiceConflictError("Payments cannot be recorded against a void invoice", "INVOICE_VOID");
       }
 
-      if (key) {
-        const existingRows = await tx
-          .select()
-          .from(schema.payments)
-          .where(eq(schema.payments.idempotencyKey, key))
-          .limit(1);
-        const existing = existingRows[0];
-        if (existing) {
-          if (!matchesRequest(existing)) {
-            throw new InvoiceConflictError(
-              "Idempotency-Key was already used for a different payment",
-              "IDEMPOTENCY_CONFLICT",
-            );
-          }
-          return { paymentId: existing.id, replayed: true };
+      const existingRows = await tx
+        .select()
+        .from(schema.payments)
+        .where(eq(schema.payments.idempotencyKey, key))
+        .limit(1);
+      const existing = existingRows[0];
+      if (existing) {
+        if (!matchesRequest(existing)) {
+          throw new InvoiceConflictError(
+            "Idempotency-Key was already used for a different payment",
+            "IDEMPOTENCY_CONFLICT",
+          );
         }
+        return { paymentId: existing.id, replayed: true };
       }
 
       const priorPayments = await tx
@@ -692,10 +710,10 @@ export async function addPayment(
       await tx.insert(schema.payments).values({
         id: paymentId,
         invoiceId,
-        amount: data.amount,
+        amount,
         method: data.method,
         type: paymentType,
-        reference: data.reference ?? null,
+        reference,
         idempotencyKey: key,
         createdByUserId: userId,
         paidAt: data.paidAt ? new Date(data.paidAt) : new Date(),
