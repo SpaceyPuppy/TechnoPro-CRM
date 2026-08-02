@@ -5,6 +5,7 @@ import {
   getTicketDetails,
   createTicket,
   updateTicket,
+  TicketConflictError,
   getTicketEvents,
   listTicketEvents,
   addTicketNote,
@@ -15,6 +16,7 @@ import {
 } from "../services/ticket.service.js";
 import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import type { CreateTicketRequest, UpdateTicketRequest, CreateTicketEventRequest } from "@technopro/shared";
+import { rolePolicies } from "../access-control.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getTicketById>>>) {
   return {
@@ -256,7 +258,7 @@ export async function ticketRoutes(app: FastifyInstance) {
   // Create ticket
   app.post<{ Body: CreateTicketRequest }>(
     "/tickets",
-    { schema: createSchema },
+    { schema: createSchema, preHandler: app.requireRole(...rolePolicies.operations) },
     async (request, reply) => {
       const ticket = await createTicket(request.body, request.user.id);
       return reply.code(201).send({ data: toResponse(ticket!) });
@@ -266,15 +268,29 @@ export async function ticketRoutes(app: FastifyInstance) {
   // Update ticket
   app.patch<{ Params: { id: string }; Body: UpdateTicketRequest }>(
     "/tickets/:id",
-    { schema: updateSchema },
+    { schema: updateSchema, preHandler: app.requireRole(...rolePolicies.operations) },
     async (request, reply) => {
-      const ticket = await updateTicket(request.params.id, request.body, request.user.id);
-      if (!ticket) {
-        return reply.code(404).send({
-          error: { code: "NOT_FOUND", message: "Ticket not found" },
-        });
+      try {
+        const ticket = await updateTicket(
+          request.params.id,
+          request.body,
+          request.user.id,
+          request.user.role,
+        );
+        if (!ticket) {
+          return reply.code(404).send({
+            error: { code: "NOT_FOUND", message: "Ticket not found" },
+          });
+        }
+        return reply.send({ data: toResponse(ticket) });
+      } catch (error) {
+        if (error instanceof TicketConflictError) {
+          return reply.code(error.statusCode).send({
+            error: { code: error.code, message: error.message },
+          });
+        }
+        throw error;
       }
-      return reply.send({ data: toResponse(ticket) });
     },
   );
 

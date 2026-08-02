@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
@@ -243,6 +244,8 @@ class _InvoiceSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final canCounter = ref.watch(authProvider).user?.role.canCounter ?? false;
+    if (!canCounter) return const SizedBox.shrink();
     final invoiceAsync = ref.watch(ticketInvoiceProvider(ticketId));
 
     return Column(

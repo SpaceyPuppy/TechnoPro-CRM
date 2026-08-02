@@ -19,6 +19,7 @@ import type {
   UpdateLineItemRequest,
   CreatePaymentRequest,
 } from "@technopro/shared";
+import { rolePolicies } from "../access-control.js";
 
 function invoiceToResponse(inv: NonNullable<Awaited<ReturnType<typeof getInvoiceById>>>) {
   return {
@@ -165,7 +166,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
   // List invoices/quotes
   app.get<{
     Querystring: { page?: number; pageSize?: number; status?: string; ticketId?: string; type?: string };
-  }>("/invoices", async (request, reply) => {
+  }>("/invoices", { preHandler: app.requireRole(...rolePolicies.counter) }, async (request, reply) => {
     const { page, pageSize } = parsePagination(request.query);
     const { rows, totalCount } = await listInvoices({
       page,
@@ -181,7 +182,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
   });
 
   // Get invoice/quote by ID
-  app.get<{ Params: { id: string } }>("/invoices/:id", async (request, reply) => {
+  app.get<{ Params: { id: string } }>("/invoices/:id", { preHandler: app.requireRole(...rolePolicies.counter) }, async (request, reply) => {
     const inv = await getInvoiceById(request.params.id);
     if (!inv) {
       return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Invoice not found" } });

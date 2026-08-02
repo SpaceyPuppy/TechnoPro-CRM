@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
@@ -193,6 +194,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.id != null;
+    final canManage = ref.watch(authProvider).user?.role.canManage ?? false;
 
     if (isEdit) {
       final ticketAsync = ref.watch(ticketDetailProvider(widget.id!));
@@ -342,11 +344,13 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  _UsersDropdown(
-                    value: _assignedToId,
-                    onChanged: (v) => setState(() => _assignedToId = v),
-                  ),
-                  const SizedBox(height: 10),
+                  if (canManage) ...[
+                    _UsersDropdown(
+                      value: _assignedToId,
+                      onChanged: (v) => setState(() => _assignedToId = v),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   _DateTimeField(
                     label: 'Scheduled For',
                     value: _scheduledAt,

@@ -2,7 +2,7 @@
 import { getDb, schema } from "../db/index.js";
 import { getTableColumns } from "drizzle-orm";
 import { generateId } from "../utils/id.js";
-import type { CreateTicketRequest, UpdateTicketRequest, TicketStatus } from "@technopro/shared";
+import type { CreateTicketRequest, UpdateTicketRequest, TicketStatus, UserRole } from "@technopro/shared";
 import { createInvoiceWithItems } from "./invoice.service.js";
 
 // Generate sequential ticket numbers: TK-000001, TK-000002, etc.
@@ -190,6 +190,7 @@ export async function updateTicket(
   id: string,
   data: UpdateTicketRequest,
   updatedByUserId: string,
+  updatedByRole: UserRole,
 ) {
   const db = getDb();
   const existing = await getTicketById(id);
@@ -210,6 +211,7 @@ export async function updateTicket(
 
   // Status change â€” auto-create event
   if (data.status !== undefined && data.status !== existing.status) {
+    assertTicketStatusTransition(existing.status, data.status, updatedByRole);
     updates.status = data.status;
     await createTicketEvent(
       id,
@@ -221,6 +223,9 @@ export async function updateTicket(
 
   // Assignment change â€” auto-create event
   if (data.assignedToId !== undefined && data.assignedToId !== existing.assignedToId) {
+    if (updatedByRole !== "manager" && updatedByRole !== "admin") {
+      throw new TicketConflictError("Only managers can change ticket assignments", "ASSIGNMENT_FORBIDDEN");
+    }
     updates.assignedToId = data.assignedToId;
     const msg = data.assignedToId
       ? `Ticket reassigned to user ${data.assignedToId}`
@@ -233,6 +238,47 @@ export async function updateTicket(
   }
 
   return getTicketById(id);
+}
+
+export class TicketConflictError extends Error {
+  readonly statusCode = 409;
+
+  constructor(message: string, readonly code: string) {
+    super(message);
+    this.name = "TicketConflictError";
+  }
+}
+
+const allowedStatusTransitions: Record<TicketStatus, readonly TicketStatus[]> = {
+  new: ["triage", "scheduled", "cancelled"],
+  triage: ["scheduled", "in_progress", "awaiting_customer", "awaiting_parts", "cancelled"],
+  scheduled: ["triage", "in_progress", "cancelled"],
+  in_progress: ["awaiting_customer", "awaiting_parts", "ready", "resolved", "cancelled"],
+  awaiting_customer: ["in_progress", "ready", "resolved", "cancelled"],
+  awaiting_parts: ["in_progress", "ready", "cancelled"],
+  ready: ["in_progress", "resolved", "closed", "cancelled"],
+  resolved: ["in_progress", "ready", "closed"],
+  closed: [],
+  cancelled: [],
+};
+
+export function assertTicketStatusTransition(
+  current: TicketStatus,
+  next: TicketStatus,
+  role: UserRole,
+) {
+  if (!allowedStatusTransitions[current].includes(next)) {
+    throw new TicketConflictError(
+      `Cannot change a ${current} ticket directly to ${next}`,
+      "INVALID_STATUS_TRANSITION",
+    );
+  }
+  if ((next === "closed" || next === "cancelled") && role !== "manager" && role !== "admin") {
+    throw new TicketConflictError(
+      "Only managers can close or cancel tickets",
+      "TERMINAL_STATUS_FORBIDDEN",
+    );
+  }
 }
 
 export async function getTicketEvents(ticketId: string) {
