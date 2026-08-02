@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   business_phone: "",
   business_email: "",
   gst_rate: "10.00",
+  tax_entry_mode: "exclusive",
   invoice_notes: "",
   labour_rate: "75.00",
 };

@@ -1,0 +1,1 @@
+ALTER TABLE `line_items` ADD `tax_treatment` varchar(10) DEFAULT 'exclusive' NOT NULL;

@@ -20,6 +20,7 @@ class _BusinessSettingsScreenState
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _gstCtrl = TextEditingController();
+  String _taxEntryMode = 'exclusive';
   final _labourRateCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
@@ -49,6 +50,7 @@ class _BusinessSettingsScreenState
     _phoneCtrl.text = s.businessPhone;
     _emailCtrl.text = s.businessEmail;
     _gstCtrl.text = s.gstRate;
+    _taxEntryMode = s.taxEntryMode;
     _labourRateCtrl.text = s.labourRate;
     _notesCtrl.text = s.invoiceNotes;
   }
@@ -64,6 +66,7 @@ class _BusinessSettingsScreenState
         'business_phone': _phoneCtrl.text.trim(),
         'business_email': _emailCtrl.text.trim(),
         'gst_rate': _gstCtrl.text.trim(),
+        'tax_entry_mode': _taxEntryMode,
         'labour_rate': _labourRateCtrl.text.trim(),
         'invoice_notes': _notesCtrl.text.trim(),
       });
@@ -190,6 +193,16 @@ class _BusinessSettingsScreenState
                 ),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'exclusive', label: Text('Prices ex GST')),
+                  ButtonSegment(value: 'inclusive', label: Text('Prices inc GST')),
+                ],
+                selected: {_taxEntryMode},
+                onSelectionChanged: (selection) =>
+                    setState(() => _taxEntryMode = selection.first),
               ),
               const SizedBox(height: 24),
               _SectionLabel('Service Defaults'),

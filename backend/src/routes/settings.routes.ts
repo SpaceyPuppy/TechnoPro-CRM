@@ -68,7 +68,7 @@ export async function settingsRoutes(app: FastifyInstance) {
       // Only allow known keys to prevent arbitrary key injection
       const allowed = new Set([
         "business_name", "business_abn", "business_address",
-        "business_phone", "business_email", "gst_rate", "invoice_notes",
+        "business_phone", "business_email", "gst_rate", "tax_entry_mode", "invoice_notes",
         "labour_rate",
       ]);
       const filtered = Object.fromEntries(
