@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import {
   attachmentDiskPath,
+  AttachmentValidationError,
   getAttachment,
   listAttachments,
   uploadAttachment,
@@ -66,7 +67,7 @@ export async function attachmentRoutes(app: FastifyInstance) {
     const file = await request.file();
     if (!file) {
       return reply.code(400).send({
-        error: { code: "BAD_REQUEST", message: "No file provided" },
+        error: { code: "ATTACHMENT_REQUIRED", message: "Choose a file to upload." },
       });
     }
 
@@ -74,8 +75,13 @@ export async function attachmentRoutes(app: FastifyInstance) {
       const attachment = await uploadAttachment(request.params.id, file, request.user.id);
       return reply.code(201).send({ data: toResponse(attachment!) });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Upload failed";
-      return reply.code(400).send({ error: { code: "BAD_REQUEST", message } });
+      if (err instanceof AttachmentValidationError) {
+        return reply.code(err.statusCode).send({ error: { code: err.code, message: err.message } });
+      }
+      request.log.error(err, "Attachment upload failed");
+      return reply.code(500).send({
+        error: { code: "ATTACHMENT_UPLOAD_FAILED", message: "The attachment could not be saved. Please try again." },
+      });
     }
   });
 

@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -71,6 +71,7 @@ class _UploadButton extends ConsumerStatefulWidget {
 
 class _UploadButtonState extends ConsumerState<_UploadButton> {
   bool _uploading = false;
+  static const _maxAttachmentBytes = 10 * 1024 * 1024;
 
   Future<void> _upload() async {
     String? filePath;
@@ -98,11 +99,25 @@ class _UploadButtonState extends ConsumerState<_UploadButton> {
 
     if (filePath == null || fileName == null) return;
 
+    final fileSize = await File(filePath).length();
+    if (fileSize > _maxAttachmentBytes) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This file is larger than the 10 MB attachment limit.')),
+        );
+      }
+      return;
+    }
+
     setState(() => _uploading = true);
     try {
       final dio = ref.read(apiClientProvider);
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: fileName,
+          contentType: _attachmentContentType(fileName),
+        ),
       });
       await dio.post(
         '/tickets/${widget.ticketId}/attachments',
@@ -112,12 +127,41 @@ class _UploadButtonState extends ConsumerState<_UploadButton> {
       widget.onUploaded();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_uploadErrorMessage(e))),
+        );
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  String _uploadErrorMessage(Object error) {
+    if (error is DioException) {
+      final data = error.response?.data;
+      final errorData = data is Map ? data['error'] : null;
+      final code = errorData is Map ? errorData['code'] : null;
+      return switch (code) {
+        'UNSUPPORTED_ATTACHMENT_TYPE' => 'This file type is not supported. Choose an image, PDF, Office document, spreadsheet, or text file.',
+        'ATTACHMENT_TOO_LARGE' => 'This file is larger than the attachment size limit.',
+        'ATTACHMENT_REQUIRED' => 'Choose a file to upload.',
+        _ => 'Upload was interrupted or could not be saved. Please try again.',
+      };
+    }
+    return 'Upload was interrupted or could not be saved. Please try again.';
+  }
+
+  DioMediaType _attachmentContentType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    final mimeType = switch (extension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'gif' => 'image/gif',
+      'webp' => 'image/webp',
+      'pdf' => 'application/pdf',
+      _ => 'application/octet-stream',
+    };
+    return DioMediaType.parse(mimeType);
   }
 
   Future<ImageSource?> _pickSource() async {
