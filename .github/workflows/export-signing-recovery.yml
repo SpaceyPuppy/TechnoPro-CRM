@@ -1,0 +1,59 @@
+name: Export encrypted Android signing recovery
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: technopro-signing-recovery
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create encrypted recovery archive
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_TYPE: ${{ secrets.ANDROID_KEYSTORE_TYPE }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          test -n "$ANDROID_STORE_PASSWORD"
+
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$work/technopro-release.p12"
+          {
+            printf 'storePassword=%s\n' "$ANDROID_STORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
+            printf 'storeType=%s\n' "${ANDROID_KEYSTORE_TYPE:-PKCS12}"
+            printf 'sourceRepository=%s\n' "$GITHUB_REPOSITORY"
+            printf 'sourceCommit=%s\n' "$GITHUB_SHA"
+            printf 'exportedAt=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > "$work/signing-credentials.txt"
+
+          tar -C "$work" -czf "$work/signing-recovery.tar.gz" \
+            technopro-release.p12 signing-credentials.txt
+          openssl cms -encrypt -binary -aes-256-cbc \
+            -in "$work/signing-recovery.tar.gz" \
+            -outform DER \
+            -out "$GITHUB_WORKSPACE/technopro-android-signing-recovery.cms" \
+            .github/recovery/technopro-signing-recovery-certificate.pem
+      - uses: actions/upload-artifact@v4
+        with:
+          name: technopro-android-signing-recovery
+          path: technopro-android-signing-recovery.cms
+          if-no-files-found: error
+          retention-days: 1
