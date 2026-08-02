@@ -1,116 +1,122 @@
-# TechnoPro CRM — Todo / Notes
+# TechnoPro CRM — Roadmap
 
-**Current Status:** Stage 8 Complete ✅ (Ready for Stage 9)
+**Current status:** Service MVP deployed and tested on Android. Stabilisation is the active phase; native procurement remains incomplete and advanced inventory has not started.
 
-## Stage 7 — Completed ✅
+The Flutter Windows and Android application is the product. The React application is retained only as implementation reference and is not part of the active release roadmap.
 
-### UX / Loading States ✅
-- [x] Delete customer button has loading spinner (web)
-- [x] Success toast after adding note on ticket (already existed)
+## Status key
 
-### UI Scrolling & Layout ✅
-- [x] Flutter: AlwaysScrollableScrollPhysics for Windows mouse wheel
-- [x] Web: Scroll containers for ticket detail history, customer detail tickets table
-- [x] Settings screens fully scrollable (Flutter + Web)
+- **Verified:** exercised against the deployed VPS and Android release.
+- **Implemented:** present in code, but not necessarily proven in the deployed workflow.
+- **Partial:** some supporting code exists, but the native workflow is incomplete.
+- **Experimental:** present but outside the release gate.
+- **Deferred:** intentionally postponed.
 
-### Feature Parity ✅
-- [x] Flutter: Customer delete with confirmation dialog
-- [x] Flutter: Inventory delete with confirmation dialog
-- [x] Flutter: Customer search (name/email/phone)
-- [x] Web: Ticket search (ticket # or summary)
-- [x] Flutter: Ticket search (ticket # or summary)
+## Immediate — Android MVP stabilisation
 
-### Web Settings Module ✅
-- [x] Business Settings page (name, ABN, address, phone, email, GST rate, invoice notes)
-- [x] Device Models CRUD (add/edit/delete, grouped by manufacturer)
-- [x] Settings hub page
+### Field test
 
-### Web Finance Hub (Quotes) ✅
-- [x] Tabbed Finance page (Invoices + Quotes)
-- [x] Quote status actions (Draft → Sent → Accept/Decline → Convert to Ticket)
-- [x] Quote detail view with lifecycle
-- [x] Quote creation (InvoiceCreatePage with type selector)
+- [x] Install the signed Android APK.
+- [x] Connect to the VPS API over HTTPS and log in.
+- [x] Exercise the Android service workflow and capture usability issues.
+- [ ] Retest the affected workflows after the fixes below are released.
+- [ ] Verify the guided installer update/re-run path with the next bundled prerelease.
+- [ ] Configure nightly local backups and restore one backup onto a clean database.
 
-## Stage 7 — Auth & Security ✅
+### UX fixes from Android testing
 
-- [x] 401 interceptor on web (web/src/api/client.ts — catches 401, auto-logout, redirect to /login)
-- [x] 401 interceptor on Flutter (api_client.dart — clears token, Dio error handler)
-- [ ] Two-tab localStorage sync (web) — deferred, low priority
+- [ ] **Ticket customer picker:** show search results in an anchored overlay/dropdown with a fixed maximum height so results do not push the form down. Debounce search, keep the keyboard usable, and replace results with a compact selected-customer summary once chosen.
+- [ ] **Pattern lock:** remove visible numbers; use a familiar Android-style 3×3 pattern surface with larger dots and touch targets, smoother path animation, clear retry/reset behaviour, and subtle haptic feedback where supported.
+- [ ] **Invoice service line tax:** add a business default and an inclusive/exclusive tax selector when adding a service line. Show the calculated ex-tax amount, GST and total before saving, and preserve the selected tax treatment on the line item.
+- [ ] **PDF sharing/email settings:** load business settings before PDF generation or sharing. Handle missing ABN, business email and other optional branding fields gracefully; explain which required setting is missing and provide a direct route to Settings instead of reporting only “setting not loaded”.
+- [ ] **Ticket status changes:** provide an inline status control on ticket detail without entering Edit. Include quick close/resolve actions with confirmation where appropriate, and update lists/dashboard immediately after a change.
+- [ ] **Dashboard freshness:** refresh when the Dashboard tab is selected again, when the app resumes, and after mutations that affect dashboard totals. Keep pull-to-refresh, use cached data while revalidating, and avoid disruptive loading flashes.
 
-## Stage 8 — Procurement & Supply Chain ✅
+## Maintenance PRs awaiting merge
 
-### 1. Drizzle Schema & Shared Interfaces ✅
-- [x] Define `suppliers` table schema (vendor details, lead times, account numbers)
-- [x] Define `purchase_orders` table schema (expected deliveries, status)
-- [x] Define `po_items` table schema 
-- [x] Create Shared TypeScript interfaces (`ISupplier`, `IPurchaseOrder`, `IPOItem`)
+- [ ] PR #3 — upgrade GitHub Actions to Node 24.
+- [ ] PR #4 — fix the guided installer exiting after confirmation.
 
-### 2. Fastify Routes & Controllers ✅
-- [x] Build CRUD routes for `suppliers`
-- [x] Build routes to generate POs (`POST /purchase-orders`)
-- [x] Build route to calculate average cost margins and receive POs (`POST /purchase-orders/:id/receive` - auto-increments `inventory`)
+Both changes should be merged independently and included in the next bundled prerelease; merging them does not require publishing a release immediately.
 
-### 3. Flutter Interface (Operations App) ✅
-- [x] Implement Procurement / Suppliers data models (`api_client.dart` / Riverpod integration)
-- [x] Build Flutter "Procurement Navigation" logic (Add to navigation rail / bottom tab)
-- [x] Build Flutter **Procurement/Purchase Orders Dashboard/List**
-- [x] Build Flutter **PO Receiving Workflow View** (with responsive SnackBar status messages)
+## Core Service MVP
 
-### 4. React Web App (Admin UI) ✅
-- [x] Build Supplier Dashboard (Grid view, search, pagination)
-- [x] Build Add/Edit Supplier forms
-- [x] Build dynamic PO Builder (Select supplier, dynamically append inventory items, quantity, calculate cost margins, support one-off items)
-- [x] Build Purchase Orders list and detail views for backend tracking
+### Implemented
 
-## Stage 7 — Deferred (Low Priority)
+- [x] Staff authentication and roles.
+- [x] Business settings, GST, labour rate and invoice branding.
+- [x] Customers, devices/assets and optional service location.
+- [x] Repair, onsite and remote tickets with assignment, priority, scheduling and status.
+- [x] Ticket notes, checklists and attachments/photos.
+- [x] Timers, manual time entries and bill-once labour invoicing.
+- [x] Quotes, invoices, deposits, partial payments and refunds.
+- [x] PDF quotes, invoices and receipts.
+- [x] Basic inventory search and adding stocked parts to work.
+- [x] Dashboard metrics.
+- [x] Windows and Android Flutter targets.
 
-### Bulk Data Import
-- [ ] CSV/XLSX import: device models, customers, inventory
-- [ ] CSV export functionality
+### Hardening to perform alongside affected features
 
-### Backend/Data
-- [ ] Audit logs (user, action, timestamp, resource ID)
-- [ ] Drift SQLite offline sync (Flutter)
+- [ ] Audit role enforcement across every API route and corresponding Flutter action.
+- [ ] Extend immutable audit events beyond current finance/time coverage to customer, ticket, inventory, procurement and administration changes.
+- [ ] Confirm financial and stock mutations use transactions and idempotency consistently.
+- [ ] Validate attachment type/size handling and user-facing errors.
 
-### Roles Hardening
-- [ ] RBAC audit and enforcement
-- [ ] UI role-based action hiding (tech/counter roles)
+## Next feature phase — Complete native procurement
 
-## Historical Notes
+**Status: Partial.** Supplier and purchase-order backend APIs exist. Flutter PO list/detail/receiving code exists, but procurement is not wired into application navigation and the native supplier and PO creation workflows are missing.
 
-### Stage 3 Decisions (Locked)
-- Tax: $0 for now — Stage 6 added settings-driven GST % (critical for AU businesses) ✓
-- Invoice numbers: INV-00001 format, auto-incremented ✓
-- Partial payments supported ✓
-- Invoices can be standalone OR linked to a ticket ✓
+- [ ] Add role-gated Procurement navigation and Flutter routes.
+- [ ] Make the existing PO list, detail and receiving screens reachable.
+- [ ] Build native supplier list, create, edit and delete workflows.
+- [ ] Build a native PO creator for stocked and one-off items.
+- [ ] Add ticket-linked special orders after the core PO workflow is usable.
 
-### Stage 6 (Complete)
-- [x] Visual overhaul — dark sidebar, theme, chips, stat tiles
-- [x] GST + business settings (app_settings table, backend routes, Flutter settings screen)
-- [x] PDF invoices + quotes (pdf + printing packages)
-- [x] Quotes — Finance hub (/finance), tabbed Invoices/Quotes, quote status actions, convert-to-ticket
-- [x] Deposits — payment type toggle (Deposit/Payment/Refund), grouped payments display
+Do not begin advanced inventory merely because the old roadmap labelled procurement complete. Complete and test this native workflow first.
 
-## Stage 9 — Advanced Inventory & Barcode
-- [ ] Implement multi-bin tracking (Warehouse vs Storefront)
-- [ ] Implement stocktake workflow and inventory adjustments 
-- [ ] Implement low-stock alerts and threshold email triggers
-- [ ] Implement barcode printing and USB barcode scanner support in Flutter
+## Inventory foundation
 
-## Stage 10 — Point of Sale (POS) Interface
-- [ ] Build rapid-checkout touch interface tailored specifically for tablet/desktop
-- [ ] Implement split payments (Cash + Card)
-- [ ] Connect EFTPOS/Stripe terminal hardware syncing
-- [ ] Shift closeouts and drawer reconciliation 
+**Status: Basic inventory implemented; advanced stock control not started.** Current quantities are mutable values and do not yet form a complete stock history.
 
-## Stage 11 — E-Commerce Syncing
-- [ ] Establish 2-way sync bridge for Shopify/WooCommerce
-- [ ] Sync local inventory counts to online database in real-time
-- [ ] Ingest online orders into tickets/invoices automatically
+- [ ] Add an immutable inventory-movement ledger containing item, quantity delta, reason, source, staff member, timestamp and cost snapshot.
+- [ ] Route PO receipts, ticket parts, returns and manual adjustments through one transactional stock service.
+- [ ] Add stock adjustment controls and movement history.
+- [ ] Add stocktake workflow.
+- [ ] Add locations/bins and stock transfers.
+- [ ] Add barcode scanning and label printing.
+- [ ] Add reorder thresholds and in-app low-stock alerts.
+- [ ] Add threshold email alerts after outbound email is configured.
 
-## Future Competitive Features
-- [ ] **Buy/Sell/Trade (Refurbishment):** Pipeline to intake used devices, absorb parts/labor costs, and output refurbished retail inventory with accurate profit margins.
-- [ ] **Automated Comms:** Twilio/SendGrid integration for automated SMS status updates and 30-day post-repair follow-ups.
-- [ ] **Customer Portal:** Lightweight web view for clients to check ticket status and pay Stripe invoices via Ticket ID.
-- [ ] **Staff Management:** Tie `time_entries` to commission structures and payroll reports.
-- [ ] **Accounting Sync:** Cron jobs to push finalized invoices and POs to Xero/QuickBooks.
+## Point of sale
+
+- [ ] Build a rapid checkout interface for phone, tablet and Windows.
+- [ ] Support cash and manually confirmed EFTPOS.
+- [ ] Add split tender.
+- [ ] Add cash-drawer and register reconciliation.
+- [ ] Consider terminal/hardware integrations only after the manual workflow is stable.
+
+## Experimental or partial capabilities
+
+- [ ] **Offline sync:** Drift database, queue and sync components exist, but offline-created records are outside the MVP release gate and need conflict/device testing before being supported.
+- [ ] **Bulk import:** backend customer/inventory bulk operations exist, but there is no native CSV/XLSX picker, mapping, validation and import-report workflow.
+- [ ] **RBAC UI:** some role-based hiding exists; complete a systematic audit rather than rebuilding it.
+- [ ] **Audit events:** finance and billed-time events exist; expand coverage as noted above.
+
+## Deferred
+
+- [ ] CSV/XLSX import presets for RepairDesk, CrazyPOS and ClickUp.
+- [ ] Generic CSV/XLSX import and export UI.
+- [ ] Buy/sell/trade refurbishment pipeline.
+- [ ] Customer portal.
+- [ ] Xero or other accounting sync.
+- [ ] Ecommerce integrations.
+- [ ] Payroll and commissions.
+- [ ] Automated customer SMS/email workflows.
+- [ ] Automated application updates.
+
+## Delivery workflow
+
+- Use one focused branch and pull request for each feature or fix.
+- Merge completed PRs without creating a release for every minor change.
+- When a useful group of changes is ready, create one bundled prerelease containing the VPS Docker package and signed Android APK.
+- Keep this file as the high-level roadmap. Create GitHub Issues only for work that is ready to enter the implementation queue.
