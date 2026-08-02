@@ -4,6 +4,17 @@ This runbook deploys the Fastify API, MySQL, private file storage and Caddy HTTP
 
 The first deployment should be treated as a release candidate until the Android go-live workflow and a restore drill have passed. Do not expose the old development `docker-compose.yml`; it publishes MySQL and phpMyAdmin and is not a production stack.
 
+## How GitHub delivers TechnoPro
+
+- **The GitHub repository** stores the source code, deployment definitions and history.
+- **Pull requests** provide a reviewable boundary before changes enter `main`.
+- **GitHub Actions** runs CI, builds the Android APK and container images, creates the guided installer, calculates checksums and publishes each tagged release.
+- **GHCR** (GitHub Container Registry, sometimes mistaken for "GHCI") stores the versioned API and migration container images that Docker pulls on the VPS.
+- **GitHub Releases** provides the guided installer, Android APK, small deployment kit and checksums for a specific version.
+- **GitHub Actions secrets** hold the Android signing material used by the release workflow. They are not included in the repository or server package.
+
+The installer is intentionally small. It downloads the version-matched deployment kit, while Docker Compose pulls the application images from GHCR and the official MySQL and Caddy images from their registries.
+
 ## 1. VPS and DNS prerequisites
 
 Recommended starting point:
@@ -23,9 +34,11 @@ Official references:
 - [Caddy automatic HTTPS](https://caddyserver.com/docs/automatic-https)
 - [MySQL 8.4 LTS release model](https://dev.mysql.com/doc/refman/8.4/en/mysql-releases.html)
 
-## 2. Install Docker from Docker's Debian repository
+## 2. Docker installation
 
-Run as a sudo-capable deployment user:
+The guided installer in the next section offers to install Docker Engine and the Compose plugin from Docker's Debian repository when they are missing. Skip to section 3 for the normal installation path.
+
+To install Docker manually instead, run the following as a sudo-capable deployment user:
 
 ```bash
 sudo apt update
@@ -52,51 +65,49 @@ sudo docker compose version
 
 The commands below use `sudo docker`. Adding an account to the `docker` group is equivalent to granting root-level control of the host, so only do that deliberately.
 
-## 3. Put TechnoPro on the VPS
+## 3. Install or update TechnoPro
 
-Download the versioned server bundle from the matching GitHub prerelease. The first MVP release uses `0.1.0-mvp.1`:
+Open the desired GitHub prerelease, download its `install-technopro.sh` asset, inspect it, and run it with `sudo`. Each installer is pinned to the release it came from:
 
 ```bash
-VERSION=0.1.0-mvp.1
-cd /tmp
-curl -fLO "https://github.com/SpaceyPuppy/TechnoPro-CRM/releases/download/v${VERSION}/technopro-server-${VERSION}.tar.gz"
-curl -fLO "https://github.com/SpaceyPuppy/TechnoPro-CRM/releases/download/v${VERSION}/SHA256SUMS.txt"
-grep "technopro-server-${VERSION}.tar.gz" SHA256SUMS.txt | sha256sum -c -
+VERSION=REPLACE_WITH_RELEASE_VERSION
+curl -fsSLO "https://github.com/SpaceyPuppy/TechnoPro-CRM/releases/download/v${VERSION}/install-technopro.sh"
+less install-technopro.sh
+chmod +x install-technopro.sh
+sudo ./install-technopro.sh
+```
 
-sudo install -d -m 0750 /opt/technopro
-sudo chown "$USER":"$USER" /opt/technopro
-tar -xzf "technopro-server-${VERSION}.tar.gz"
-mv "technopro-server-${VERSION}" /opt/technopro/app
+The guided mode asks for the hostname, local backup path, timezone and initial administrator. It generates the database and JWT secrets without displaying them. On later runs it retains the existing configuration, pulls the selected release from GHCR and applies the update. If the version changes while the database is running, it creates a local backup first.
+
+For TechnoPro's current deployment, the same choices can be supplied in one command:
+
+```bash
+sudo ./install-technopro.sh \
+  --domain technopro.fcpr.au \
+  --backup-path /opt/technopro/backups \
+  --timezone Australia/Sydney \
+  --admin-email chris@fcpr.au \
+  --admin-name "Christopher Phelan" \
+  --yes
+```
+
+The password is still requested using a hidden prompt. Fully unattended operation is possible by adding `--admin-password 'PASSWORD'`, but doing that records the password in shell history and may expose it in the process list.
+
+To update, download `install-technopro.sh` from the newer prerelease and run it. The installer reads `/opt/technopro/app/deploy/.env`, preserves the database, uploads, HTTPS state and secrets, and updates only the versioned deployment files and containers.
+
+The release still includes `technopro-server-VERSION.tar.gz` as a manual recovery package, but normal installation no longer requires extracting it yourself.
+
+After the installer finishes, the deployment files are under:
+
+```bash
 cd /opt/technopro/app
-```
-
-The bundle contains versioned prebuilt container references, so the VPS does not need the source repository or a local image build.
-
-Create the production environment file:
-
-```bash
-cp deploy/.env.example deploy/.env
-chmod 600 deploy/.env
-openssl rand -base64 48
-openssl rand -base64 48
-openssl rand -base64 48
-```
-
-Put three different generated values into `DB_PASSWORD`, `DB_ROOT_PASSWORD` and `JWT_SECRET`. Also set:
-
-- `TECHNOPRO_DOMAIN` to the DNS name, without `https://`.
-- `BACKUP_PATH` to an existing directory on a separate mounted disk where possible.
-- `TZ` if the business is outside `Australia/Sydney`.
-
-Create and protect the backup directory:
-
-```bash
-sudo install -d -m 0700 /mnt/technopro-backups
 ```
 
 Never commit `deploy/.env`, a signing keystore or a database dump.
 
 ## 4. Validate and start the stack
+
+The installer already runs these commands. They remain documented for troubleshooting or manual control:
 
 Use one consistent Compose command throughout:
 
@@ -130,7 +141,7 @@ Replace the example hostname. A healthy result contains `"status":"ok"`. Caddy o
 
 ## 5. Create the first administrator
 
-The demo seed is deliberately not used in production. Supply the first administrator through temporary shell variables so the password is not written to `.env`:
+The installer creates the first administrator without writing its password to `.env`. The command below is retained for recovery or a fully manual deployment:
 
 ```bash
 cd /opt/technopro/app
@@ -196,7 +207,7 @@ Test it manually:
 cd /opt/technopro/app
 sudo docker compose --env-file deploy/.env -f deploy/compose.vps.yml \
   --profile tools run --rm backup
-sudo find /mnt/technopro-backups -maxdepth 2 -type d -print
+sudo find /opt/technopro/backups -maxdepth 2 -type d -print
 ```
 
 Schedule it with root's cron:
@@ -211,14 +222,14 @@ Add this single line (adjust the repository path if needed):
 15 2 * * * cd /opt/technopro/app && /usr/bin/docker compose --env-file deploy/.env -f deploy/compose.vps.yml --profile tools run --rm backup >> /var/log/technopro-backup.log 2>&1
 ```
 
-A backup on the same VPS is not sufficient. Copy `/mnt/technopro-backups` to an encrypted remote destination or another physical device, and alert if the nightly job stops producing new sets.
+A backup on the same VPS is not sufficient long term. Copy `/opt/technopro/backups` to an encrypted remote destination or another physical device when offsite backups are configured, and alert if the nightly job stops producing new sets.
 
 ## 8. Mandatory restore drill
 
 First list available sets:
 
 ```bash
-sudo find /mnt/technopro-backups/daily /mnt/technopro-backups/weekly \
+sudo find /opt/technopro/backups/daily /opt/technopro/backups/weekly \
   -mindepth 1 -maxdepth 1 -type d -printf '%P\n'
 ```
 
@@ -280,7 +291,9 @@ Keep the source backup until a later backup from the VPS has itself passed a res
 
 ## 10. Updating TechnoPro
 
-Take a backup before every update. Download and verify the new server bundle as described in section 3, preserve the current `deploy/.env`, and then set `TECHNOPRO_VERSION` to the new release version. Pull and start the exact versioned images:
+Download `install-technopro.sh` from the desired newer prerelease and run it with `sudo`, as described in section 3. It preserves the current environment and persistent volumes, creates a backup when changing versions while the database is running, and pulls the exact versioned images.
+
+The commands below remain available for manual control:
 
 ```bash
 cd /opt/technopro/app

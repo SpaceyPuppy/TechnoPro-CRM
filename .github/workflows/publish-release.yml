@@ -178,14 +178,19 @@ jobs:
           cp deploy/compose.vps.yml "$root/deploy/"
           cp deploy/Caddyfile "$root/deploy/"
           cp deploy/.env.example "$root/deploy/"
+          sed -i "s/^TECHNOPRO_VERSION=.*/TECHNOPRO_VERSION=${version}/" "$root/deploy/.env.example"
           cp deploy/RELEASE-README.md "$root/README.md"
           cp deploy/scripts/backup.sh deploy/scripts/restore.sh "$root/deploy/scripts/"
           cp docs/vps-docker-deployment.md "$root/docs/"
           tar -C release -czf "release/technopro-server-${version}.tar.gz" "technopro-server-${version}"
+          sed "s/__TECHNOPRO_VERSION__/${version}/g" deploy/install.sh > release/install-technopro.sh
+          chmod 0755 release/install-technopro.sh
       - uses: actions/upload-artifact@v4
         with:
           name: technopro-server-release
-          path: release/technopro-server-*.tar.gz
+          path: |
+            release/technopro-server-*.tar.gz
+            release/install-technopro.sh
           if-no-files-found: error
 
   release:
@@ -199,7 +204,7 @@ jobs:
           merge-multiple: true
       - name: Generate checksums
         working-directory: release-assets
-        run: sha256sum technopro-* > SHA256SUMS.txt
+        run: sha256sum install-technopro.sh technopro-* > SHA256SUMS.txt
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
@@ -209,12 +214,20 @@ jobs:
             Android-first TechnoPro Service MVP test release.
 
             - Install `technopro-*-android.apk` on the Android phone.
-            - Extract `technopro-server-*.tar.gz` on the VPS and follow its `README.md`.
+            - Download `install-technopro.sh`, inspect it, then run it with `sudo` on the VPS.
+            - Re-run the installer from a newer release to update the server.
             - API image: `${{ needs.containers.outputs.api-image }}:${{ needs.containers.outputs.version }}`.
             - Migration image: `${{ needs.containers.outputs.migration-image }}:${{ needs.containers.outputs.version }}`.
 
+            ```bash
+            curl -fsSLO "${{ github.server_url }}/${{ github.repository }}/releases/download/v${{ needs.containers.outputs.version }}/install-technopro.sh"
+            chmod +x install-technopro.sh
+            sudo ./install-technopro.sh
+            ```
+
             Verify `SHA256SUMS.txt` before installation. Keep this as a prerelease until the end-to-end workflow and backup restore drill pass.
           files: |
+            release-assets/install-technopro.sh
             release-assets/technopro-*-android.apk
             release-assets/technopro-server-*.tar.gz
             release-assets/SHA256SUMS.txt
