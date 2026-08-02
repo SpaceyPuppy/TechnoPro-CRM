@@ -16,6 +16,7 @@ import {
 } from "../services/ticket.service.js";
 import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import type { CreateTicketRequest, UpdateTicketRequest, CreateTicketEventRequest } from "@technopro/shared";
+import { recordAuditEvent } from "../services/audit.service.js";
 import { rolePolicies } from "../access-control.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getTicketById>>>) {
@@ -261,6 +262,9 @@ export async function ticketRoutes(app: FastifyInstance) {
     { schema: createSchema, preHandler: app.requireRole(...rolePolicies.operations) },
     async (request, reply) => {
       const ticket = await createTicket(request.body, request.user.id);
+      await recordAuditEvent("ticket", ticket!.id, "created", request.user.id, {
+        after: toResponse(ticket!),
+      });
       return reply.code(201).send({ data: toResponse(ticket!) });
     },
   );
@@ -270,6 +274,7 @@ export async function ticketRoutes(app: FastifyInstance) {
     "/tickets/:id",
     { schema: updateSchema, preHandler: app.requireRole(...rolePolicies.operations) },
     async (request, reply) => {
+      const before = await getTicketById(request.params.id);
       try {
         const ticket = await updateTicket(
           request.params.id,
@@ -282,6 +287,10 @@ export async function ticketRoutes(app: FastifyInstance) {
             error: { code: "NOT_FOUND", message: "Ticket not found" },
           });
         }
+        await recordAuditEvent("ticket", ticket.id, "updated", request.user.id, {
+          before: before ? toResponse(before) : null,
+          after: toResponse(ticket),
+        });
         return reply.send({ data: toResponse(ticket) });
       } catch (error) {
         if (error instanceof TicketConflictError) {

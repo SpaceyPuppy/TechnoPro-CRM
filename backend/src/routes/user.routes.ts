@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "../db/index.js";
 import { hashPassword } from "../services/auth.service.js";
 import { generateId } from "../utils/id.js";
+import { recordAuditEvent } from "../services/audit.service.js";
 
 type UserRole = "technician" | "counter" | "manager" | "admin";
 
@@ -101,6 +102,9 @@ export async function userRoutes(app: FastifyInstance) {
         .from(schema.users)
         .where(eq(schema.users.id, id))
         .limit(1);
+      await recordAuditEvent("user", created!.id, "created", request.user.id, {
+        after: toResponse(created!),
+      });
       return reply.code(201).send({ data: toResponse(created!) });
     },
   );
@@ -171,6 +175,11 @@ export async function userRoutes(app: FastifyInstance) {
         .from(schema.users)
         .where(eq(schema.users.id, request.params.id))
         .limit(1);
+      await recordAuditEvent("user", updated!.id, "updated", request.user.id, {
+        before: toResponse(existing),
+        after: toResponse(updated!),
+        passwordChanged: request.body.password !== undefined,
+      });
       return reply.send({ data: toResponse(updated!) });
     },
   );

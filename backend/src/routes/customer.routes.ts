@@ -11,6 +11,7 @@ import { getDb, schema } from "../db/index.js";
 import { generateId } from "../utils/id.js";
 import { desc } from "drizzle-orm";
 import type { CreateCustomerRequest, UpdateCustomerRequest } from "@technopro/shared";
+import { recordAuditEvent } from "../services/audit.service.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getCustomerById>>>) {
   return {
@@ -115,6 +116,9 @@ export async function customerRoutes(app: FastifyInstance) {
     { schema: createSchema },
     async (request, reply) => {
       const customer = await createCustomer(request.body);
+      await recordAuditEvent("customer", customer!.id, "created", request.user.id, {
+        after: toResponse(customer!),
+      });
       return reply.code(201).send({ data: toResponse(customer!) });
     },
   );
@@ -124,12 +128,17 @@ export async function customerRoutes(app: FastifyInstance) {
     "/customers/:id",
     { schema: updateSchema },
     async (request, reply) => {
+      const before = await getCustomerById(request.params.id);
       const customer = await updateCustomer(request.params.id, request.body);
       if (!customer) {
         return reply.code(404).send({
           error: { code: "NOT_FOUND", message: "Customer not found" },
         });
       }
+      await recordAuditEvent("customer", customer.id, "updated", request.user.id, {
+        before: before ? toResponse(before) : null,
+        after: toResponse(customer),
+      });
       return reply.send({ data: toResponse(customer) });
     },
   );
@@ -201,12 +210,16 @@ export async function customerRoutes(app: FastifyInstance) {
 
   // Delete customer â€” managers and admins only
   app.delete<{ Params: { id: string } }>("/customers/:id", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
+    const before = await getCustomerById(request.params.id);
     const deleted = await deleteCustomer(request.params.id);
     if (!deleted) {
       return reply.code(404).send({
         error: { code: "NOT_FOUND", message: "Customer not found" },
       });
     }
+    await recordAuditEvent("customer", request.params.id, "deleted", request.user.id, {
+      before: before ? toResponse(before) : null,
+    });
     return reply.code(204).send();
   });
 }
