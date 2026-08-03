@@ -1,0 +1,48 @@
+name: Windows CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "flutter/**"
+      - "packages/shared/**"
+      - ".github/workflows/windows-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - working-directory: flutter
+        run: flutter pub get
+
+      - working-directory: flutter
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
+
+      - working-directory: flutter
+        run: flutter test
+
+      - working-directory: flutter
+        run: flutter build windows --release
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: technopro-windows-release
+          path: flutter/build/windows/x64/runner/Release/
+          if-no-files-found: error
