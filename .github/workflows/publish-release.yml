@@ -107,6 +107,39 @@ jobs:
           path: flutter/build/app/outputs/flutter-apk/technopro-*-android.apk
           if-no-files-found: error
 
+  windows:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - working-directory: flutter
+        run: flutter pub get
+
+      - name: Build Windows release
+        working-directory: flutter
+        run: flutter build windows --release
+
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".Substring(1)
+          New-Item -ItemType Directory -Force -Path release
+          Compress-Archive `
+            -Path flutter/build/windows/x64/runner/Release `
+            -DestinationPath "release/technopro-$version-windows.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: technopro-windows-release
+          path: release/technopro-*-windows.zip
+          if-no-files-found: error
+
   containers:
     needs: validate
     runs-on: ubuntu-latest
@@ -194,7 +227,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [android, containers, server-bundle]
+    needs: [android, windows, containers, server-bundle]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -211,14 +244,16 @@ jobs:
           prerelease: true
           generate_release_notes: true
           body: |
-            Android-first TechnoPro Service MVP test release.
+            TechnoPro test release.
 
             - Install `technopro-*-android.apk` on the Android phone.
             - Download `install-technopro.sh`, inspect it, then run it with `sudo` on the VPS.
             - Re-run the installer from a newer release to update the server.
             - API image: `${{ needs.containers.outputs.api-image }}:${{ needs.containers.outputs.version }}`.
             - Migration image: `${{ needs.containers.outputs.migration-image }}:${{ needs.containers.outputs.version }}`.
+            - Download and extract `technopro-*-windows.zip`, then run `Release/technopro_crm.exe` on a Windows machine.
 
+            To install on a Linux VPS or upgrade version:
             ```bash
             curl -fsSLO "${{ github.server_url }}/${{ github.repository }}/releases/download/v${{ needs.containers.outputs.version }}/install-technopro.sh"
             chmod +x install-technopro.sh
@@ -229,5 +264,6 @@ jobs:
           files: |
             release-assets/install-technopro.sh
             release-assets/technopro-*-android.apk
+            release-assets/technopro-*-windows.zip
             release-assets/technopro-server-*.tar.gz
             release-assets/SHA256SUMS.txt
