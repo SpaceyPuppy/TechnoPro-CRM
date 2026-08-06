@@ -9,6 +9,7 @@ readonly INSTALL_ROOT="/opt/technopro"
 readonly APP_DIR="$INSTALL_ROOT/app"
 readonly ENV_FILE="$APP_DIR/deploy/.env"
 readonly ADMIN_MARKER="$INSTALL_ROOT/.admin-created"
+readonly SWAP_FILE="/swapfile"
 
 version=""
 domain=""
@@ -17,6 +18,7 @@ timezone=""
 admin_email=""
 admin_name=""
 admin_password="${ADMIN_PASSWORD:-}"
+swap_size=""
 assume_yes=false
 
 usage() {
@@ -34,6 +36,7 @@ Options:
   --admin-email EMAIL        Initial administrator email
   --admin-name NAME          Initial administrator name
   --admin-password PASSWORD  Initial password; prompting is safer than this option
+  --swap-size SIZE           Configure host swap (new-install default: 1G; 0 to skip)
   -y, --yes                  Accept installation confirmations
   -h, --help                 Show this help
 
@@ -95,6 +98,12 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --admin-password=*) admin_password="${1#*=}"; shift ;;
+    --swap-size)
+      require_value "$1" "${2:-}"
+      swap_size="$2"
+      shift 2
+      ;;
+    --swap-size=*) swap_size="${1#*=}"; shift ;;
     -y|--yes) assume_yes=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown option: $1" ;;
@@ -181,6 +190,21 @@ if [[ -f "$ENV_FILE" ]]; then
   timezone="${timezone:-$(env_value TZ "$ENV_FILE")}"
 fi
 
+if [[ -z "$swap_size" ]]; then
+  if $existing_install; then
+    swap_size="preserve"
+  elif [[ -t 0 ]]; then
+    read -r -p "Host swap size [1G, 0 to skip]: " swap_size
+    swap_size="${swap_size:-1G}"
+  else
+    swap_size="1G"
+  fi
+fi
+
+if [[ "$swap_size" != "preserve" && "$swap_size" != "0" && ! "$swap_size" =~ ^[1-9][0-9]*[KMGTP]?$ ]]; then
+  die "swap size must be 0 or a positive size such as 512M or 1G"
+fi
+
 prompt_value domain "Public hostname"
 prompt_value backup_path "Backup directory" "/opt/technopro/backups"
 prompt_value timezone "Timezone" "Australia/Sydney"
@@ -211,7 +235,44 @@ echo "  Target version:  $version"
 echo "  Hostname:        $domain"
 echo "  Backup path:     $backup_path"
 echo "  Timezone:        $timezone"
+if [[ "$swap_size" == "preserve" ]]; then
+  echo "  Swap:            preserve existing host configuration"
+elif [[ "$swap_size" == "0" ]]; then
+  echo "  Swap:            disabled by option"
+else
+  echo "  Swap:            ${swap_size} at $SWAP_FILE when no active swap exists"
+fi
 confirm "Continue"
+
+configure_swap() {
+  [[ "$swap_size" == "preserve" || "$swap_size" == "0" ]] && return 0
+
+  local active_swap
+  active_swap="$(swapon --show --noheadings 2>/dev/null || true)"
+  if [[ -n "$active_swap" ]]; then
+    echo "Active swap detected; leaving the existing host swap configuration unchanged."
+    return 0
+  fi
+
+  if [[ -e "$SWAP_FILE" ]]; then
+    [[ -f "$SWAP_FILE" && ! -L "$SWAP_FILE" ]] || \
+      die "$SWAP_FILE exists but is not a regular file; inspect it before rerunning"
+    die "$SWAP_FILE exists but is not active; inspect it before rerunning"
+  fi
+
+  command -v fallocate >/dev/null 2>&1 || die "fallocate is required to create $SWAP_FILE"
+  command -v mkswap >/dev/null 2>&1 || die "mkswap is required to create $SWAP_FILE"
+  command -v swapon >/dev/null 2>&1 || die "swapon is required to enable $SWAP_FILE"
+
+  echo "Creating ${swap_size} swap at $SWAP_FILE..."
+  fallocate -l "$swap_size" "$SWAP_FILE"
+  chmod 600 "$SWAP_FILE"
+  mkswap "$SWAP_FILE" >/dev/null
+  swapon "$SWAP_FILE"
+  if ! grep -Fqx "$SWAP_FILE none swap sw 0 0" /etc/fstab; then
+    printf '%s\n' "$SWAP_FILE none swap sw 0 0" >> /etc/fstab
+  fi
+}
 
 install_dependencies() {
   local missing=false
@@ -256,6 +317,7 @@ EOF
 }
 
 install_dependencies
+configure_swap
 if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
   install_docker
 fi

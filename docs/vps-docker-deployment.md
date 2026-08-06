@@ -21,6 +21,7 @@ Recommended starting point:
 
 - Debian 12 or 13, 2 vCPU and 4 GB RAM.
 - At least 30 GB of SSD storage, plus a separate backup disk or encrypted remote backup target.
+- A modest swap area is recommended on shared or 2 GB VPSs. The guided installer creates a 1 GB swap file on new installs by default when no active swap exists.
 - A domain such as `crm.example.com` with an `A` record (and `AAAA` only if IPv6 is working) pointing to the VPS.
 - TCP 80/443 and UDP 443 allowed at the VPS provider firewall. Restrict SSH to your IP where practical.
 - SMTP is not required by the current MVP.
@@ -79,6 +80,8 @@ sudo ./install-technopro.sh
 
 The guided mode asks for the hostname, local backup path, timezone and initial administrator. It generates the database and JWT secrets without displaying them. On later runs it retains the existing configuration, pulls the selected release from GHCR and applies the update. If the version changes while the database is running, it creates a local backup first.
 
+On a new interactive install, the guided installer asks for the host swap size and defaults to a 1 GB `/swapfile`; enter `0` to skip it. Non-interactive installs use the same 1 GB default unless `--swap-size` is supplied. The installer records a created swap file in `/etc/fstab`, preserves existing host swap configuration on updates, and never overwrites an existing `/swapfile`. Override this with `--swap-size 2G` when needed.
+
 For TechnoPro's current deployment, the same choices can be supplied in one command:
 
 ```bash
@@ -88,6 +91,7 @@ sudo ./install-technopro.sh \
   --timezone Australia/Sydney \
   --admin-email chris@fcpr.au \
   --admin-name "Christopher Phelan" \
+  --swap-size 1G \
   --yes
 ```
 

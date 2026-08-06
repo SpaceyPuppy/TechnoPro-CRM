@@ -16,6 +16,9 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
+      # The application does not depend on MySQL performance instrumentation;
+      # disable it on shared VPS deployments to reduce retained diagnostic memory.
+      - --performance-schema=OFF
     volumes:
       - db_data:/var/lib/mysql
     networks:
