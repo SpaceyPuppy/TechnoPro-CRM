@@ -17,7 +17,7 @@ import type { TimeEntryResponse } from "@technopro/shared";
 export async function startTimeEntry(
   ticketId: string,
   userId: string,
-  options?: { note?: string; labourRate?: string },
+  options?: { note?: string; labourRate?: string; billable?: boolean },
 ): Promise<TimeEntryResponse> {
   const db = getDb();
 
@@ -52,6 +52,7 @@ export async function startTimeEntry(
       durationSeconds: null,
       note: options?.note ?? null,
       labourRate,
+      billable: options?.billable ?? true,
     });
   } catch (error) {
     const duplicateRunningTimer =
@@ -79,6 +80,7 @@ export async function createManualTimeEntry(
     durationSeconds: number;
     note?: string;
     labourRate?: string;
+    billable?: boolean;
     startedAt?: string;
   },
 ): Promise<TimeEntryResponse> {
@@ -108,6 +110,7 @@ export async function createManualTimeEntry(
     durationSeconds: options.durationSeconds,
     note: options.note ?? null,
     labourRate: options.labourRate ?? (await getSetting("labour_rate")),
+    billable: options.billable ?? true,
   });
   const [created] = await db
     .select()
@@ -205,6 +208,48 @@ export async function getRunningTimeEntryForUser(
   return entry ? toTimeEntryResponse(entry) : null;
 }
 
+export async function updateTimeEntryBillable(
+  timeEntryId: string,
+  userId: string,
+  billable: boolean,
+  canManage: boolean,
+): Promise<TimeEntryResponse> {
+  const db = getDb();
+  const updated = await db.transaction(async (tx) => {
+    const [entry] = await tx
+      .select()
+      .from(schema.timeEntries)
+      .where(eq(schema.timeEntries.id, timeEntryId))
+      .limit(1)
+      .for("update");
+
+    if (!entry) throw new Error("Time entry not found");
+    if (entry.userId !== userId && !canManage) {
+      throw new Error("You cannot change another staff member's billable status");
+    }
+    if (entry.billedAs) {
+      throw new InvoiceConflictError(
+        "An invoiced time entry cannot change billable status",
+        "INVOICE_FINALISED",
+      );
+    }
+
+    await tx
+      .update(schema.timeEntries)
+      .set({ billable })
+      .where(eq(schema.timeEntries.id, timeEntryId));
+
+    const [result] = await tx
+      .select()
+      .from(schema.timeEntries)
+      .where(eq(schema.timeEntries.id, timeEntryId))
+      .limit(1);
+    return result!;
+  });
+
+  return toTimeEntryResponse(updated);
+}
+
 // --- Billing ---
 
 export async function billTimeEntry(
@@ -226,6 +271,9 @@ export async function billTimeEntry(
     if (!entry) throw new Error("Time entry not found");
     if (!entry.stoppedAt || !entry.durationSeconds) {
       throw new Error("Cannot bill a running or zero-duration time entry");
+    }
+    if (!entry.billable) {
+      throw new Error("Cannot bill a non-billable time entry");
     }
 
     if (entry.billedAs) {
@@ -306,6 +354,7 @@ export async function billTimeEntry(
     const lineItemId = generateId();
     await tx.insert(schema.lineItems).values({
       id: lineItemId,
+      ticketId: entry.ticketId,
       invoiceId: targetInvoice.id,
       type: "service",
       description: description || `Labour (${hours.toFixed(2)} hours)`,
@@ -348,6 +397,7 @@ function toTimeEntryResponse(entry: typeof schema.timeEntries.$inferSelect): Tim
     durationSeconds: entry.durationSeconds,
     note: entry.note,
     labourRate: entry.labourRate.toString(),
+    billable: entry.billable,
     billedAs: entry.billedAs,
     createdAt: entry.createdAt.toISOString(),
     updatedAt: entry.updatedAt.toISOString(),

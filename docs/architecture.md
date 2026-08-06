@@ -112,6 +112,8 @@ erDiagram
     Device ||--o{ Ticket : "serviced in"
     Ticket ||--o{ TicketEvent : "has"
     Ticket ||--o{ TicketAttachment : "has"
+    Ticket ||--o{ TimeEntry : "tracks labour"
+    User ||--o{ TimeEntry : "records"
     Ticket ||--o{ LineItem : "contains"
     Ticket ||--o| Invoice : "billed via"
     Invoice ||--o{ Payment : "paid by"
@@ -179,6 +181,16 @@ erDiagram
         string filePath
         string mimeType
         int fileSize
+    }
+
+    TimeEntry {
+        uuid id PK
+        uuid ticketId FK
+        uuid userId FK
+        int durationSeconds
+        decimal labourRate
+        boolean billable
+        uuid billedAs FK
     }
 
     InventoryItem {

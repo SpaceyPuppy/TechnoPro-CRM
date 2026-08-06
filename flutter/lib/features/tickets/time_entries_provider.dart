@@ -116,22 +116,19 @@ final addManualTimeEntryProvider =
   }
 });
 
-// Bill time entry (create labour line item)
-final billTimeEntryProvider =
-    FutureProvider.autoDispose.family<InvoiceModel, (String, String, String?)>((ref, args) async {
-  final (timeEntryId, ticketId, description) = args;
+// Mark a time entry as billable or non-billable.
+final updateTimeEntryBillableProvider =
+    FutureProvider.autoDispose.family<TimeEntryModel, (String, String, bool)>((ref, args) async {
+  final (timeEntryId, ticketId, billable) = args;
   final dio = ref.read(apiClientProvider);
   try {
-    final res = await dio.post<Map<String, dynamic>>(
-      '/time-entries/$timeEntryId/bill',
-      data: {
-        if (description != null && description.isNotEmpty)
-          'description': description,
-      },
+    final res = await dio.patch<Map<String, dynamic>>(
+      '/time-entries/$timeEntryId',
+      data: {'billable': billable},
     );
-    final invoice = InvoiceModel.fromJson(res.data!['data'] as Map<String, dynamic>);
+    final entry = TimeEntryModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     ref.invalidate(timeEntriesProvider(ticketId));
-    return invoice;
+    return entry;
   } on DioException catch (e) {
     throw apiErrorMessage(e);
   }

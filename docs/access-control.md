@@ -14,7 +14,7 @@ authorization boundary.
 | `GET /tickets`, `GET /tickets/:id`, `GET /tickets/:id/events`, `GET /ticket-events` | Yes | Yes | Yes | Yes |
 | `POST /tickets`, `PATCH /tickets/:id`, ticket notes and ticket checklist mutations | Yes* | Yes* | Yes | Yes |
 | `GET /tickets/:id/attachments`, attachment file download, upload and delete | Yes | Yes | Yes | Yes |
-| `GET /time-entries/current`, ticket time-entry list, start, manual entry, stop and bill | Yes | Yes | Yes | Yes |
+| `GET /time-entries/current`, ticket time-entry list, start, manual entry, stop, billable toggle and legacy bill | Yes | Yes | Yes | Yes |
 | `GET /inventory`, `GET /inventory/:id` | Yes | Yes | Yes | Yes |
 | Inventory create, update, import and delete | No | No | Yes | Yes |
 | `GET /invoices`, `GET /invoices/:id` and all invoice/quote, line-item, payment and refund mutations | No | Yes | Yes | Yes |

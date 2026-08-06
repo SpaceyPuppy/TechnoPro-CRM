@@ -116,7 +116,7 @@ Published as the internal npm package `@technopro/shared`. Contains all API requ
 | `tickets` | Repair jobs — linked to customer + optional device; status, priority, due date |
 | `ticket_events` | Immutable audit log of notes, status changes, assignments per ticket |
 | `ticket_attachments` | File attachments (photos, documents) linked to tickets |
-| `time_entries` | Labour time tracking per ticket; start/stop timer, hourly rate snapshot |
+| `time_entries` | Labour time tracking per ticket; start/stop timer, hourly rate snapshot, billable flag |
 | `inventory_items` | Parts/products — SKU, price, cost, optional stock quantity |
 | `suppliers` | Vendor records for parts/stock procurement |
 | `purchase_orders` | POs sent to suppliers — status lifecycle (draft, ordered, received) |

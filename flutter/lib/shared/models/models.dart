@@ -349,6 +349,7 @@ class TimeEntryModel {
   final int? durationSeconds;
   final String? note;
   final String labourRate;
+  final bool billable;
   final String? billedAs;
   final String createdAt;
   final String updatedAt;
@@ -362,6 +363,7 @@ class TimeEntryModel {
     this.durationSeconds,
     this.note,
     required this.labourRate,
+    this.billable = true,
     this.billedAs,
     required this.createdAt,
     required this.updatedAt,
@@ -376,6 +378,7 @@ class TimeEntryModel {
         durationSeconds: j['durationSeconds'] as int?,
         note: j['note'] as String?,
         labourRate: j['labourRate'] as String,
+        billable: j['billable'] as bool? ?? true,
         billedAs: j['billedAs'] as String?,
         createdAt: j['createdAt'] as String,
         updatedAt: j['updatedAt'] as String,
