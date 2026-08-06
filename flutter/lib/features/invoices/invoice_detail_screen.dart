@@ -91,15 +91,16 @@ class _PdfButtonState extends ConsumerState<_PdfButton> {
       // Await the provider rather than reading its current value so the first
       // share attempt works while settings are still loading.
       final settings = await ref.read(appSettingsProvider.future);
-      if (settings.businessName.trim().isNotEmpty) return settings;
+      final missingSetting = settings.missingRequiredPdfBusinessSetting;
+      if (missingSetting == null) return settings;
 
       if (!mounted) return null;
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Business name required'),
-          content: const Text(
-            'Add your business name before generating a customer-facing PDF. '
+          content: Text(
+            'Add your ${missingSetting.toLowerCase()} before generating a customer-facing PDF. '
             'ABN, email, address and phone are optional.',
           ),
           actions: [
