@@ -710,6 +710,11 @@ class AppSettings {
         labourRate: m['labourRate'] as String? ?? '75.00',
         invoiceNotes: m['invoiceNotes'] as String? ?? '',
       );
+
+  /// The business name is the only business detail required to identify a PDF.
+  /// Other branding and contact fields are optional and are omitted when blank.
+  String? get missingRequiredPdfBusinessSetting =>
+      businessName.trim().isEmpty ? 'Business Name' : null;
 }
 
 // --- Dashboard ---
