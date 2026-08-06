@@ -7,6 +7,7 @@ import '../../core/db/app_database.dart';
 import '../../core/db/database_provider.dart';
 import '../../core/sync/queue_manager.dart';
 import '../../shared/models/models.dart';
+import '../dashboard/dashboard_provider.dart';
 
 int _decimalHundredths(String value) {
   final parts = value.split('.');
@@ -39,6 +40,8 @@ class InvoiceRepository {
   InvoiceRepository(this._ref);
 
   final Ref _ref;
+
+  void _invalidateDashboard() => _ref.invalidate(dashboardProvider);
 
   void _requireConnection() {
     if (!_ref.read(serverReachableProvider)) {
@@ -94,6 +97,7 @@ class InvoiceRepository {
         },
       );
 
+      _invalidateDashboard();
       return localId;
     } else {
       // POST to API
@@ -127,6 +131,7 @@ class InvoiceRepository {
         syncedAt: DateTime.now(),
       ));
 
+      _invalidateDashboard();
       return serverId;
     }
   }
@@ -184,6 +189,7 @@ class InvoiceRepository {
         },
       );
 
+      _invalidateDashboard();
       return localId;
     } else {
       // POST to API
@@ -218,6 +224,7 @@ class InvoiceRepository {
         createdAt: DateTime.now(),
       ));
 
+      _invalidateDashboard();
       return serverId;
     }
   }
@@ -262,6 +269,7 @@ class InvoiceRepository {
         },
       );
 
+      _invalidateDashboard();
       return localId;
     } else {
       // POST to API
@@ -294,6 +302,7 @@ class InvoiceRepository {
         createdAt: now,
       ));
 
+      _invalidateDashboard();
       return serverId;
     }
   }
@@ -314,6 +323,7 @@ class InvoiceRepository {
 
     // Delete from local DB
     await db.deleteLineItem(lineItemId);
+    _invalidateDashboard();
   }
 
   /// Deletes a payment.
@@ -332,6 +342,7 @@ class InvoiceRepository {
 
     // Delete from local DB
     await db.deletePayment(paymentId);
+    _invalidateDashboard();
   }
 
   /// Assemble a full InvoiceModel from local DB data for PDF generation or preview.
