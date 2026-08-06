@@ -6,8 +6,14 @@ import {
   listTimeEntries,
   getRunningTimeEntryForUser,
   billTimeEntry,
+  updateTimeEntryBillable,
 } from "../services/time-entry.service.js";
-import type { StartTimeEntryRequest, BillTimeEntryRequest } from "@technopro/shared";
+import { InvoiceConflictError } from "../services/invoice.service.js";
+import type {
+  StartTimeEntryRequest,
+  BillTimeEntryRequest,
+  UpdateTimeEntryRequest,
+} from "@technopro/shared";
 import { recordAuditEvent } from "../services/audit.service.js";
 
 const startTimeEntrySchema = {
@@ -16,6 +22,7 @@ const startTimeEntrySchema = {
     properties: {
       note: { type: "string", maxLength: 500 },
       labourRate: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
+      billable: { type: "boolean" },
     },
     additionalProperties: false,
   },
@@ -39,7 +46,19 @@ const manualTimeEntrySchema = {
       durationSeconds: { type: "integer", minimum: 60, maximum: 604800 },
       note: { type: "string", maxLength: 500 },
       labourRate: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
+      billable: { type: "boolean" },
       startedAt: { type: "string", format: "date-time" },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
+const updateTimeEntrySchema = {
+  body: {
+    type: "object",
+    required: ["billable"],
+    properties: {
+      billable: { type: "boolean" },
     },
     additionalProperties: false,
   },
@@ -76,6 +95,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
         const entry = await startTimeEntry(request.params.ticketId, request.user.id, {
           note: request.body.note,
           labourRate: request.body.labourRate,
+          billable: request.body.billable,
         });
         return reply.code(201).send({ data: entry });
       } catch (err) {
@@ -93,7 +113,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
 
   app.post<{
     Params: { ticketId: string };
-    Body: { durationSeconds: number; note?: string; labourRate?: string; startedAt?: string };
+    Body: { durationSeconds: number; note?: string; labourRate?: string; billable?: boolean; startedAt?: string };
   }>(
     "/tickets/:ticketId/time-entries/manual",
     { schema: manualTimeEntrySchema, preHandler: app.requireRole("technician", "counter", "manager", "admin") },
@@ -138,6 +158,39 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       return reply.code(500).send({ error: { code: "INTERNAL_ERROR", message } });
     }
   });
+
+  app.patch<{ Params: { id: string }; Body: UpdateTimeEntryRequest }>(
+    "/time-entries/:id",
+    { schema: updateTimeEntrySchema, preHandler: app.requireRole("technician", "counter", "manager", "admin") },
+    async (request, reply) => {
+      try {
+        const entry = await updateTimeEntryBillable(
+          request.params.id,
+          request.user.id,
+          request.body.billable,
+          request.user.role === "manager" || request.user.role === "admin",
+        );
+        await recordAuditEvent("time_entry", request.params.id, "billable_changed", request.user.id, {
+          billable: entry.billable,
+        });
+        return reply.send({ data: entry });
+      } catch (err) {
+        if (err instanceof InvoiceConflictError) {
+          return reply.code(err.statusCode).send({
+            error: { code: err.code, message: err.message },
+          });
+        }
+        const message = err instanceof Error ? err.message : "Unknown error";
+        if (message.includes("not found")) {
+          return reply.code(404).send({ error: { code: "NOT_FOUND", message } });
+        }
+        if (message.includes("cannot change")) {
+          return reply.code(403).send({ error: { code: "FORBIDDEN", message } });
+        }
+        return reply.code(500).send({ error: { code: "INTERNAL_ERROR", message } });
+      }
+    },
+  );
 
   // Bill a time entry — technicians and above
   app.post<{ Params: { id: string }; Body: BillTimeEntryRequest }>(

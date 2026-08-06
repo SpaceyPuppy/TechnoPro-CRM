@@ -12,9 +12,12 @@ JavaScript floating point for those calculations.
   with the same key and canonical amount, method, type and reference returns
   the original payment. Reusing a key with changed payment details returns
   `IDEMPOTENCY_CONFLICT` rather than applying a second payment or refund.
-- `POST /time-entries/:id/bill` is idempotent by the time-entry row. The
-  transaction locks that row; once `billed_as` is set, later requests return
-  the existing invoice and never create another labour line.
+- Ticket invoice creation and draft-to-open transition capture stopped,
+  billable time entries in one database transaction. Each entry is linked to
+  its labour line through `billed_as`, so retries never create a second labour
+  line. Once linked to an invoice, the entry's billable flag cannot be changed.
+- `POST /time-entries/:id/bill` remains a compatibility endpoint and rejects
+  non-billable entries. New clients should use the ticket invoice workflow.
 
 ## Remaining non-idempotent endpoints
 

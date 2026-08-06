@@ -1,4 +1,4 @@
-﻿import { char, mysqlTable, varchar, int, decimal, timestamp } from "drizzle-orm/mysql-core";
+﻿import { boolean, char, mysqlTable, varchar, int, decimal, timestamp } from "drizzle-orm/mysql-core";
 import { tickets } from "./tickets.js";
 import { users } from "./users.js";
 import { lineItems } from "./billing.js";
@@ -21,6 +21,7 @@ export const timeEntries = mysqlTable("time_entries", {
   durationSeconds: int("duration_seconds"),
   note: varchar("note", { length: 500 }),
   labourRate: decimal("labour_rate", { precision: 10, scale: 2 }).notNull(),
+  billable: boolean("billable").notNull().default(true),
   billedAs: char("billed_as", { length: 36 }).references(() => lineItems.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),

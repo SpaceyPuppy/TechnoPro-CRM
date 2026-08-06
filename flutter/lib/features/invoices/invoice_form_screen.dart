@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../tickets/time_entries_provider.dart';
 import '../dashboard/dashboard_provider.dart';
 import '../tickets/tickets_provider.dart';
 import 'invoice_repository.dart';
@@ -43,7 +44,10 @@ class _InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
       } else {
         ref.invalidate(invoiceListProvider);
       }
-      if (_ticketId != null) ref.invalidate(ticketInvoiceProvider(_ticketId!));
+      if (_ticketId != null) {
+        ref.invalidate(ticketInvoiceProvider(_ticketId!));
+        ref.invalidate(timeEntriesProvider(_ticketId!));
+      }
       ref.invalidate(dashboardProvider);
       if (mounted) context.go('/finance/$id');
     } catch (e) {

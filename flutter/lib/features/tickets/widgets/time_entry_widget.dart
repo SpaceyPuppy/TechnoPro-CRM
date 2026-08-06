@@ -120,7 +120,7 @@ class _TimeEntryTimerWidgetState extends ConsumerState<TimeEntryTimerWidget> {
                       const SizedBox(height: 8),
                       ...entries.map((e) => _TimeEntryRow(
                             entry: e,
-                            onBill: () => _showBillDialog(context, e),
+                            onBillableChanged: (billable) => _setBillable(e, billable),
                           )),
                     ],
                   ) else
@@ -299,68 +299,14 @@ class _TimeEntryTimerWidgetState extends ConsumerState<TimeEntryTimerWidget> {
     }
   }
 
-  void _showBillDialog(BuildContext context, TimeEntryModel entry) {
-    final durationHours = (entry.durationSeconds ?? 0) / 3600;
-    final labourRate = double.tryParse(entry.labourRate) ?? 75.0;
-    final total = durationHours * labourRate;
-    final descController = TextEditingController(
-      text: 'Labour (${durationHours.toStringAsFixed(2)} hours)',
-    );
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Bill Time Entry'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Duration: ${entry.formattedDuration}'),
-              const SizedBox(height: 8),
-              Text('Rate: \$${entry.labourRate}/hour'),
-              const SizedBox(height: 8),
-              Text(
-                'Total: \$${total.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descController,
-                decoration: const InputDecoration(
-                  labelText: 'Line item description',
-                ),
-                maxLines: 2,
-                maxLength: 500,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _billTimeEntry(entry, descController.text.trim());
-            },
-            child: const Text('Bill'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _billTimeEntry(TimeEntryModel entry, [String? description]) async {
+  void _setBillable(TimeEntryModel entry, bool billable) async {
     try {
       await ref.read(
-        billTimeEntryProvider((entry.id, widget.ticketId, description)).future,
+        updateTimeEntryBillableProvider((entry.id, widget.ticketId, billable)).future,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Time billed successfully')),
+          SnackBar(content: Text(billable ? 'Time marked billable' : 'Time marked non-billable')),
         );
       }
     } catch (e) {
@@ -375,11 +321,11 @@ class _TimeEntryTimerWidgetState extends ConsumerState<TimeEntryTimerWidget> {
 
 class _TimeEntryRow extends StatelessWidget {
   final TimeEntryModel entry;
-  final VoidCallback onBill;
+  final ValueChanged<bool> onBillableChanged;
 
   const _TimeEntryRow({
     required this.entry,
-    required this.onBill,
+    required this.onBillableChanged,
   });
 
   @override
@@ -389,12 +335,16 @@ class _TimeEntryRow extends StatelessWidget {
       subtitle: Text(entry.note ?? 'No note'),
       trailing: entry.billedAs != null
           ? const Chip(label: Text('Billed'))
-          : (entry.isRunning
-              ? const SizedBox.shrink()
-              : ElevatedButton(
-                  onPressed: onBill,
-                  child: const Text('Bill'),
-                )),
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Billable'),
+                Switch(
+                  value: entry.billable,
+                  onChanged: onBillableChanged,
+                ),
+              ],
+            ),
       dense: true,
     );
   }

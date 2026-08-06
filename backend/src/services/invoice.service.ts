@@ -1,10 +1,11 @@
-﻿import { eq, sql, desc, and } from "drizzle-orm";
+﻿import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import { getDb, schema } from "../db/index.js";
 import { generateId } from "../utils/id.js";
 import {
   addDecimals,
   calculateLineTotal,
   calculateTax,
+  calculateTimedAmount,
   removeTax,
   decimalToHundredths,
   hundredthsToDecimal,
@@ -74,7 +75,7 @@ async function nextQuoteNumber(): Promise<string> {
 
 // --- Totals ---
 
-type InvoiceDbExecutor = Pick<ReturnType<typeof getDb>, "select" | "update">;
+type InvoiceDbExecutor = Pick<ReturnType<typeof getDb>, "select" | "update" | "insert">;
 
 async function recalculateTotals(invoiceId: string, executor?: InvoiceDbExecutor) {
   const db = executor ?? getDb();
@@ -116,6 +117,96 @@ async function getAmountPaid(invoiceId: string): Promise<string> {
     return sum + (payment.type === "refund" ? -amount : amount);
   }, 0n);
   return hundredthsToDecimal(total);
+}
+
+async function attachBillableTimeToDraftInvoice(
+  invoice: typeof schema.invoices.$inferSelect,
+  executor: InvoiceDbExecutor,
+) {
+  if (invoice.type !== "invoice" || invoice.status !== "draft" || !invoice.ticketId) return;
+
+  const entries = await executor
+    .select()
+    .from(schema.timeEntries)
+    .where(
+      and(
+        eq(schema.timeEntries.ticketId, invoice.ticketId),
+        eq(schema.timeEntries.billable, true),
+        isNotNull(schema.timeEntries.stoppedAt),
+        gt(schema.timeEntries.durationSeconds, 0),
+        isNull(schema.timeEntries.billedAs),
+      ),
+    )
+    .orderBy(schema.timeEntries.createdAt)
+    .for("update");
+
+  for (const entry of entries) {
+    const durationSeconds = entry.durationSeconds!;
+    const hours = durationSeconds / 3600;
+    const note = entry.note?.trim();
+    const description = `Labour (${hours.toFixed(2)} hours)${note ? ` — ${note}` : ""}`.slice(0, 500);
+    const unitPrice = calculateTimedAmount(entry.labourRate.toString(), durationSeconds);
+    const lineItemId = generateId();
+
+    await executor.insert(schema.lineItems).values({
+      id: lineItemId,
+      ticketId: invoice.ticketId,
+      invoiceId: invoice.id,
+      type: "service",
+      description,
+      quantity: 1,
+      unitPrice,
+      discount: "0.00",
+      taxTreatment: "exclusive",
+      total: unitPrice,
+    });
+    await executor
+      .update(schema.timeEntries)
+      .set({ billedAs: lineItemId })
+      .where(eq(schema.timeEntries.id, entry.id));
+  }
+
+  await recalculateTotals(invoice.id, executor);
+}
+
+async function insertDraftInvoice(
+  ticketId: string,
+  taxRate: string,
+  executor: InvoiceDbExecutor,
+) {
+  const [last] = await executor
+    .select({ invoiceNumber: schema.invoices.invoiceNumber })
+    .from(schema.invoices)
+    .where(eq(schema.invoices.type, "invoice"))
+    .orderBy(desc(schema.invoices.createdAt))
+    .limit(1)
+    .for("update");
+  const lastNumber = last?.invoiceNumber;
+  const sequence = lastNumber?.startsWith("INV-")
+    ? Number.parseInt(lastNumber.slice(4), 10) + 1
+    : 1;
+  const invoiceNumber = `INV-${String(sequence).padStart(5, "0")}`;
+  const id = generateId();
+
+  await executor.insert(schema.invoices).values({
+    id,
+    invoiceNumber,
+    ticketId,
+    type: "invoice",
+    subtotal: "0.00",
+    taxRate,
+    taxAmount: "0.00",
+    total: "0.00",
+    status: "draft",
+  });
+
+  const [invoice] = await executor
+    .select()
+    .from(schema.invoices)
+    .where(eq(schema.invoices.id, id))
+    .limit(1)
+    .for("update");
+  return invoice!;
 }
 
 // --- Invoice CRUD ---
@@ -199,6 +290,10 @@ export async function getInvoiceById(id: string) {
 }
 
 export async function createInvoice(data: CreateInvoiceRequest & { type?: "invoice" | "quote" }) {
+  if (data.ticketId && data.type !== "quote") {
+    return createTicketInvoice(data.ticketId);
+  }
+
   const db = getDb();
   const id = generateId();
   const isQuote = data.type === "quote";
@@ -235,6 +330,42 @@ export async function createInvoice(data: CreateInvoiceRequest & { type?: "invoi
   });
 
   return getInvoiceById(id);
+}
+
+export async function createTicketInvoice(ticketId: string) {
+  const db = getDb();
+  const taxRate = await getSetting("gst_rate");
+  let invoiceId: string | undefined;
+
+  await db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .select({ id: schema.tickets.id })
+      .from(schema.tickets)
+      .where(eq(schema.tickets.id, ticketId))
+      .limit(1)
+      .for("update");
+    if (!ticket) throw new Error("Ticket not found");
+
+    let [invoice] = await tx
+      .select()
+      .from(schema.invoices)
+      .where(
+        and(
+          eq(schema.invoices.ticketId, ticketId),
+          eq(schema.invoices.type, "invoice"),
+          eq(schema.invoices.status, "draft"),
+        ),
+      )
+      .orderBy(desc(schema.invoices.createdAt))
+      .limit(1)
+      .for("update");
+
+    if (!invoice) invoice = await insertDraftInvoice(ticketId, taxRate, tx);
+    await attachBillableTimeToDraftInvoice(invoice, tx);
+    invoiceId = invoice.id;
+  });
+
+  return getInvoiceById(invoiceId!);
 }
 
 export async function updateInvoiceStatus(id: string, status: "draft" | "open" | "paid" | "void") {
@@ -280,6 +411,9 @@ export async function updateInvoiceStatus(id: string, status: "draft" | "open" |
       }
     }
 
+    if (existing.status === "draft" && status === "open") {
+      await attachBillableTimeToDraftInvoice(existing, tx);
+    }
     await tx.update(schema.invoices).set({ status }).where(eq(schema.invoices.id, id));
     return true;
   });

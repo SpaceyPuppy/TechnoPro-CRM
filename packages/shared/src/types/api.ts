@@ -373,6 +373,7 @@ export interface TimeEntryResponse {
   durationSeconds: number | null;
   note: string | null;
   labourRate: string;
+  billable: boolean;
   billedAs: string | null;
   createdAt: string;
   updatedAt: string;
@@ -381,6 +382,11 @@ export interface TimeEntryResponse {
 export interface StartTimeEntryRequest {
   note?: string;
   labourRate?: string;
+  billable?: boolean;
+}
+
+export interface UpdateTimeEntryRequest {
+  billable: boolean;
 }
 
 export interface BillTimeEntryRequest {
