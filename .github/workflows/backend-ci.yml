@@ -49,6 +49,8 @@ jobs:
       JWT_SECRET: ci-only-jwt-secret-at-least-32-characters
     steps:
       - uses: actions/checkout@v7
+      - name: Check deployment installer syntax
+        run: bash -n deploy/install.sh
       - uses: actions/setup-node@v7
         with:
           node-version: 22

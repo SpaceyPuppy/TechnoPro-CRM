@@ -5,11 +5,14 @@ import '../../core/db/app_database.dart';
 import '../../core/db/database_provider.dart';
 import '../../core/sync/queue_manager.dart';
 import '../../core/sync/sync_service.dart';
+import '../dashboard/dashboard_provider.dart';
 
 class TicketRepository {
   TicketRepository(this._ref);
 
   final Ref _ref;
+
+  void _invalidateDashboard() => _ref.invalidate(dashboardProvider);
 
   void _requireConnection() {
     if (!_ref.read(serverReachableProvider)) {
@@ -101,6 +104,7 @@ class TicketRepository {
       // Queue ticket creation
       await qm.queueCreate('ticket', payload);
 
+      _invalidateDashboard();
       return ticketLocalId;
     } else {
       // Online path: POST to API immediately
@@ -127,6 +131,7 @@ class TicketRepository {
         syncedAt: DateTime.now(),
       ));
 
+      _invalidateDashboard();
       return ticketId;
     }
   }
@@ -159,6 +164,7 @@ class TicketRepository {
       );
       await db.upsertTicket(updated);
     }
+    _invalidateDashboard();
   }
 
   /// Deletes a ticket. If offline, queues the mutation; if online, DELETEs immediately.
@@ -173,6 +179,7 @@ class TicketRepository {
     }
     // Optimistically delete from local DB
     await _ref.read(databaseProvider).deleteTicket(id);
+    _invalidateDashboard();
   }
 }
 

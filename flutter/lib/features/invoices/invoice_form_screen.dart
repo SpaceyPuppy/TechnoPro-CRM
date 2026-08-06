@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../tickets/time_entries_provider.dart';
+import '../dashboard/dashboard_provider.dart';
 import '../tickets/tickets_provider.dart';
 import 'invoice_repository.dart';
 import 'invoices_provider.dart';
@@ -47,6 +48,7 @@ class _InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
         ref.invalidate(ticketInvoiceProvider(_ticketId!));
         ref.invalidate(timeEntriesProvider(_ticketId!));
       }
+      ref.invalidate(dashboardProvider);
       if (mounted) context.go('/finance/$id');
     } catch (e) {
       setState(() => _error = e.toString());

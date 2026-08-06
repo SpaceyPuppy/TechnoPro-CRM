@@ -8,6 +8,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../shared/models/enums.dart' show UserRolePermissions;
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
+import '../dashboard/dashboard_provider.dart';
 import '../inventory/inventory_provider.dart';
 import '../settings/app_settings_provider.dart';
 import 'invoice_repository.dart';
@@ -90,15 +91,16 @@ class _PdfButtonState extends ConsumerState<_PdfButton> {
       // Await the provider rather than reading its current value so the first
       // share attempt works while settings are still loading.
       final settings = await ref.read(appSettingsProvider.future);
-      if (settings.businessName.trim().isNotEmpty) return settings;
+      final missingSetting = settings.missingRequiredPdfBusinessSetting;
+      if (missingSetting == null) return settings;
 
       if (!mounted) return null;
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Business name required'),
-          content: const Text(
-            'Add your business name before generating a customer-facing PDF. '
+          content: Text(
+            'Add your ${missingSetting.toLowerCase()} before generating a customer-facing PDF. '
             'ABN, email, address and phone are optional.',
           ),
           actions: [
@@ -313,6 +315,7 @@ class _StatusActions extends ConsumerWidget {
       final dio = ref.read(apiClientProvider);
       await dio.patch('/invoices/${invoice.id}/status', data: {'status': newStatus});
       ref.invalidate(invoiceListProvider);
+      ref.invalidate(dashboardProvider);
       onChanged();
     } catch (e) {
       if (context.mounted) {
@@ -327,6 +330,7 @@ class _StatusActions extends ConsumerWidget {
       final dio = ref.read(apiClientProvider);
       await dio.patch('/invoices/${invoice.id}/quote-status', data: {'quoteStatus': newStatus});
       ref.invalidate(quoteListProvider);
+      ref.invalidate(dashboardProvider);
       onChanged();
     } catch (e) {
       if (context.mounted) {
@@ -343,6 +347,7 @@ class _StatusActions extends ConsumerWidget {
           '/invoices/${invoice.id}/convert-to-ticket');
       final ticketId = res.data!['data']['ticketId'] as String;
       ref.invalidate(quoteListProvider);
+      ref.invalidate(dashboardProvider);
       onChanged();
       if (context.mounted) {
         context.go('/tickets/$ticketId');

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/models/models.dart';
+import '../dashboard/dashboard_provider.dart';
 
 // List time entries for a ticket
 final timeEntriesProvider =
@@ -59,6 +60,7 @@ final startTimeEntryProvider = FutureProvider.autoDispose.family<TimeEntryModel,
     final entry = TimeEntryModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     ref.invalidate(timeEntriesProvider(ticketId));
     ref.invalidate(currentTimeEntryProvider);
+    ref.invalidate(dashboardProvider);
     return entry;
   } on DioException catch (e) {
     throw apiErrorMessage(e);
@@ -76,6 +78,7 @@ final stopTimeEntryProvider = FutureProvider.autoDispose.family<TimeEntryModel, 
     final entry = TimeEntryModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     ref.invalidate(timeEntriesProvider(ticketId));
     ref.invalidate(currentTimeEntryProvider);
+    ref.invalidate(dashboardProvider);
     return entry;
   } on DioException catch (e) {
     throw apiErrorMessage(e);
@@ -110,6 +113,7 @@ final addManualTimeEntryProvider =
     );
     final entry = TimeEntryModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     ref.invalidate(timeEntriesProvider(ticketId));
+    ref.invalidate(dashboardProvider);
     return entry;
   } on DioException catch (e) {
     throw apiErrorMessage(e);
@@ -128,6 +132,7 @@ final updateTimeEntryBillableProvider =
     );
     final entry = TimeEntryModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     ref.invalidate(timeEntriesProvider(ticketId));
+    ref.invalidate(dashboardProvider);
     return entry;
   } on DioException catch (e) {
     throw apiErrorMessage(e);
