@@ -1,5 +1,6 @@
 ﻿import { eq, like, or, sql, desc } from "drizzle-orm";
 import { getDb, schema } from "../db/index.js";
+import { and } from "drizzle-orm";
 import { generateId } from "../utils/id.js";
 import type { CreateInventoryItemRequest, UpdateInventoryItemRequest } from "@technopro/shared";
 
@@ -12,12 +13,15 @@ export async function listInventory(options: {
   const { page, pageSize, search } = options;
   const offset = (page - 1) * pageSize;
 
-  const condition = search
+  const searchCondition = search
     ? or(
         like(schema.inventoryItems.name, `%${search}%`),
         like(schema.inventoryItems.sku, `%${search}%`),
+        like(schema.inventoryItems.barcode, `%${search}%`),
+        like(schema.inventoryItems.upc, `%${search}%`),
       )
     : undefined;
+  const condition = and(eq(schema.inventoryItems.active, true), searchCondition);
 
   const [rows, countResult] = await Promise.all([
     db
@@ -112,6 +116,8 @@ export async function deleteInventoryItem(id: string): Promise<boolean> {
   const db = getDb();
   const existing = await getInventoryItemById(id);
   if (!existing) return false;
-  await db.delete(schema.inventoryItems).where(eq(schema.inventoryItems.id, id));
+  // Preserve sales, purchase and stock history. Archived items remain linked
+  // to past documents and can be restored by an administrator.
+  await db.update(schema.inventoryItems).set({ active: false }).where(eq(schema.inventoryItems.id, id));
   return true;
 }

@@ -69,6 +69,7 @@ export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
 export const PurchaseOrderStatus = {
   DRAFT: "draft",
   ORDERED: "ordered",
+  PARTIALLY_RECEIVED: "partially_received",
   RECEIVED: "received",
   CANCELLED: "cancelled",
 } as const;

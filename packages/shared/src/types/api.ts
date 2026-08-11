@@ -498,8 +498,12 @@ export interface POItemResponse {
   id: string;
   poId: string;
   inventoryItemId?: string | null;
+  supplierItemId?: string | null;
+  supplierSku?: string | null;
   description?: string | null;
   quantity: number;
+  receivedQty: number;
+  cancelledQty: number;
   unitCost: string;
   totalCost: string; // Line total (quantity * unitCost)
   totalMarginCalc: string | null;
@@ -524,6 +528,7 @@ export interface PurchaseOrderDetailResponse extends PurchaseOrderResponse {
 
 export interface CreatePOItemRequest {
   inventoryItemId?: string;
+  supplierItemId?: string;
   description?: string;
   quantity: number;
   unitCost: string;
@@ -543,7 +548,8 @@ export interface UpdatePurchaseOrderRequest {
 }
 
 export interface ReceivePurchaseOrderRequest {
-  notes?: string;
+  receiptReference: string;
+  lines: Array<{ poItemId: string; receivedQty: number; cancelledQty?: number; unitCost?: string; reasonCode?: string; reasonNote?: string }>;
 }
 
 // --- API wrapper ---

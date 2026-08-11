@@ -55,10 +55,22 @@ class ProcurementRepository {
     return PurchaseOrderModel.fromJson(response.data?['data'] as Map<String, dynamic>);
   }
 
-  // Receives the PO and auto-increments inventory across items locally via backend
-  Future<void> receivePurchaseOrder(String id, {String? notes}) async {
+  Future<List<Map<String, dynamic>>> getSupplierItems(String supplierId) async {
     final dio = _ref.read(apiClientProvider);
-    await dio.post('/purchase-orders/$id/receive', data: notes != null ? {'notes': notes} : {});
+    final response = await dio.get<Map<String, dynamic>>('/suppliers/$supplierId/items');
+    return (response.data?['data'] as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<PurchaseOrderModel> createPurchaseOrder(Map<String, dynamic> payload) async {
+    final dio = _ref.read(apiClientProvider);
+    final response = await dio.post<Map<String, dynamic>>('/purchase-orders', data: payload);
+    return PurchaseOrderModel.fromJson(response.data?['data'] as Map<String, dynamic>);
+  }
+
+  // Receives the PO and auto-increments inventory across items locally via backend
+  Future<void> receivePurchaseOrder(String id, Map<String, dynamic> receipt) async {
+    final dio = _ref.read(apiClientProvider);
+    await dio.post('/purchase-orders/$id/receive', data: receipt);
   }
 }
 

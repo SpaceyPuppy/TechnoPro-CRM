@@ -10,6 +10,8 @@ import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import type { CreateSupplierRequest, UpdateSupplierRequest } from "@technopro/shared";
 import { recordAuditEvent } from "../services/audit.service.js";
 import { rolePolicies } from "../access-control.js";
+import { getDb, schema } from "../db/index.js";
+import { eq } from "drizzle-orm";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getSupplierById>>>) {
   return {
@@ -85,6 +87,35 @@ export async function supplierRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Supplier not found" } });
     }
     return reply.send({ data: toResponse(item) });
+  });
+
+  /** Supplier-specific catalogue records are the authoritative choice when
+   * drafting a PO: they carry the supplier SKU, quote and pack constraints. */
+  app.get<{ Params: { id: string } }>("/suppliers/:id/items", { preHandler: app.requireRole(...rolePolicies.manager) }, async (request, reply) => {
+    const rows = await getDb()
+      .select({ supplierItem: schema.supplierItems, inventoryItem: schema.inventoryItems })
+      .from(schema.supplierItems)
+      .leftJoin(schema.inventoryItems, eq(schema.supplierItems.inventoryItemId, schema.inventoryItems.id))
+      .where(eq(schema.supplierItems.supplierId, request.params.id));
+    return reply.send({
+      data: rows
+        .filter(({ supplierItem, inventoryItem }) => supplierItem.active === 1 && inventoryItem?.active === true)
+        .map(({ supplierItem, inventoryItem }) => ({
+          id: supplierItem.id,
+          supplierSku: supplierItem.supplierSku,
+          supplierUpc: supplierItem.supplierUpc,
+          packSize: supplierItem.packSize,
+          minimumOrderQty: supplierItem.minimumOrderQty,
+          quotedUnitCost: supplierItem.quotedUnitCost?.toString() ?? null,
+          inventoryItem: inventoryItem ? {
+            id: inventoryItem.id,
+            sku: inventoryItem.sku,
+            name: inventoryItem.name,
+            cost: inventoryItem.cost.toString(),
+            active: inventoryItem.active,
+          } : null,
+        })),
+    });
   });
 
   app.post<{ Body: CreateSupplierRequest }>(

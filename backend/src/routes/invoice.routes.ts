@@ -269,7 +269,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
     "/invoices/:id/line-items",
     { schema: lineItemSchema, preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
-      const result = await addLineItem(request.params.id, request.body);
+      const result = await addLineItem(request.params.id, request.body, request.user.id);
       if (!result) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Invoice not found" } });
       }
@@ -295,6 +295,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
         request.params.id,
         request.params.lineItemId,
         request.body,
+        request.user.id,
       );
       if (!inv) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Line item not found" } });
@@ -311,7 +312,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
     "/invoices/:id/line-items/:lineItemId",
     { preHandler: app.requireRole("counter", "manager", "admin") },
     async (request, reply) => {
-      const removed = await removeLineItem(request.params.id, request.params.lineItemId);
+      const removed = await removeLineItem(request.params.id, request.params.lineItemId, request.user.id);
       if (!removed) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Line item not found" } });
       }
