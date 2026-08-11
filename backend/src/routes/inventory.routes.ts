@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { generateId } from "../utils/id.js";
 import type { CreateInventoryItemRequest, UpdateInventoryItemRequest } from "@technopro/shared";
 import { recordAuditEvent } from "../services/audit.service.js";
+import { applyStockMovement } from "../services/stock.service.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getInventoryItemById>>>) {
   return {
@@ -52,6 +53,7 @@ const createSchema = {
       name: { type: "string", minLength: 1, maxLength: 255 },
       description: { type: "string", maxLength: 5000 },
       stockQty: { type: ["integer", "null"] },
+      openingBalanceReason: { type: "string", maxLength: 100 },
       cost: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       price: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       barcode: { type: "string", maxLength: 255 },
@@ -71,8 +73,6 @@ const updateSchema = {
       sku: { type: "string", minLength: 1, maxLength: 100 },
       name: { type: "string", minLength: 1, maxLength: 255 },
       description: { type: "string", maxLength: 5000 },
-      stockQty: { type: ["integer", "null"] },
-      cost: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       price: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       barcode: { type: "string", maxLength: 255 },
       upc: { type: "string", maxLength: 32 }, manufacturerPartNumber: { type: "string", maxLength: 100 }, itemType: { type: "string", maxLength: 40 },
@@ -111,11 +111,21 @@ export async function inventoryRoutes(app: FastifyInstance) {
     return reply.send({ data: toResponse(item) });
   });
 
-  app.post<{ Body: CreateInventoryItemRequest }>(
+  app.post<{ Body: CreateInventoryItemRequest & { openingBalanceReason?: string } }>(
     "/inventory",
     { schema: createSchema, preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
-      const item = await createInventoryItem(request.body);
+      if (request.body.stockQty !== undefined && request.body.stockQty !== null && request.body.stockQty < 0) {
+        return reply.code(400).send({ error: { code: "BAD_REQUEST", message: "Opening quantity cannot be negative" } });
+      }
+      if ((request.body.stockQty ?? 0) > 0 && !request.body.openingBalanceReason?.trim()) {
+        return reply.code(400).send({ error: { code: "BAD_REQUEST", message: "An opening-balance reason is required" } });
+      }
+      let item = await createInventoryItem(request.body);
+      if ((request.body.stockQty ?? 0) > 0) {
+        await applyStockMovement({ inventoryItemId: item!.id, quantityDelta: request.body.stockQty!, unitCost: request.body.cost ?? "0.00", sourceType: "opening_balance", sourceReference: `item-opening:${item!.id}`, reasonCode: request.body.openingBalanceReason!, actorUserId: request.user.id });
+        item = await getInventoryItemById(item!.id);
+      }
       await recordAuditEvent("inventory_item", item!.id, "created", request.user.id, {
         after: toResponse(item!),
       });
@@ -128,6 +138,9 @@ export async function inventoryRoutes(app: FastifyInstance) {
     { schema: updateSchema, preHandler: app.requireRole("manager", "admin") },
     async (request, reply) => {
       const before = await getInventoryItemById(request.params.id);
+      if ((request.body as Record<string, unknown>).stockQty !== undefined || (request.body as Record<string, unknown>).cost !== undefined) {
+        return reply.code(400).send({ error: { code: "STOCK_MOVEMENT_REQUIRED", message: "Use a stock adjustment or receipt to change stock quantity or cost" } });
+      }
       const item = await updateInventoryItem(request.params.id, request.body);
       if (!item) {
         return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Item not found" } });

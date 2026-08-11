@@ -55,8 +55,10 @@ export async function createInventoryItem(data: CreateInventoryItemRequest) {
     sku: data.sku,
     name: data.name,
     description: data.description ?? null,
-    stockQty: data.stockQty ?? null,
-    cost: data.cost ?? "0.00",
+    // Quantity is established by an opening-balance stock movement in the
+    // route. A general item create must not manufacture stock history.
+    stockQty: data.stockQty === null || data.stockQty === undefined ? null : 0,
+    cost: data.stockQty === null || data.stockQty === undefined ? (data.cost ?? "0.00") : "0.00",
     price: data.price,
     barcode: data.barcode ?? null,
     ...(data as any).upc !== undefined ? { upc: (data as any).upc || null } : {},
@@ -88,8 +90,8 @@ export async function updateInventoryItem(id: string, data: UpdateInventoryItemR
   if (data.sku !== undefined) updates.sku = data.sku;
   if (data.name !== undefined) updates.name = data.name;
   if (data.description !== undefined) updates.description = data.description;
-  if (data.stockQty !== undefined) updates.stockQty = data.stockQty;
-  if (data.cost !== undefined) updates.cost = data.cost;
+  // Stock quantity and weighted cost are controlled exclusively by the stock
+  // movement service. Product edits may never overwrite either value.
   if (data.price !== undefined) updates.price = data.price;
   if (data.barcode !== undefined) updates.barcode = data.barcode;
   for (const field of ["upc", "manufacturerPartNumber", "itemType", "category", "subcategory", "brand", "compatibleModel", "condition", "reorderPoint", "targetStockLevel", "warrantyMonths", "internalNotes", "active", "posSellable", "serialized"]) {

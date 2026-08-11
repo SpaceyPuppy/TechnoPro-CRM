@@ -408,6 +408,21 @@ class InventoryItemModel {
   final String cost;
   final String price;
   final String? barcode;
+  final String? upc;
+  final String? manufacturerPartNumber;
+  final String itemType;
+  final String? category;
+  final String? subcategory;
+  final String? brand;
+  final String? compatibleModel;
+  final String? condition;
+  final int? reorderPoint;
+  final int? targetStockLevel;
+  final int? warrantyMonths;
+  final String? internalNotes;
+  final bool active;
+  final bool posSellable;
+  final bool serialized;
   final String createdAt;
   final String updatedAt;
 
@@ -420,6 +435,21 @@ class InventoryItemModel {
     required this.cost,
     required this.price,
     this.barcode,
+    this.upc,
+    this.manufacturerPartNumber,
+    this.itemType = 'part',
+    this.category,
+    this.subcategory,
+    this.brand,
+    this.compatibleModel,
+    this.condition,
+    this.reorderPoint,
+    this.targetStockLevel,
+    this.warrantyMonths,
+    this.internalNotes,
+    this.active = true,
+    this.posSellable = true,
+    this.serialized = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -433,6 +463,21 @@ class InventoryItemModel {
         cost: j['cost'] as String,
         price: j['price'] as String,
         barcode: j['barcode'] as String?,
+        upc: j['upc'] as String?,
+        manufacturerPartNumber: j['manufacturerPartNumber'] as String?,
+        itemType: j['itemType'] as String? ?? 'part',
+        category: j['category'] as String?,
+        subcategory: j['subcategory'] as String?,
+        brand: j['brand'] as String?,
+        compatibleModel: j['compatibleModel'] as String?,
+        condition: j['condition'] as String?,
+        reorderPoint: j['reorderPoint'] as int?,
+        targetStockLevel: j['targetStockLevel'] as int?,
+        warrantyMonths: j['warrantyMonths'] as int?,
+        internalNotes: j['internalNotes'] as String?,
+        active: j['active'] as bool? ?? true,
+        posSellable: j['posSellable'] as bool? ?? true,
+        serialized: j['serialized'] as bool? ?? false,
         createdAt: j['createdAt'] as String,
         updatedAt: j['updatedAt'] as String,
       );
