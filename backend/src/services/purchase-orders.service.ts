@@ -106,6 +106,9 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
         ? await tx.select().from(schema.supplierItems).where(eq(schema.supplierItems.id, item.supplierItemId)).limit(1)
         : [];
       if (supplierItem && supplierItem.supplierId !== data.supplierId) throw new Error("Supplier item does not belong to this purchase order supplier");
+      if (supplierItem && supplierItem.active !== 1) throw new Error("Supplier item is inactive");
+      if (supplierItem && item.quantity < supplierItem.minimumOrderQty) throw new Error(`Supplier item minimum order quantity is ${supplierItem.minimumOrderQty}`);
+      if (supplierItem && item.quantity % supplierItem.packSize !== 0) throw new Error(`Supplier item quantity must be a multiple of ${supplierItem.packSize}`);
       await tx.insert(schema.poItems).values({
         id: generateId(),
         poId: id,

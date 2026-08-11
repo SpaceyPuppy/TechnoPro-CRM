@@ -12,6 +12,10 @@ final supplierProvider = FutureProvider.family.autoDispose<SupplierModel, String
   return repo.getSupplierById(id);
 });
 
+final supplierItemsForSupplierProvider = FutureProvider.family.autoDispose<List<Map<String, dynamic>>, String>((ref, supplierId) async {
+  return ref.watch(procurementRepositoryProvider).getSupplierItems(supplierId);
+});
+
 final purchaseOrdersProvider = FutureProvider.autoDispose<List<PurchaseOrderModel>>((ref) async {
   final repo = ref.watch(procurementRepositoryProvider);
   return repo.getPurchaseOrders();

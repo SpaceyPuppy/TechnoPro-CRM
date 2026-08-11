@@ -55,6 +55,12 @@ class ProcurementRepository {
     return PurchaseOrderModel.fromJson(response.data?['data'] as Map<String, dynamic>);
   }
 
+  Future<List<Map<String, dynamic>>> getSupplierItems(String supplierId) async {
+    final dio = _ref.read(apiClientProvider);
+    final response = await dio.get<Map<String, dynamic>>('/suppliers/$supplierId/items');
+    return (response.data?['data'] as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
   Future<PurchaseOrderModel> createPurchaseOrder(Map<String, dynamic> payload) async {
     final dio = _ref.read(apiClientProvider);
     final response = await dio.post<Map<String, dynamic>>('/purchase-orders', data: payload);
