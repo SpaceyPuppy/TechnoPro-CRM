@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/widgets/error_view.dart';
+import '../../shared/widgets/adaptive_form_scaffold.dart';
 import 'inventory_provider.dart';
 
 class InventoryFormScreen extends ConsumerStatefulWidget {
@@ -167,12 +168,12 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(isEdit ? 'Edit Item' : 'New Item')),
-      body: Form(
+    return AdaptiveFormScaffold(
+      title: isEdit ? 'Edit Item' : 'New Item',
+      child: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
           children: [
             TextFormField(
               controller: _skuCtrl,

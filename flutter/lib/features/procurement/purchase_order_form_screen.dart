@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'data/procurement_repository.dart';
 import 'procurement_provider.dart';
+import '../../shared/widgets/adaptive_form_scaffold.dart';
 
 class PurchaseOrderFormScreen extends ConsumerStatefulWidget {
   const PurchaseOrderFormScreen({super.key});
@@ -82,15 +83,15 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
   Widget build(BuildContext context) {
     final suppliers = ref.watch(suppliersProvider);
     final supplierItems = _supplierId == null ? null : ref.watch(supplierItemsForSupplierProvider(_supplierId!));
-    return Scaffold(
-      appBar: AppBar(title: const Text('New purchase order')),
-      body: suppliers.when(
+    return AdaptiveFormScaffold(
+      title: 'New purchase order',
+      child: suppliers.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Could not load suppliers: $error')),
         data: (supplierList) => Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             children: [
               DropdownButtonFormField<String>(
                 value: _supplierId,
