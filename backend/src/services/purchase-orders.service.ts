@@ -168,13 +168,20 @@ export async function receivePurchaseOrder(id: string, actorUserId: string, inpu
       const remaining = item.quantity - item.receivedQty - item.cancelledQty;
       if (line.receivedQty + (line.cancelledQty ?? 0) > remaining) throw new Error("Receipt exceeds the remaining quantity");
       const sourceReference = `po-receipt:${id}:${input.receiptReference}:${item.id}`;
-      const [priorReceipt] = await tx.select({ id: schema.stockMovements.id }).from(schema.stockMovements).where(eq(schema.stockMovements.sourceReference, sourceReference)).limit(1).for("update");
+      const [priorReceipt] = await tx.select({ id: schema.purchaseOrderReceiptLines.id }).from(schema.purchaseOrderReceiptLines).where(and(eq(schema.purchaseOrderReceiptLines.poItemId, item.id), eq(schema.purchaseOrderReceiptLines.receiptReference, input.receiptReference))).limit(1).for("update");
       if (priorReceipt) throw new Error("This receipt line has already been processed");
       if (line.receivedQty > 0 && item.inventoryItemId) {
         const [inventory] = await tx.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, item.inventoryItemId)).limit(1).for("update");
         if (!inventory) throw new Error("Inventory item not found");
         if (inventory.stockQty !== null) await applyStockMovementInTransaction(tx, { inventoryItemId: inventory.id, quantityDelta: line.receivedQty, unitCost: line.unitCost ?? item.unitCost.toString(), sourceType: "po_receipt", sourceReference, reasonCode: line.reasonCode ?? "supplier_receipt", reasonNote: line.reasonNote, actorUserId });
       }
+      await tx.insert(schema.purchaseOrderReceiptLines).values({
+        id: generateId(),
+        poItemId: item.id,
+        receiptReference: input.receiptReference.trim(),
+        receivedQty: line.receivedQty,
+        cancelledQty: line.cancelledQty ?? 0,
+      });
       await tx.update(schema.poItems).set({ receivedQty: sql`${schema.poItems.receivedQty} + ${line.receivedQty}`, cancelledQty: sql`${schema.poItems.cancelledQty} + ${line.cancelledQty ?? 0}` }).where(eq(schema.poItems.id, item.id));
     }
     const allItems = await tx.select().from(schema.poItems).where(eq(schema.poItems.poId, id));

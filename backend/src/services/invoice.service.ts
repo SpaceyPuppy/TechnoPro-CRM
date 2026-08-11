@@ -655,7 +655,11 @@ export async function updateLineItem(
         throw new InvoiceConflictError("Inventory item not found", "INVENTORY_NOT_FOUND");
       }
       if (inventoryItem.stockQty !== null) {
-        try { await applyStockMovementInTransaction(tx, { inventoryItemId: inventoryItem.id, quantityDelta: -stockDelta, unitCost: inventoryItem.cost.toString(), sourceType: stockDelta > 0 ? "sale" : "sale_reversal", sourceReference: `invoice-line-adjust:${lineItemId}:${quantity}`, reasonCode: "invoice_quantity_changed", actorUserId }); }
+        // The current line quantity is not a unique adjustment identity: a
+        // user may legitimately change 1 → 2 → 1 → 2. Generate a movement
+        // identity per committed edit; a repeated HTTP submission sees a
+        // zero delta after the first commit and therefore cannot double-post.
+        try { await applyStockMovementInTransaction(tx, { inventoryItemId: inventoryItem.id, quantityDelta: -stockDelta, unitCost: inventoryItem.cost.toString(), sourceType: stockDelta > 0 ? "sale" : "sale_reversal", sourceReference: `invoice-line-adjust:${lineItemId}:${generateId()}`, reasonCode: "invoice_quantity_changed", actorUserId }); }
         catch (error) { throw new InvoiceConflictError(error instanceof Error ? error.message : "Unable to adjust stock", "INSUFFICIENT_STOCK"); }
       }
     }

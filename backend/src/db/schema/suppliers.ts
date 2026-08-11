@@ -62,6 +62,17 @@ export const poItems = mysqlTable("po_items", {
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
+/** Immutable confirmation for every PO-line receipt or cancellation. This
+ * makes a supplier delivery reference idempotent even for non-tracked items. */
+export const purchaseOrderReceiptLines = mysqlTable("purchase_order_receipt_lines", {
+  id: char("id", { length: 36 }).primaryKey(),
+  poItemId: char("po_item_id", { length: 36 }).notNull().references(() => poItems.id),
+  receiptReference: varchar("receipt_reference", { length: 100 }).notNull(),
+  receivedQty: int("received_qty").notNull().default(0),
+  cancelledQty: int("cancelled_qty").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const suppliersRelations = relations(suppliers, ({ many }) => ({
   purchaseOrders: many(purchaseOrders),
 }));
