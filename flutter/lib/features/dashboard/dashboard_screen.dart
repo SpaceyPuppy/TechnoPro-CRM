@@ -218,11 +218,17 @@ void _showDashboardCustomize(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
+    backgroundColor: Colors.transparent,
     builder: (sheetContext) => StatefulBuilder(
-      builder: (_, setSheetState) => SafeArea(
-        child: Padding(
+      builder: (_, setSheetState) => PrismBackdrop(
+        compact: true,
+        child: SafeArea(
+          child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: Column(
+          child: PrismSurface(
+            radius: 30,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -247,7 +253,9 @@ void _showDashboardCustomize(BuildContext context, WidgetRef ref) {
                 ],
               ),
             ],
+            ),
           ),
+        ),
         ),
       ),
     ),

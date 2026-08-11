@@ -107,20 +107,34 @@ class PurchaseOrderDetailScreen extends ConsumerWidget {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    Text('Order: ${po.poNumber}', style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    Text('Supplier: ${po.supplier?.name ?? 'Unknown'}'),
-                    Text('Status: ${po.status.toUpperCase()}'),
-                    Text('Total: \$${po.totalCost}'),
+                    PrismSurface(
+                      radius: 28,
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(po.poNumber, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 12),
+                          Wrap(spacing: 8, runSpacing: 8, children: [
+                            Chip(avatar: const Icon(Icons.local_shipping_outlined, size: 16), label: Text(po.supplier?.name ?? 'Unknown supplier')),
+                            Chip(avatar: const Icon(Icons.inventory_2_outlined, size: 16), label: Text(po.status.toUpperCase())),
+                            Chip(avatar: const Icon(Icons.payments_outlined, size: 16), label: Text('\$${po.totalCost}')),
+                          ]),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 24),
-                    const Text('Line Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    PrismSectionLabel(title: 'Line items', subtitle: '${po.items.length} item${po.items.length == 1 ? '' : 's'} in this order'),
                     const SizedBox(height: 8),
-                    ...po.items.map((item) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
+                    ...po.items.map((item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: PrismSurface(
+                            radius: 20,
+                            child: ListTile(
                             title: Text(item.inventoryItem?.name ?? item.description ?? 'Unknown Item'),
                             subtitle: Text('Ordered: ${item.quantity} · Received: ${item.receivedQty} · Cancelled: ${item.cancelledQty}\n@ \$${item.unitCost}${item.supplierSku == null ? '' : ' · ${item.supplierSku}'}'),
                             trailing: Text('\$${item.totalCost}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ),
                           ),
                         )),
                   ],

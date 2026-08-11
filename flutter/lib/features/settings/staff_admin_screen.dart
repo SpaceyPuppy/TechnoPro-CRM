@@ -30,7 +30,11 @@ class StaffAdminScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _StaffEditor(user: user),
+      backgroundColor: Colors.transparent,
+      builder: (_) => PrismBackdrop(
+        compact: true,
+        child: PrismSurface(radius: 30, child: _StaffEditor(user: user)),
+      ),
     );
     if (saved == true) ref.invalidate(staffListProvider);
   }
@@ -84,7 +88,12 @@ class StaffAdminScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final user = users[index];
-              return ListTile(
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                child: PrismSurface(
+                  radius: 20,
+                  onTap: () => _openEditor(context, ref, user: user),
+                  child: ListTile(
                 leading: CircleAvatar(
                   child: Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase()),
                 ),
@@ -95,7 +104,9 @@ class StaffAdminScreen extends ConsumerWidget {
                   value: user.active,
                   onChanged: (active) => _setActive(context, ref, user, active),
                 ),
-                onTap: () => _openEditor(context, ref, user: user),
+                    onTap: () => _openEditor(context, ref, user: user),
+                  ),
+                ),
               );
             },
           ),

@@ -491,13 +491,20 @@ class _LineItemsSection extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _AddLineItemSheet(
-        invoiceId: invoice.id,
-        taxRate: invoice.taxRate,
-        onAdded: () {
-          ref.invalidate(invoiceListProvider);
-          onChanged();
-        },
+      backgroundColor: Colors.transparent,
+      builder: (_) => PrismBackdrop(
+        compact: true,
+        child: PrismSurface(
+          radius: 30,
+          child: _AddLineItemSheet(
+            invoiceId: invoice.id,
+            taxRate: invoice.taxRate,
+            onAdded: () {
+              ref.invalidate(invoiceListProvider);
+              onChanged();
+            },
+          ),
+        ),
       ),
     );
   }
@@ -810,13 +817,20 @@ class _PaymentsSection extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _AddPaymentSheet(
-        invoiceId: invoice.id,
-        balance: invoice.balance,
-        onAdded: () {
-          ref.invalidate(invoiceListProvider);
-          onChanged();
-        },
+      backgroundColor: Colors.transparent,
+      builder: (_) => PrismBackdrop(
+        compact: true,
+        child: PrismSurface(
+          radius: 30,
+          child: _AddPaymentSheet(
+            invoiceId: invoice.id,
+            balance: invoice.balance,
+            onAdded: () {
+              ref.invalidate(invoiceListProvider);
+              onChanged();
+            },
+          ),
+        ),
       ),
     );
   }
