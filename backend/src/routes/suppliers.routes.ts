@@ -99,7 +99,7 @@ export async function supplierRoutes(app: FastifyInstance) {
       .where(eq(schema.supplierItems.supplierId, request.params.id));
     return reply.send({
       data: rows
-        .filter(({ supplierItem }) => supplierItem.active === 1)
+        .filter(({ supplierItem, inventoryItem }) => supplierItem.active === 1 && inventoryItem?.active === true)
         .map(({ supplierItem, inventoryItem }) => ({
           id: supplierItem.id,
           supplierSku: supplierItem.supplierSku,

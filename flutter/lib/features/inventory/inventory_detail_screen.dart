@@ -23,23 +23,34 @@ class InventoryDetailScreen extends ConsumerWidget {
     final suppliersResponse = await ref.read(apiClientProvider).get<Map<String, dynamic>>('/suppliers');
     final suppliers = (suppliersResponse.data?['data'] as List? ?? []).cast<Map<String, dynamic>>();
     String? supplierId;
-    final sku = TextEditingController(); final upc = TextEditingController(); final cost = TextEditingController();
+    final sku = TextEditingController(); final upc = TextEditingController(); final partNumber = TextEditingController(); final cost = TextEditingController(); final packSize = TextEditingController(text: '1'); final minimumOrderQty = TextEditingController(text: '1');
+    var preferred = false;
     final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
       title: const Text('Add supplier option'),
       content: SizedBox(width: 420, child: Column(mainAxisSize: MainAxisSize.min, children: [
         DropdownButtonFormField<String>(value: supplierId, isExpanded: true, decoration: const InputDecoration(labelText: 'Supplier *'), items: suppliers.map((supplier) => DropdownMenuItem(value: supplier['id'] as String, child: Text(supplier['name'] as String, overflow: TextOverflow.ellipsis))).toList(), onChanged: (value) => setDialogState(() => supplierId = value)),
         TextFormField(controller: sku, decoration: const InputDecoration(labelText: 'Supplier SKU')),
         TextFormField(controller: upc, decoration: const InputDecoration(labelText: 'Supplier UPC')),
+        TextFormField(controller: partNumber, decoration: const InputDecoration(labelText: 'Supplier part number')),
         TextFormField(controller: cost, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Quoted unit cost')),
+        TextFormField(controller: packSize, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pack size *')),
+        TextFormField(controller: minimumOrderQty, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Minimum order quantity *')),
+        CheckboxListTile(contentPadding: EdgeInsets.zero, value: preferred, onChanged: (value) => setDialogState(() => preferred = value ?? false), title: const Text('Preferred supplier option')),
       ])),
       actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: supplierId == null ? null : () => Navigator.pop(dialogContext, true), child: const Text('Save'))],
     )));
-    if (confirmed != true || supplierId == null) return;
+    final parsedPackSize = int.tryParse(packSize.text);
+    final parsedMinimumOrderQty = int.tryParse(minimumOrderQty.text);
+    if (confirmed != true || supplierId == null || parsedPackSize == null || parsedPackSize < 1 || parsedMinimumOrderQty == null || parsedMinimumOrderQty < 1) return;
     await ref.read(apiClientProvider).post('/inventory/${item.id}/supplier-items', data: {
       'supplierId': supplierId,
       if (sku.text.trim().isNotEmpty) 'supplierSku': sku.text.trim(),
       if (upc.text.trim().isNotEmpty) 'supplierUpc': upc.text.trim(),
+      if (partNumber.text.trim().isNotEmpty) 'supplierPartNumber': partNumber.text.trim(),
       if (cost.text.trim().isNotEmpty) 'quotedUnitCost': cost.text.trim(),
+      'packSize': parsedPackSize,
+      'minimumOrderQty': parsedMinimumOrderQty,
+      'preferred': preferred,
     });
     ref.invalidate(supplierItemsProvider(id));
   }
