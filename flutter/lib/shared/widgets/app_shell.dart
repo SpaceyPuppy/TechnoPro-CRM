@@ -17,6 +17,7 @@ const _railDestinations = <_Dest>[
   (icon: Icons.timer_outlined,              activeIcon: Icons.timer,                label: 'Current work', path: '/current-work'),
   (icon: Icons.people_outline,              activeIcon: Icons.people,               label: 'Customers',  path: '/customers'),
   (icon: Icons.inventory_2_outlined,        activeIcon: Icons.inventory_2,          label: 'Inventory',  path: '/inventory'),
+  (icon: Icons.local_shipping_outlined,      activeIcon: Icons.local_shipping,        label: 'Procurement', path: '/procurement'),
   (icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Finance', path: '/finance'),
   (icon: Icons.settings_outlined,           activeIcon: Icons.settings,             label: 'Settings',   path: '/settings'),
 ];
@@ -71,7 +72,8 @@ class AppShell extends ConsumerWidget {
     if (loc.startsWith('/current-work')) return 2;
     if (loc.startsWith('/customers')) return 3;
     if (loc.startsWith('/inventory')) return 4;
-    if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 5;
+    if (loc.startsWith('/procurement')) return 5;
+    if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 6;
     if (loc.startsWith('/settings'))  return 6;
     return 0;
   }

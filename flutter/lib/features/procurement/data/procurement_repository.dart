@@ -56,9 +56,9 @@ class ProcurementRepository {
   }
 
   // Receives the PO and auto-increments inventory across items locally via backend
-  Future<void> receivePurchaseOrder(String id, {String? notes}) async {
+  Future<void> receivePurchaseOrder(String id, Map<String, dynamic> receipt) async {
     final dio = _ref.read(apiClientProvider);
-    await dio.post('/purchase-orders/$id/receive', data: notes != null ? {'notes': notes} : {});
+    await dio.post('/purchase-orders/$id/receive', data: receipt);
   }
 }
 

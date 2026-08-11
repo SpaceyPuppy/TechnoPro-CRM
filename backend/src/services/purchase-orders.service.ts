@@ -1,7 +1,8 @@
-import { eq, like, desc, count, inArray, sql } from "drizzle-orm";
+import { and, eq, like, desc, count, inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "../db/index.js";
 import { generateId } from "../utils/id.js";
 import type { CreatePurchaseOrderRequest, UpdatePurchaseOrderRequest } from "@technopro/shared";
+import { applyStockMovementInTransaction } from "./stock.service.js";
 
 export async function listPurchaseOrders(params: { page: number; pageSize: number; search?: string }) {
   const db = getDb();
@@ -97,10 +98,16 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
     });
     
     for (const item of data.items) {
+      const [supplierItem] = item.supplierItemId
+        ? await tx.select().from(schema.supplierItems).where(eq(schema.supplierItems.id, item.supplierItemId)).limit(1)
+        : [];
+      if (supplierItem && supplierItem.supplierId !== data.supplierId) throw new Error("Supplier item does not belong to this purchase order supplier");
       await tx.insert(schema.poItems).values({
         id: generateId(),
         poId: id,
         inventoryItemId: item.inventoryItemId || null,
+        supplierItemId: item.supplierItemId || null,
+        supplierSku: supplierItem?.supplierSku ?? null,
         description: item.description || null,
         quantity: item.quantity,
         unitCost: parseFloat(item.unitCost).toFixed(2),
@@ -133,9 +140,8 @@ export async function updatePurchaseOrder(id: string, data: UpdatePurchaseOrderR
   return getPurchaseOrderById(id);
 }
 
-export async function receivePurchaseOrder(id: string) {
+export async function receivePurchaseOrder(id: string, actorUserId: string, input: { receiptReference: string; lines: Array<{ poItemId: string; receivedQty: number; cancelledQty?: number; unitCost?: string; reasonCode?: string; reasonNote?: string }> }) {
   const db = getDb();
-  
   await db.transaction(async (tx) => {
     const result = await tx.select().from(schema.purchaseOrders).where(eq(schema.purchaseOrders.id, id)).limit(1);
     const po = result[0];
@@ -144,38 +150,27 @@ export async function receivePurchaseOrder(id: string) {
     if (po.status === "received" || po.status === "cancelled") {
       throw new Error(`PO is already ${po.status}`);
     }
-
-    const items = await tx.select().from(schema.poItems).where(eq(schema.poItems.poId, id));
-    
-    // Update inventory logic
-    for (const item of items) {
-      if (!item.inventoryItemId) continue; // Skip one-off items
-
-      // 1. Get current item cost to calculate moving average (if we wanted to, but for simplicity we'll overwrite cost)
-      const invItems = await tx.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, item.inventoryItemId)).limit(1);
-      const invItem = invItems[0];
-      
-      if (invItem && invItem.stockQty !== null) {
-        // Overwrite the cost with standard cost from PO and increment quantity
-        await tx.update(schema.inventoryItems)
-          .set({ 
-            stockQty: sql`${schema.inventoryItems.stockQty} + ${item.quantity}`,
-            cost: item.unitCost
-          })
-          .where(eq(schema.inventoryItems.id, item.inventoryItemId));
-      } else if (invItem) {
-        // Stock not tracked -> just update cost
-        await tx.update(schema.inventoryItems)
-          .set({ cost: item.unitCost })
-          .where(eq(schema.inventoryItems.id, item.inventoryItemId));
+    if (!input.receiptReference?.trim() || input.lines.length === 0) throw new Error("A receipt reference and at least one line are required");
+    for (const line of input.lines) {
+      if (!Number.isSafeInteger(line.receivedQty) || line.receivedQty < 0 || !Number.isSafeInteger(line.cancelledQty ?? 0) || (line.receivedQty + (line.cancelledQty ?? 0)) === 0) throw new Error("Receipt quantities must be positive integers");
+      const [item] = await tx.select().from(schema.poItems).where(and(eq(schema.poItems.id, line.poItemId), eq(schema.poItems.poId, id))).limit(1).for("update");
+      if (!item) throw new Error("Purchase order line not found");
+      const remaining = item.quantity - item.receivedQty - item.cancelledQty;
+      if (line.receivedQty + (line.cancelledQty ?? 0) > remaining) throw new Error("Receipt exceeds the remaining quantity");
+      const sourceReference = `po-receipt:${id}:${input.receiptReference}:${item.id}`;
+      const [priorReceipt] = await tx.select({ id: schema.stockMovements.id }).from(schema.stockMovements).where(eq(schema.stockMovements.sourceReference, sourceReference)).limit(1).for("update");
+      if (priorReceipt) throw new Error("This receipt line has already been processed");
+      if (line.receivedQty > 0 && item.inventoryItemId) {
+        const [inventory] = await tx.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, item.inventoryItemId)).limit(1).for("update");
+        if (!inventory) throw new Error("Inventory item not found");
+        if (inventory.stockQty !== null) await applyStockMovementInTransaction(tx, { inventoryItemId: inventory.id, quantityDelta: line.receivedQty, unitCost: line.unitCost ?? item.unitCost.toString(), sourceType: "po_receipt", sourceReference, reasonCode: line.reasonCode ?? "supplier_receipt", reasonNote: line.reasonNote, actorUserId });
       }
+      await tx.update(schema.poItems).set({ receivedQty: sql`${schema.poItems.receivedQty} + ${line.receivedQty}`, cancelledQty: sql`${schema.poItems.cancelledQty} + ${line.cancelledQty ?? 0}` }).where(eq(schema.poItems.id, item.id));
     }
-    
-    // Update PO status
-    await tx.update(schema.purchaseOrders)
-      .set({ status: "received" })
-      .where(eq(schema.purchaseOrders.id, id));
-      
+    const allItems = await tx.select().from(schema.poItems).where(eq(schema.poItems.poId, id));
+    const resolved = allItems.every((item) => item.quantity <= item.receivedQty + item.cancelledQty);
+    const anyReceived = allItems.some((item) => item.receivedQty > 0);
+    await tx.update(schema.purchaseOrders).set({ status: resolved ? (anyReceived ? "received" : "cancelled") : "partially_received" }).where(eq(schema.purchaseOrders.id, id));
   });
 
   const received = await getPurchaseOrderById(id);

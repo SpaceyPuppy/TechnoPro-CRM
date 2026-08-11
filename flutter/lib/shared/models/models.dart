@@ -939,8 +939,12 @@ class POItemModel {
   final String id;
   final String poId;
   final String? inventoryItemId;
+  final String? supplierItemId;
+  final String? supplierSku;
   final String? description;
   final int quantity;
+  final int receivedQty;
+  final int cancelledQty;
   final String unitCost;
   final String totalCost;
   final InventoryItemModel? inventoryItem;
@@ -949,8 +953,12 @@ class POItemModel {
     required this.id,
     required this.poId,
     this.inventoryItemId,
+    this.supplierItemId,
+    this.supplierSku,
     this.description,
     required this.quantity,
+    this.receivedQty = 0,
+    this.cancelledQty = 0,
     required this.unitCost,
     required this.totalCost,
     this.inventoryItem,
@@ -965,8 +973,12 @@ class POItemModel {
         id: j['id'] as String,
         poId: j['poId'] as String,
         inventoryItemId: j['inventoryItemId'] as String?,
+        supplierItemId: j['supplierItemId'] as String?,
+        supplierSku: j['supplierSku'] as String?,
         description: j['description'] as String?,
         quantity: quantity,
+        receivedQty: j['receivedQty'] as int? ?? 0,
+        cancelledQty: j['cancelledQty'] as int? ?? 0,
         unitCost: unitCost,
         totalCost: totalCost,
         inventoryItem: j['inventoryItem'] != null
