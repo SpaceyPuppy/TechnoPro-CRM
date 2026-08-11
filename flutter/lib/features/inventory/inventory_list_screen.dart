@@ -31,6 +31,7 @@ class InventoryListScreen extends ConsumerWidget {
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(inventoryListProvider),
           ),
+          if (canManage) IconButton(icon: const Icon(Icons.upload_file), tooltip: 'Import CSV', onPressed: () => context.go('/inventory/import')),
         ],
       ),
       body: LayoutBuilder(

@@ -13,6 +13,7 @@ import '../../features/customers/customer_form_screen.dart';
 import '../../features/inventory/inventory_list_screen.dart';
 import '../../features/inventory/inventory_detail_screen.dart';
 import '../../features/inventory/inventory_form_screen.dart';
+import '../../features/inventory/inventory_import_screen.dart';
 import '../../features/invoices/invoice_detail_screen.dart';
 import '../../features/invoices/invoice_form_screen.dart';
 import '../../features/invoices/finance_screen.dart';
@@ -126,6 +127,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               panelBuilder: (id) => InventoryDetailScreen(id: id),
             ),
             routes: [
+              GoRoute(path: 'import', builder: (_, __) => const InventoryImportScreen()),
               GoRoute(
                 path: 'new',
                 builder: (_, __) => const InventoryFormScreen(),

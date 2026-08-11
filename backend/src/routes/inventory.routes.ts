@@ -13,6 +13,8 @@ import { generateId } from "../utils/id.js";
 import type { CreateInventoryItemRequest, UpdateInventoryItemRequest } from "@technopro/shared";
 import { recordAuditEvent } from "../services/audit.service.js";
 import { applyStockMovement } from "../services/stock.service.js";
+import { applyStockMovementInTransaction } from "../services/stock.service.js";
+import { decimalToHundredths } from "../utils/money.js";
 
 function toResponse(row: NonNullable<Awaited<ReturnType<typeof getInventoryItemById>>>) {
   return {
@@ -170,13 +172,59 @@ export async function inventoryRoutes(app: FastifyInstance) {
     } catch (error) { return reply.code(400).send({ error: { code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to add supplier item" } }); }
   });
 
+  type ImportRow = { sku: string; name: string; price: string; cost?: string; stockQty?: number; description?: string; barcode?: string; upc?: string; brand?: string; category?: string; supplierId?: string; supplierSku?: string };
+  const validateImportRows = (rows: ImportRow[]) => rows.map((row, index) => {
+    const errors: string[] = [];
+    const sku = row.sku?.trim(); const name = row.name?.trim();
+    if (!sku) errors.push("SKU is required"); if (!name) errors.push("Name is required");
+    try { decimalToHundredths(row.price); } catch { errors.push("Price must be a decimal with at most two places"); }
+    try { if (row.cost) decimalToHundredths(row.cost); } catch { errors.push("Cost must be a decimal with at most two places"); }
+    if (row.stockQty !== undefined && (!Number.isSafeInteger(row.stockQty) || row.stockQty < 0)) errors.push("Opening quantity must be a non-negative integer");
+    return { row: index + 1, sku, name, errors };
+  });
+
+  app.get("/inventory/import/template", { preHandler: app.requireRole("manager", "admin") }, async (_request, reply) => reply.send({ data: { columns: ["sku", "name", "price", "cost", "stockQty", "description", "barcode", "upc", "brand", "category", "supplierId", "supplierSku"] } }));
+
+  app.post<{ Body: { rows: ImportRow[] } }>("/inventory/import/preview", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
+    if (!Array.isArray(request.body.rows) || request.body.rows.length > 2000) return reply.code(400).send({ error: { code: "BAD_REQUEST", message: "Provide up to 2,000 rows" } });
+    const preview = validateImportRows(request.body.rows);
+    const existing = await Promise.all(preview.filter((entry) => entry.sku).map(async (entry) => ({ row: entry.row, exists: !!(await getDb().select({ id: schema.inventoryItems.id }).from(schema.inventoryItems).where(eq(schema.inventoryItems.sku, entry.sku!)).limit(1))[0] })));
+    return reply.send({ data: { rows: preview.map((entry) => ({ ...entry, action: existing.find((candidate) => candidate.row === entry.row)?.exists ? "update" : "create" })), valid: preview.every((entry) => entry.errors.length === 0) } });
+  });
+
+  app.post<{ Body: { rows: ImportRow[]; openingBalanceReason: string; confirmed: boolean; importReference: string } }>("/inventory/import", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
+    const { rows, openingBalanceReason, confirmed, importReference } = request.body;
+    if (!confirmed || !openingBalanceReason?.trim() || !importReference?.trim()) return reply.code(400).send({ error: { code: "BAD_REQUEST", message: "Confirmed import reference and opening-balance reason are required" } });
+    if (!Array.isArray(rows) || rows.length > 2000) return reply.code(400).send({ error: { code: "BAD_REQUEST", message: "Provide up to 2,000 rows" } });
+    const preview = validateImportRows(rows);
+    if (preview.some((entry) => entry.errors.length)) return reply.code(400).send({ error: { code: "INVALID_IMPORT", message: "Fix all preview errors before importing", details: preview.filter((entry) => entry.errors.length) } });
+    try {
+      const result = await getDb().transaction(async (tx) => {
+        let created = 0; let updated = 0;
+        for (let index = 0; index < rows.length; index++) {
+          const row = rows[index]!;
+          const [existing] = await tx.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.sku, row.sku.trim())).limit(1).for("update");
+          const values = { name: row.name.trim(), description: row.description?.trim() || null, price: row.price, barcode: row.barcode?.trim() || null, upc: row.upc?.trim() || null, brand: row.brand?.trim() || null, category: row.category?.trim() || null };
+          const itemId = existing?.id ?? generateId();
+          if (existing) { await tx.update(schema.inventoryItems).set(values).where(eq(schema.inventoryItems.id, itemId)); updated++; }
+          else { await tx.insert(schema.inventoryItems).values({ id: itemId, sku: row.sku.trim(), ...values, stockQty: row.stockQty === undefined ? null : 0, cost: "0.00" }); created++; }
+          if ((row.stockQty ?? 0) > 0) await applyStockMovementInTransaction(tx, { inventoryItemId: itemId, quantityDelta: row.stockQty!, unitCost: row.cost ?? "0.00", sourceType: "opening_balance", sourceReference: `${importReference}:${index + 1}`, reasonCode: openingBalanceReason, actorUserId: request.user.id });
+          if (row.supplierId) await tx.insert(schema.supplierItems).values({ id: generateId(), supplierId: row.supplierId, inventoryItemId: itemId, supplierSku: row.supplierSku?.trim() || null }).onDuplicateKeyUpdate({ set: { supplierSku: row.supplierSku?.trim() || null } });
+        }
+        return { created, updated };
+      });
+      await recordAuditEvent("inventory_import", importReference, "confirmed", request.user.id, result);
+      return reply.code(201).send({ data: result });
+    } catch (error) { return reply.code(400).send({ error: { code: "IMPORT_FAILED", message: error instanceof Error ? error.message : "Import failed" } }); }
+  });
+
   // Bulk import inventory items â€” managers and admins only
   app.post<{
     Body: {
       rows: Array<{ sku: string; name: string; price: string; cost?: string; stockQty?: string; description?: string }>;
     };
   }>(
-    "/inventory/import",
+    "/inventory/import/legacy",
     {
       schema: {
         body: {
@@ -207,6 +255,10 @@ export async function inventoryRoutes(app: FastifyInstance) {
       preHandler: app.requireRole("manager", "admin"),
     },
     async (request, reply) => {
+      return reply.code(410).send({ error: { code: "IMPORT_REPLACED", message: "Use /inventory/import/preview then /inventory/import" } });
+      /* Legacy row-by-row importer deliberately retained below only to make
+       * the removal explicit in history; it is unreachable and will be
+       * deleted once deployed clients have moved to the preview flow. */
       const db = getDb();
       let imported = 0;
       const errors: Array<{ row: number; reason: string }> = [];
