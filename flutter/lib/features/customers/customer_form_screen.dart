@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/widgets/error_view.dart';
+import '../../shared/widgets/adaptive_form_scaffold.dart';
 import 'customer_repository.dart';
 import 'customers_provider.dart';
 
@@ -106,12 +107,12 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(isEdit ? 'Edit Customer' : 'New Customer')),
-      body: Form(
+    return AdaptiveFormScaffold(
+      title: isEdit ? 'Edit Customer' : 'New Customer',
+      child: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
           children: [
             SegmentedButton<bool>(
               segments: const [
