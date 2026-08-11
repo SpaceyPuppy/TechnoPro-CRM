@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_provider.dart';
@@ -11,9 +12,17 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isAdmin = ref.watch(authProvider).user?.role == UserRole.admin;
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: const PrismAppBar(title: Text('Settings')),
       body: ListView(
+        padding: const EdgeInsets.all(12),
         children: [
+          PrismSectionLabel(
+            title: 'Workspace',
+            subtitle: 'Configure the way your operation runs',
+          ),
+          PrismSurface(
+            radius: 26,
+            child: Column(children: [
           ListTile(
             leading: Icon(Icons.business_outlined,
                 color: Theme.of(context).colorScheme.primary),
@@ -43,6 +52,17 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.go('/settings/device-models'),
           ),
           const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.cloud_sync_outlined,
+                color: Theme.of(context).colorScheme.primary),
+            title: const Text('Offline & Sync'),
+            subtitle: const Text('Connection state, cached work and sync controls'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go('/settings/offline-sync'),
+          ),
+          const Divider(height: 1),
+            ]),
+          ),
         ],
       ),
     );

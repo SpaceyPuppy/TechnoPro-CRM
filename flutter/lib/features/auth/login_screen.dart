@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../shared/widgets/prism_page.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -98,14 +99,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      body: Center(
+      body: PrismBackdrop(
+        compact: true,
+        child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
-            child: Form(
-              key: _formKey,
-              child: Column(
+            child: PrismSurface(
+              radius: 32,
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -241,10 +247,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ],
                 ],
+                ),
               ),
             ),
           ),
         ),
+      ),
       ),
     );
   }

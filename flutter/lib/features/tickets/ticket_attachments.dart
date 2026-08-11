@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/prism_surfaces.dart';
 
 // --- Provider ---
 
@@ -167,8 +168,16 @@ class _UploadButtonState extends ConsumerState<_UploadButton> {
   Future<ImageSource?> _pickSource() async {
     return showModalBottomSheet<ImageSource>(
       context: context,
-      builder: (_) => SafeArea(
-        child: Column(
+      backgroundColor: Colors.transparent,
+      builder: (_) => PrismBackdrop(
+        compact: true,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: PrismSurface(
+              radius: 28,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
@@ -182,6 +191,9 @@ class _UploadButtonState extends ConsumerState<_UploadButton> {
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
           ],
+              ),
+            ),
+          ),
         ),
       ),
     );

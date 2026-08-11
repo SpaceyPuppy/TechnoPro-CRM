@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
@@ -66,7 +67,7 @@ class _InventoryImportScreenState extends ConsumerState<InventoryImportScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Import inventory CSV')),
+    appBar: const PrismAppBar(title: Text('Import inventory CSV')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
       const Text('Use columns: sku, name, price, cost, stockQty, description, barcode, upc, brand, category, supplierId, supplierSku.'),
       const SizedBox(height: 16), OutlinedButton.icon(onPressed: _busy ? null : _pickCsv, icon: const Icon(Icons.upload_file), label: const Text('Choose CSV and preview')),

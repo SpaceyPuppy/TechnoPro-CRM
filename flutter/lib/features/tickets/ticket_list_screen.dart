@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -44,7 +45,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     final tier = layoutTier(width, isTouch);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('Tickets'),
         actions: [
           _StatusFilterButton(
@@ -167,7 +168,11 @@ class _DesktopTicketTable extends StatelessWidget {
           letterSpacing: 0.5,
         );
 
-    return Column(
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: PrismSurface(
+        radius: 26,
+        child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
@@ -196,6 +201,8 @@ class _DesktopTicketTable extends StatelessWidget {
           ),
         ),
       ],
+        ),
+      ),
     );
   }
 }
@@ -298,9 +305,10 @@ class _TicketCard extends StatelessWidget {
         ? colorScheme.primaryContainer.withValues(alpha: 0.5)
         : colorScheme.surface;
 
-    return Card(
-      color: bgColor,
-      clipBehavior: Clip.antiAlias,
+    return PrismSurface(
+      tint: bgColor.withValues(alpha: .64),
+      radius: 22,
+      onTap: onTap,
       child: InkWell(
         onTap: onTap,
         child: IntrinsicHeight(

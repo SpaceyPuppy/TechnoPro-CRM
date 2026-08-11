@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/models/enums.dart';
@@ -29,7 +30,11 @@ class StaffAdminScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _StaffEditor(user: user),
+      backgroundColor: Colors.transparent,
+      builder: (_) => PrismBackdrop(
+        compact: true,
+        child: PrismSurface(radius: 30, child: _StaffEditor(user: user)),
+      ),
     );
     if (saved == true) ref.invalidate(staffListProvider);
   }
@@ -59,7 +64,7 @@ class StaffAdminScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final staff = ref.watch(staffListProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('Staff Administration'),
         actions: [IconButton(onPressed: () => _openEditor(context, ref), tooltip: 'Add staff', icon: const Icon(Icons.person_add_outlined))],
       ),
@@ -83,7 +88,12 @@ class StaffAdminScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final user = users[index];
-              return ListTile(
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                child: PrismSurface(
+                  radius: 20,
+                  onTap: () => _openEditor(context, ref, user: user),
+                  child: ListTile(
                 leading: CircleAvatar(
                   child: Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase()),
                 ),
@@ -94,7 +104,9 @@ class StaffAdminScreen extends ConsumerWidget {
                   value: user.active,
                   onChanged: (active) => _setActive(context, ref, user, active),
                 ),
-                onTap: () => _openEditor(context, ref, user: user),
+                    onTap: () => _openEditor(context, ref, user: user),
+                  ),
+                ),
               );
             },
           ),

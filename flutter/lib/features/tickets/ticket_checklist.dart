@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/prism_surfaces.dart';
 import 'tickets_provider.dart';
 
 final ticketChecklistProvider = FutureProvider.autoDispose
@@ -108,7 +109,8 @@ class _TicketChecklistSectionState
   @override
   Widget build(BuildContext context) {
     final checklist = ref.watch(ticketChecklistProvider(widget.ticketId));
-    return Card(
+    return PrismSurface(
+      radius: 24,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

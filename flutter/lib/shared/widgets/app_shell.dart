@@ -6,6 +6,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/providers/layout_provider.dart';
 import '../../core/sync/offline_mode_provider.dart' show OfflineMode, offlineModeProvider;
 import '../models/enums.dart' show UserRolePermissions;
+import 'prism_surfaces.dart';
 
 // ── Destination definitions ──────────────────────────────────────────────────
 
@@ -38,13 +39,13 @@ const _moreItems = <_Dest>[
 
 // ── Dark sidebar colour constants ────────────────────────────────────────────
 
-const _sidebarBg        = Color(0xFF0F172A);
-const _sidebarBorder    = Color(0xFF1E293B);
-const _sidebarActive    = Color(0xFF1E3A8A);
-const _sidebarActiveIcon = Color(0xFF93C5FD);
-const _sidebarInactiveIcon = Color(0x99FFFFFF); // white 60%
-const _sidebarText      = Color(0xFFFFFFFF);
-const _sidebarTextDim   = Color(0x8AFFFFFF); // white 54%
+const _sidebarBg = Color(0xCC0D1A30);
+const _sidebarBorder = Color(0x66FFFFFF);
+const _sidebarActive = Color(0x993B82F6);
+const _sidebarActiveIcon = Color(0xFFFFFFFF);
+const _sidebarInactiveIcon = Color(0xCCDBEAFE);
+const _sidebarText = Color(0xFFFFFFFF);
+const _sidebarTextDim = Color(0xB3DBEAFE);
 
 // ── AppShell ─────────────────────────────────────────────────────────────────
 
@@ -118,20 +119,25 @@ class AppShell extends ConsumerWidget {
   // ── Desktop: extended dark sidebar ─────────────────────────────────────────
 
   Widget _buildDesktop(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage, bool canCounter) {
-    return Scaffold(
-      body: Row(
-        children: [
-          _DesktopSidebar(
-            selectedIndex: selectedIndex,
-            user: user,
-            canManage: canManage,
-            canCounter: canCounter,
-            onDestinationSelected: (i) => context.go(_railDestinations[i].path),
-            onLogout: () => ref.read(authProvider.notifier).logout(),
+    return PrismBackdrop(
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          child: Row(
+            children: [
+              _DesktopSidebar(
+                selectedIndex: selectedIndex,
+                user: user,
+                canManage: canManage,
+                canCounter: canCounter,
+                onDestinationSelected: (i) => context.go(_railDestinations[i].path),
+                onLogout: () => ref.read(authProvider.notifier).logout(),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: _wrapWithBanner(_RouteLineage(child: child), isReachable, ref)),
+            ],
           ),
-          const VerticalDivider(width: 1, thickness: 1, color: _sidebarBorder),
-          Expanded(child: _wrapWithBanner(_RouteLineage(child: child), isReachable, ref)),
-        ],
+        ),
       ),
     );
   }
@@ -139,20 +145,25 @@ class AppShell extends ConsumerWidget {
   // ── Tablet: compact dark rail ───────────────────────────────────────────────
 
   Widget _buildTablet(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage, bool canCounter) {
-    return Scaffold(
-      body: Row(
-        children: [
-          _TabletRail(
-            selectedIndex: selectedIndex,
-            user: user,
-            canManage: canManage,
-            canCounter: canCounter,
-            onDestinationSelected: (i) => context.go(_railDestinations[i].path),
-            onLogout: () => ref.read(authProvider.notifier).logout(),
+    return PrismBackdrop(
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              _TabletRail(
+                selectedIndex: selectedIndex,
+                user: user,
+                canManage: canManage,
+                canCounter: canCounter,
+                onDestinationSelected: (i) => context.go(_railDestinations[i].path),
+                onLogout: () => ref.read(authProvider.notifier).logout(),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: _wrapWithBanner(_RouteLineage(child: child), isReachable, ref)),
+            ],
           ),
-          const VerticalDivider(width: 1, thickness: 1, color: _sidebarBorder),
-          Expanded(child: _wrapWithBanner(_RouteLineage(child: child), isReachable, ref)),
-        ],
+        ),
       ),
     );
   }
@@ -160,33 +171,21 @@ class AppShell extends ConsumerWidget {
   // ── Phone: bottom nav + "More" bottom sheet ──────────────────────────────────
 
   Widget _buildPhone(BuildContext context, WidgetRef ref, int selectedIndex, dynamic user, bool isReachable, bool canManage, bool canCounter) {
-    final colorScheme = Theme.of(context).colorScheme;
-    // Map selectedIndex to navIndex for NavigationBar (0-4)
-    // selectedIndex 5-6 (More items) → navIndex 4 (More button)
-    final navIndex = selectedIndex > 4 ? 4 : selectedIndex;
     final moreLabel = _moreLabel(selectedIndex);
     final moreIcon = _moreIcon(selectedIndex);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Image.asset('assets/image/logo.png', height: 28, fit: BoxFit.contain),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () => ref.read(authProvider.notifier).logout(),
-          ),
-        ],
-      ),
-      body: _wrapWithBanner(child, isReachable, ref),
-      bottomNavigationBar: _PhoneGlassNavigation(
-        selectedIndex: selectedIndex,
-        moreLabel: moreLabel,
-        moreIcon: moreIcon,
-        onDestinationSelected: (index) => context.go(_phoneDestinations[index].path),
-        onCreate: () => showCreateSheet(context, canManage: canManage),
-        onMore: () => showMoreSheet(context, canManage: canManage, canCounter: canCounter),
+    return PrismBackdrop(
+      compact: true,
+      child: Scaffold(
+        body: _wrapWithBanner(child, isReachable, ref),
+        bottomNavigationBar: _PhoneGlassNavigation(
+          selectedIndex: selectedIndex,
+          moreLabel: moreLabel,
+          moreIcon: moreIcon,
+          onDestinationSelected: (index) => context.go(_phoneDestinations[index].path),
+          onCreate: () => showCreateSheet(context, canManage: canManage),
+          onMore: () => showMoreSheet(context, canManage: canManage, canCounter: canCounter),
+        ),
       ),
     );
   }
@@ -217,12 +216,16 @@ class _RouteLineage extends StatelessWidget {
     final detail = location.endsWith('/new') ? 'Create' : location.endsWith('/edit') ? 'Edit' : null;
     return Column(
       children: [
-        Container(
-          height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          alignment: Alignment.centerLeft,
-          color: colors.surfaceContainerLow.withValues(alpha: .72),
-          child: Text('Workspace  /  $section${detail == null ? '' : '  /  $detail'}', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: colors.onSurfaceVariant)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          child: PrismSurface(
+            radius: 18,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            child: Text(
+              'Workspace  /  $section${detail == null ? '' : '  /  $detail'}',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: colors.onSurfaceVariant, fontWeight: FontWeight.w700),
+            ),
+          ),
         ),
         Expanded(child: child),
       ],
@@ -253,13 +256,9 @@ class _PhoneGlassNavigation extends StatelessWidget {
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerHigh.withValues(alpha: .88),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: colors.outlineVariant.withValues(alpha: .7)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .16), blurRadius: 24, offset: const Offset(0, 10))],
-        ),
+      child: PrismSurface(
+        radius: 30,
+        tint: colors.surfaceContainerHigh.withValues(alpha: .44),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -270,11 +269,25 @@ class _PhoneGlassNavigation extends StatelessWidget {
               label: 'Create',
               child: Transform.translate(
                 offset: const Offset(0, -12),
-                child: FilledButton(
-                  onPressed: onCreate,
-                  style: FilledButton.styleFrom(minimumSize: const Size(52, 52), padding: EdgeInsets.zero, shape: const CircleBorder(), elevation: 6),
-                  child: const Icon(Icons.add, size: 25),
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [Color(0xFF60A5FA), Color(0xFF2563EB)]),
+                  border: Border.all(color: Colors.white.withValues(alpha: .72), width: 1.4),
+                  boxShadow: [BoxShadow(color: colors.primary.withValues(alpha: .44), blurRadius: 24, spreadRadius: 2)],
                 ),
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    onTap: onCreate,
+                    customBorder: const CircleBorder(),
+                    child: const Center(child: Icon(Icons.add_rounded, size: 29, color: Colors.white)),
+                  ),
+                ),
+              ),
               ),
             ),
             _PhoneDestinationButton(destination: _phoneDestinations[2], selected: selectedIndex == 3, onTap: () => onDestinationSelected(2)),
@@ -332,9 +345,11 @@ class _DesktopSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 224,
-      color: _sidebarBg,
+    return SizedBox(
+      width: 244,
+      child: PrismSurface(
+      radius: 28,
+      tint: _sidebarBg,
       child: Column(
         children: [
           // Logo
@@ -342,10 +357,7 @@ class _DesktopSidebar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .92), borderRadius: BorderRadius.circular(14)),
               child: Image.asset(
                 'assets/image/logo.png',
                 height: 38,
@@ -408,9 +420,7 @@ class _DesktopSidebar extends StatelessWidget {
           ),
           // Footer: user + logout
           Container(
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: _sidebarBorder)),
-            ),
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: _sidebarBorder))),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,6 +457,7 @@ class _DesktopSidebar extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -526,9 +537,10 @@ class _TabletRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 72,
-      child: Container(
-      color: _sidebarBg,
+      width: 80,
+      child: PrismSurface(
+      radius: 24,
+      tint: _sidebarBg,
       child: Column(
         children: [
           // Small logo at top
@@ -613,10 +625,16 @@ void showCreateSheet(BuildContext context, {required bool canManage}) {
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
-    builder: (_) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-        child: Column(
+    backgroundColor: Colors.transparent,
+    builder: (_) => PrismBackdrop(
+      compact: true,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          child: PrismSurface(
+            radius: 28,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -632,6 +650,8 @@ void showCreateSheet(BuildContext context, {required bool canManage}) {
               },
             )),
           ],
+            ),
+          ),
         ),
       ),
     ),
@@ -647,11 +667,16 @@ void showMoreSheet(BuildContext context, {bool canManage = false, bool canCounte
   }).toList();
   showModalBottomSheet(
     context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (_) => SafeArea(
-      child: Column(
+    backgroundColor: Colors.transparent,
+    builder: (_) => PrismBackdrop(
+      compact: true,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          child: PrismSurface(
+            radius: 28,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -674,6 +699,9 @@ void showMoreSheet(BuildContext context, {bool canManage = false, bool canCounte
               )),
           const SizedBox(height: 8),
         ],
+            ),
+          ),
+        ),
       ),
     ),
   );

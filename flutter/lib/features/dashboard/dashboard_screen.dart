@@ -6,6 +6,8 @@ import '../../core/providers/layout_provider.dart';
 import '../../shared/models/models.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/widgets/error_view.dart';
+import '../../shared/widgets/prism_surfaces.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'dashboard_provider.dart';
 import 'dashboard_preferences.dart';
 
@@ -45,8 +47,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final statsAsync = ref.watch(dashboardProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
+      appBar: PrismAppBar(
+        toolbarHeight: 72,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('OPERATIONS', style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.4, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.primary)),
+            const Text('Command centre'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -72,7 +82,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             padding: const EdgeInsets.all(16),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
+                constraints: const BoxConstraints(maxWidth: 1240),
                 child: _DashboardContent(stats: stats),
               ),
             ),
@@ -99,8 +109,10 @@ class _DashboardContent extends ConsumerWidget {
       'overview': Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _DashboardHero(stats: stats),
+          const SizedBox(height: 14),
           _StatsGrid(stats: stats, tier: tier),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           const _QuickActionStrip(),
         ],
       ),
@@ -133,18 +145,63 @@ class _QuickActionStrip extends StatelessWidget {
       (Icons.people_outline, 'Customers', '/customers'),
       (Icons.inventory_2_outlined, 'Inventory', '/inventory'),
     ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: actions.map((action) => ActionChip(
-            avatar: Icon(action.$1, size: 18),
-            label: Text(action.$2),
-            onPressed: () => context.go(action.$3),
-          )).toList(),
-        ),
+    return PrismSurface(
+      padding: const EdgeInsets.all(12),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: actions.map((action) => PrismIconAction(
+          icon: action.$1,
+          label: action.$2,
+          onTap: () => context.go(action.$3),
+        )).toList(),
+      ),
+    );
+  }
+}
+
+class _DashboardHero extends StatelessWidget {
+  const _DashboardHero({required this.stats});
+
+  final DashboardStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    return PrismSurface(
+      radius: 30,
+      tint: colors.primary.withValues(alpha: .23),
+      padding: const EdgeInsets.fromLTRB(22, 20, 16, 18),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 620;
+          final summary = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(greeting, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('Your repair floor at a glance.', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -.65)),
+              const SizedBox(height: 8),
+              Text('${stats.activeCount} active tickets need attention today.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
+            ],
+          );
+          final pulse = Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .16),
+              border: Border.all(color: Colors.white.withValues(alpha: .42)),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 9, height: 9, decoration: BoxDecoration(color: stats.overdueCount > 0 ? colors.error : const Color(0xFF34D399), shape: BoxShape.circle, boxShadow: [BoxShadow(color: stats.overdueCount > 0 ? colors.error.withValues(alpha: .5) : const Color(0xFF34D399).withValues(alpha: .5), blurRadius: 12)])),
+              const SizedBox(width: 8),
+              Text(stats.overdueCount > 0 ? '${stats.overdueCount} overdue' : 'Queue on track', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+            ]),
+          );
+          return compact ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [summary, const SizedBox(height: 18), pulse]) : Row(children: [Expanded(child: summary), pulse]);
+        },
       ),
     );
   }
@@ -161,11 +218,17 @@ void _showDashboardCustomize(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
+    backgroundColor: Colors.transparent,
     builder: (sheetContext) => StatefulBuilder(
-      builder: (_, setSheetState) => SafeArea(
-        child: Padding(
+      builder: (_, setSheetState) => PrismBackdrop(
+        compact: true,
+        child: SafeArea(
+          child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: Column(
+          child: PrismSurface(
+            radius: 30,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -190,7 +253,9 @@ void _showDashboardCustomize(BuildContext context, WidgetRef ref) {
                 ],
               ),
             ],
+            ),
           ),
+        ),
         ),
       ),
     ),
@@ -259,9 +324,9 @@ class _StatsGrid extends StatelessWidget {
       crossAxisCount: crossAxisCount,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      childAspectRatio: tier == LayoutTier.desktop ? 3.6 : 2.5,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: tier == LayoutTier.desktop ? 3.25 : 1.95,
       children: cards.map((c) => _StatCard(data: c)).toList(),
     );
   }
@@ -293,21 +358,19 @@ class _StatCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final colors = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: .7)),
-      ),
+    return PrismSurface(
+      radius: 22,
+      padding: const EdgeInsets.all(14),
+      tint: colors.surfaceContainerLowest.withValues(alpha: .54),
       child: Row(
         children: [
           Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: data.iconColor.withValues(alpha: .14),
-              borderRadius: BorderRadius.circular(12),
+              color: data.iconColor.withValues(alpha: .18),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: data.iconColor.withValues(alpha: .25)),
             ),
             child: Icon(data.icon, color: data.iconColor, size: 22),
           ),
@@ -370,7 +433,8 @@ class _StatusBreakdownCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Card(
+    return PrismSurface(
+      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -487,7 +551,8 @@ class _MyTicketsCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
+    return PrismSurface(
+      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -564,7 +629,8 @@ class _RecentActivityCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
+    return PrismSurface(
+      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

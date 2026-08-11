@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
@@ -38,7 +39,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(body: ErrorView(message: e.toString())),
       data: (invoice) => Scaffold(
-        appBar: AppBar(
+        appBar: PrismAppBar(
           title: Text(invoice.invoiceNumber),
           actions: [
             _PdfButton(invoice: invoice),
@@ -235,7 +236,8 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return PrismSurface(
+      radius: 24,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -489,13 +491,20 @@ class _LineItemsSection extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _AddLineItemSheet(
-        invoiceId: invoice.id,
-        taxRate: invoice.taxRate,
-        onAdded: () {
-          ref.invalidate(invoiceListProvider);
-          onChanged();
-        },
+      backgroundColor: Colors.transparent,
+      builder: (_) => PrismBackdrop(
+        compact: true,
+        child: PrismSurface(
+          radius: 30,
+          child: _AddLineItemSheet(
+            invoiceId: invoice.id,
+            taxRate: invoice.taxRate,
+            onAdded: () {
+              ref.invalidate(invoiceListProvider);
+              onChanged();
+            },
+          ),
+        ),
       ),
     );
   }
@@ -808,13 +817,20 @@ class _PaymentsSection extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _AddPaymentSheet(
-        invoiceId: invoice.id,
-        balance: invoice.balance,
-        onAdded: () {
-          ref.invalidate(invoiceListProvider);
-          onChanged();
-        },
+      backgroundColor: Colors.transparent,
+      builder: (_) => PrismBackdrop(
+        compact: true,
+        child: PrismSurface(
+          radius: 30,
+          child: _AddPaymentSheet(
+            invoiceId: invoice.id,
+            balance: invoice.balance,
+            onAdded: () {
+              ref.invalidate(invoiceListProvider);
+              onChanged();
+            },
+          ),
+        ),
       ),
     );
   }

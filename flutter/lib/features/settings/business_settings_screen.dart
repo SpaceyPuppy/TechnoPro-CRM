@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/models/models.dart';
@@ -92,13 +93,13 @@ class _BusinessSettingsScreenState
         body: Center(child: CircularProgressIndicator()),
       ),
       error: (e, _) => Scaffold(
-        appBar: AppBar(title: const Text('Business & Tax Settings')),
+        appBar: const PrismAppBar(title: Text('Business & Tax Settings')),
         body: Center(child: Text('Failed to load: $e')),
       ),
       data: (settings) {
         _initFromSettings(settings);
         return Scaffold(
-          appBar: AppBar(
+          appBar: PrismAppBar(
             title: const Text('Business & Tax Settings'),
             actions: [
               if (_savedMessage != null)

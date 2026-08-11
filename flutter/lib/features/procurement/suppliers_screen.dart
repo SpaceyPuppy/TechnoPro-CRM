@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'data/procurement_repository.dart';
 import 'procurement_provider.dart';
@@ -12,7 +13,14 @@ class SuppliersScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _SupplierEditor(supplier: supplier),
+      backgroundColor: Colors.transparent,
+      builder: (_) => PrismBackdrop(
+        compact: true,
+        child: PrismSurface(
+          radius: 30,
+          child: _SupplierEditor(supplier: supplier),
+        ),
+      ),
     );
     if (payload == null) return;
     try {
@@ -65,7 +73,7 @@ class SuppliersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final suppliers = ref.watch(suppliersProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('Suppliers'),
         actions: [
           IconButton(
@@ -105,18 +113,25 @@ class SuppliersScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final supplier = items[index];
                     final details = [supplier.contactName, supplier.phone, supplier.email].whereType<String>().where((value) => value.isNotEmpty).join(' - ');
-                    return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.local_shipping_outlined)),
-                      title: Text(supplier.name),
-                      subtitle: Text(details.isEmpty ? 'No contact details' : details),
-                      trailing: Row(
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      child: PrismSurface(
+                        radius: 20,
+                        onTap: () => _openEditor(context, ref, supplier: supplier),
+                        child: ListTile(
+                          leading: const CircleAvatar(child: Icon(Icons.local_shipping_outlined)),
+                          title: Text(supplier.name),
+                          subtitle: Text(details.isEmpty ? 'No contact details' : details),
+                          trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Edit supplier', onPressed: () => _openEditor(context, ref, supplier: supplier)),
                           IconButton(icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error), tooltip: 'Delete supplier', onPressed: () => _confirmDelete(context, ref, supplier)),
                         ],
+                          ),
+                          onTap: () => _openEditor(context, ref, supplier: supplier),
+                        ),
                       ),
-                      onTap: () => _openEditor(context, ref, supplier: supplier),
                     );
                   },
                 ),

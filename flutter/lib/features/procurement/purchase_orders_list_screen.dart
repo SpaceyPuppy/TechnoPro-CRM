@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../shared/widgets/prism_surfaces.dart';
 import 'procurement_provider.dart';
 
 class PurchaseOrdersListScreen extends ConsumerWidget {
@@ -18,7 +20,7 @@ class PurchaseOrdersListScreen extends ConsumerWidget {
     final asyncOrders = ref.watch(purchaseOrdersProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('Purchase Orders'),
         actions: [
           IconButton(icon: const Icon(Icons.local_shipping_outlined), tooltip: 'Suppliers', onPressed: () => context.go('/procurement/suppliers')),
@@ -39,7 +41,12 @@ class PurchaseOrdersListScreen extends ConsumerWidget {
                 final po = orders[index];
                 final isSelected = po.id == selectedId;
                 
-                return ListTile(
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: PrismSurface(
+                    radius: 20,
+                    tint: isSelected ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .56) : null,
+                    child: ListTile(
                   selected: isSelected,
                   title: Text(po.poNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('${po.supplier?.name ?? 'Unknown Supplier'} • ${po.status.toUpperCase()}'),
@@ -51,6 +58,8 @@ class PurchaseOrdersListScreen extends ConsumerWidget {
                       context.go('/purchase-orders/${po.id}');
                     }
                   },
+                    ),
+                  ),
                 );
               },
             ),

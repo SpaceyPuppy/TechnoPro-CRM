@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'core/auth/auth_provider.dart';
 import 'core/providers/layout_provider.dart';
 import 'core/router/router.dart';
@@ -51,9 +52,25 @@ class DesktopScrollBehavior extends ScrollBehavior {
   }
 }
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: TechnoProApp()));
+  await LiquidGlassWidgets.initialize();
+  runApp(
+    LiquidGlassWidgets.wrap(
+      adaptiveQuality: true,
+      theme: const GlassThemeData(
+        light: GlassThemeVariant(
+          settings: GlassThemeSettings(blur: 10, thickness: 28),
+          quality: GlassQuality.standard,
+        ),
+        dark: GlassThemeVariant(
+          settings: GlassThemeSettings(blur: 12, thickness: 34),
+          quality: GlassQuality.standard,
+        ),
+      ),
+      child: const ProviderScope(child: TechnoProApp()),
+    ),
+  );
 }
 
 class TechnoProApp extends ConsumerStatefulWidget {
@@ -106,12 +123,12 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
   ThemeData _buildTheme(Brightness brightness) {
     const primary = Color(0xFF1D4ED8);
     final isDark = brightness == Brightness.dark;
-    final primaryContainer = isDark ? const Color(0xFF1E3A8A) : const Color(0xFFDBEAFE);
-    final surface = isDark ? const Color(0xFF101521) : const Color(0xFFF6F8FC);
-    final surfaceContainer = isDark ? const Color(0xFF192131) : const Color(0xFFFFFFFF);
-    final outline = isDark ? const Color(0xFF34425A) : const Color(0xFFCBD5E1);
-    final onSurface = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
-    final onSurfaceVariant = isDark ? const Color(0xFFB8C3D8) : const Color(0xFF475569);
+    final primaryContainer = isDark ? const Color(0xFF163B86) : const Color(0xFFDDEBFF);
+    final surface = Colors.transparent;
+    final surfaceContainer = isDark ? const Color(0xFF15233A) : const Color(0xFFF9FBFF);
+    final outline = isDark ? const Color(0xFF536A90) : const Color(0xFFC8D4E8);
+    final onSurface = isDark ? const Color(0xFFF4F8FF) : const Color(0xFF14223A);
+    final onSurfaceVariant = isDark ? const Color(0xFFC3D1E8) : const Color(0xFF53647D);
 
     final base = ThemeData(useMaterial3: true);
     final colorScheme = ColorScheme.fromSeed(
@@ -139,7 +156,7 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: surfaceContainer,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -147,16 +164,14 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
           color: onSurface,
         ),
         iconTheme: IconThemeData(color: onSurfaceVariant),
-        shape: Border(
-          bottom: BorderSide(color: outline.withValues(alpha: .7)),
-        ),
+        shape: Border(bottom: BorderSide(color: outline.withValues(alpha: .38))),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: surfaceContainer,
+        color: surfaceContainer.withValues(alpha: isDark ? .88 : .80),
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: outline.withValues(alpha: .72)),
-          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: outline.withValues(alpha: .54)),
+          borderRadius: BorderRadius.circular(22),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -167,7 +182,7 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceContainer,
+        fillColor: surfaceContainer.withValues(alpha: isDark ? .78 : .88),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: outline),
@@ -187,7 +202,9 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 5,
+          shadowColor: primary.withValues(alpha: .32),
+          shape: const StadiumBorder(),
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
         ),
       ),
@@ -195,7 +212,7 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
           side: BorderSide(color: outline),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: const StadiumBorder(),
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 14),
         ),
       ),
@@ -207,18 +224,18 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primary,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        elevation: 4,
+        shape: const CircleBorder(),
+        elevation: 8,
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: surfaceContainer,
-        modalBackgroundColor: surfaceContainer,
+        backgroundColor: surfaceContainer.withValues(alpha: .94),
+        modalBackgroundColor: surfaceContainer.withValues(alpha: .94),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: surfaceContainer,
+        backgroundColor: surfaceContainer.withValues(alpha: .96),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
     );

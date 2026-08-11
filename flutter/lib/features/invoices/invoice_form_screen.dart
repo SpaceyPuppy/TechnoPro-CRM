@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
+import '../../shared/widgets/adaptive_form_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../tickets/time_entries_provider.dart';
@@ -62,9 +64,9 @@ class _InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
     final ticketsAsync = ref.watch(ticketListProvider);
     final title = widget.isQuote ? 'New Quote' : 'New Invoice';
 
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: ListView(
+    return AdaptiveFormScaffold(
+      title: title,
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           ticketsAsync.when(

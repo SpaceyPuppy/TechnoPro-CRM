@@ -27,6 +27,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _saving = false;
   String? _error;
+  int _intakeStep = 0;
 
   // — Edit-only fields —
   TicketStatus _status = TicketStatus.new_;
@@ -194,6 +195,160 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
     }
   }
 
+  void _advanceIntake() {
+    if (_intakeStep == 0 && _selectedCustomer == null) {
+      setState(() => _error = 'Choose or create a customer before continuing.');
+      return;
+    }
+    setState(() {
+      _error = null;
+      _intakeStep += 1;
+    });
+  }
+
+  void _retreatIntake() {
+    setState(() {
+      _error = null;
+      _intakeStep -= 1;
+    });
+  }
+
+  Widget _buildNewTicketIntake(BuildContext context, bool canManage) {
+    final steps = const ['Customer', 'Device & repair', 'Details'];
+    final textTheme = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
+
+    final pages = <Widget>[
+      _IntakePage(
+        eyebrow: 'Step 1 of 3',
+        title: 'Who is this repair for?',
+        description: 'Search your customers or create one without losing this intake.',
+        child: CustomerSearchSection(
+          onCustomerSelected: (customer) {
+            setState(() {
+              _selectedCustomer = customer;
+              if (_serviceLocationCtrl.text.isEmpty && customer?.address?.isNotEmpty == true) {
+                _serviceLocationCtrl.text = customer!.address!;
+              }
+            });
+          },
+        ),
+      ),
+      _IntakePage(
+        eyebrow: 'Step 2 of 3',
+        title: 'Capture the device and repair',
+        description: 'Add the device details, then include any repair or parts lines that are known now.',
+        child: Column(
+          children: [
+            DeviceSection(data: _deviceData),
+            const SizedBox(height: 22),
+            RepairsSection(items: _repairItems),
+          ],
+        ),
+      ),
+      _IntakePage(
+        eyebrow: 'Step 3 of 3',
+        title: 'Finish the job details',
+        description: 'Set the work priority, schedule and intake notes, then create the ticket.',
+        child: Column(
+          children: [
+            TextFormField(
+              controller: _summaryCtrl,
+              decoration: const InputDecoration(labelText: 'Summary *', border: OutlineInputBorder(), isDense: true),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Summary is required' : null,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<TicketType>(
+              value: _ticketType,
+              decoration: const InputDecoration(labelText: 'Service type', border: OutlineInputBorder(), isDense: true),
+              items: TicketType.values.map((type) => DropdownMenuItem(value: type, child: Text(type.label))).toList(),
+              onChanged: (value) => setState(() => _ticketType = value!),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _serviceLocationCtrl,
+              decoration: const InputDecoration(labelText: 'Service location', hintText: 'Customer address, site or remote connection details', border: OutlineInputBorder(), isDense: true),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<TicketPriority>(
+              value: _priority,
+              decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder(), isDense: true),
+              items: TicketPriority.values.map((p) => DropdownMenuItem(value: p, child: Text(p.label))).toList(),
+              onChanged: (value) => setState(() => _priority = value!),
+            ),
+            if (canManage) ...[
+              const SizedBox(height: 12),
+              _UsersDropdown(value: _assignedToId, onChanged: (value) => setState(() => _assignedToId = value)),
+            ],
+            const SizedBox(height: 12),
+            _DateTimeField(label: 'Scheduled for', value: _scheduledAt, onTap: () => _pickDateTime(scheduled: true), onClear: () => setState(() => _scheduledAt = null)),
+            const SizedBox(height: 12),
+            _DateTimeField(label: 'Due date', value: _dueDate, onTap: () => _pickDateTime(scheduled: false), onClear: () => setState(() => _dueDate = null)),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descCtrl,
+              decoration: const InputDecoration(labelText: 'Description / intake notes', border: OutlineInputBorder(), isDense: true),
+              maxLines: 4,
+            ),
+          ],
+        ),
+      ),
+    ];
+
+    return AdaptiveFormScaffold(
+      title: 'New ticket',
+      child: Form(
+        key: _formKey,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _TicketIntakeStepper(step: _intakeStep, labels: steps),
+              const SizedBox(height: 22),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(begin: const Offset(.035, 0), end: Offset.zero).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    key: ValueKey(_intakeStep),
+                    child: pages[_intakeStep],
+                  ),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: textTheme.bodySmall?.copyWith(color: colors.error, fontWeight: FontWeight.w600)),
+              ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (_intakeStep > 0)
+                    OutlinedButton.icon(onPressed: _saving ? null : _retreatIntake, icon: const Icon(Icons.arrow_back_rounded), label: const Text('Back')),
+                  const Spacer(),
+                  FilledButton.icon(
+                    onPressed: _saving ? null : (_intakeStep == pages.length - 1 ? _save : _advanceIntake),
+                    icon: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(_intakeStep == pages.length - 1 ? Icons.check_rounded : Icons.arrow_forward_rounded),
+                    label: Text(_intakeStep == pages.length - 1 ? 'Create ticket' : 'Continue'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.id != null;
@@ -210,6 +365,8 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
       _initFromTicket(ticketAsync.value!);
     }
 
+    if (!isEdit) return _buildNewTicketIntake(context, canManage);
+
     return AdaptiveFormScaffold(
       title: isEdit ? 'Edit Ticket' : 'New Ticket',
       child: Form(
@@ -221,8 +378,6 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   if (!isEdit) ...[
-                    const _WorkflowProgress(),
-                    const SizedBox(height: 24),
                     // ── Customer ──────────────────────────────────────
                     _SectionHeader(
                       icon: Icons.person_outline,
@@ -439,35 +594,85 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-class _WorkflowProgress extends StatelessWidget {
-  const _WorkflowProgress();
+class _TicketIntakeStepper extends StatelessWidget {
+  const _TicketIntakeStepper({required this.step, required this.labels});
+
+  final int step;
+  final List<String> labels;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    const steps = ['Customer', 'Device & repair', 'Details'];
+    return Semantics(
+      label: 'Ticket intake step ${step + 1} of ${labels.length}: ${labels[step]}',
+      child: Row(
+        children: [
+          for (var index = 0; index < labels.length; index++) ...[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    height: 6,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(99),
+                      gradient: index <= step
+                          ? LinearGradient(colors: [colors.primary.withValues(alpha: .7), colors.primary])
+                          : null,
+                      color: index <= step ? null : colors.surfaceContainerHighest,
+                      boxShadow: index == step
+                          ? [BoxShadow(color: colors.primary.withValues(alpha: .3), blurRadius: 10)]
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    labels[index],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: index == step ? colors.primary : colors.onSurfaceVariant,
+                      fontWeight: index == step ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (index < labels.length - 1) const SizedBox(width: 7),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _IntakePage extends StatelessWidget {
+  const _IntakePage({
+    required this.eyebrow,
+    required this.title,
+    required this.description,
+    required this.child,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String description;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Ticket intake', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        Text(eyebrow.toUpperCase(), style: Theme.of(context).textTheme.labelMedium?.copyWith(color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+        const SizedBox(height: 6),
+        Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -.5)),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            for (var index = 0; index < steps.length; index++) ...[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(height: 4, decoration: BoxDecoration(color: index == 0 ? colors.primary : colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(8))),
-                    const SizedBox(height: 6),
-                    Text(steps[index], style: Theme.of(context).textTheme.labelSmall?.copyWith(color: index == 0 ? colors.primary : colors.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              if (index < steps.length - 1) const SizedBox(width: 6),
-            ],
-          ],
-        ),
+        Text(description, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant, height: 1.4)),
+        const SizedBox(height: 24),
+        child,
       ],
     );
   }

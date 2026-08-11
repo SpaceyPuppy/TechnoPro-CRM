@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
@@ -71,7 +72,7 @@ class _CustomerDetailView extends ConsumerWidget {
     final canManage = ref.watch(authProvider).user?.role.canManage ?? false;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: Text(customer.name),
         actions: [
           IconButton(
@@ -100,7 +101,8 @@ class _CustomerDetailView extends ConsumerWidget {
                 ? const Text('No tickets for this customer')
                 : Column(
                     children: tickets
-                        .map((t) => Card(
+                        .map((t) => PrismSurface(
+                              radius: 20,
                               child: ListTile(
                                 title: Text(t.summary,
                                     maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -130,7 +132,8 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return PrismSurface(
+      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

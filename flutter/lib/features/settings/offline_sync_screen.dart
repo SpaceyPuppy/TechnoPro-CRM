@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/api/api_client.dart';
@@ -16,12 +17,13 @@ class OfflineSyncScreen extends ConsumerWidget {
     final offlineMode = ref.watch(offlineModeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Offline & Sync')),
+      appBar: const PrismAppBar(title: Text('Offline & Sync')),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           // Connection Status Card
-          Card(
+          PrismSurface(
+            radius: 24,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -70,7 +72,8 @@ class OfflineSyncScreen extends ConsumerWidget {
                 ),
           ),
           const SizedBox(height: 8),
-          Card(
+          PrismSurface(
+            radius: 24,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -167,7 +170,8 @@ class OfflineSyncScreen extends ConsumerWidget {
                 ),
           ),
           const SizedBox(height: 8),
-          Card(
+          PrismSurface(
+            radius: 24,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -267,8 +271,9 @@ class OfflineSyncScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Info Section
-          Card(
-            color: Colors.blue[50],
+          PrismSurface(
+            radius: 24,
+            tint: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .48),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(

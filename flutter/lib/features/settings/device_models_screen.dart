@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/models/models.dart';
@@ -12,7 +13,7 @@ class DeviceModelsScreen extends ConsumerWidget {
     final modelsAsync = ref.watch(deviceModelsProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('Device Models'),
         actions: [IconButton(onPressed: () => _showAddDialog(context, ref), tooltip: 'Add model', icon: const Icon(Icons.add))],
       ),
@@ -53,9 +54,13 @@ class DeviceModelsScreen extends ConsumerWidget {
               itemBuilder: (context, i) {
                 final mfr = manufacturers[i];
                 final items = grouped[mfr]!;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: PrismSurface(
+                    radius: 24,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                       child: Text(
@@ -97,7 +102,9 @@ class DeviceModelsScreen extends ConsumerWidget {
                             )
                           ]
                         : []),
-                  ],
+                      ],
+                    ),
+                  ),
                 );
               },
             );

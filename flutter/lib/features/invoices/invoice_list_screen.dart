@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -29,7 +30,7 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
     final tier = layoutTier(width, isTouch);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('Invoices'),
         actions: [
           _StatusFilterButton(
@@ -120,7 +121,11 @@ class _DesktopInvoiceTable extends StatelessWidget {
           letterSpacing: 0.5,
         );
 
-    return Column(
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: PrismSurface(
+        radius: 26,
+        child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
@@ -148,6 +153,8 @@ class _DesktopInvoiceTable extends StatelessWidget {
           ),
         ),
       ],
+        ),
+      ),
     );
   }
 }
@@ -227,8 +234,9 @@ class _InvoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+    return PrismSurface(
+      tint: isSelected ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58) : null,
+      onTap: onTap,
       child: ListTile(
         onTap: onTap,
         title: Text(invoice.invoiceNumber),
