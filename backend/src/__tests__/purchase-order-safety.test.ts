@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertSupplierOrderQuantity,
   calculatePurchaseOrderTotal,
-} from "../services/purchase-orders.js";
+} from "../services/purchase-orders.service.js";
 
 describe("purchase-order safety guards", () => {
   it("calculates multi-line PO totals in integer minor units", () => {
