@@ -273,7 +273,7 @@ class OfflineSyncScreen extends ConsumerWidget {
           // Info Section
           PrismSurface(
             radius: 24,
-            color: Colors.blue[50],
+            tint: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .48),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
