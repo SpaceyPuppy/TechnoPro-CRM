@@ -5,6 +5,25 @@ import type { CreatePurchaseOrderRequest, UpdatePurchaseOrderRequest } from "@te
 import { applyStockMovementInTransaction } from "./stock.service.js";
 import { decimalToHundredths, hundredthsToDecimal } from "../utils/money.js";
 
+export function calculatePurchaseOrderTotal(items: Array<{ quantity: number; unitCost: string }>): string {
+  let totalCost = 0n;
+  for (const item of items) {
+    if (!Number.isSafeInteger(item.quantity) || item.quantity < 1) throw new Error("Purchase order quantities must be positive integers");
+    const unitCost = decimalToHundredths(item.unitCost);
+    if (unitCost < 0n) throw new Error("Purchase order unit cost cannot be negative");
+    totalCost += BigInt(item.quantity) * unitCost;
+  }
+  return hundredthsToDecimal(totalCost);
+}
+
+export function assertSupplierOrderQuantity(quantity: number, minimumOrderQty: number, packSize: number) {
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || !Number.isSafeInteger(minimumOrderQty) || minimumOrderQty < 1 || !Number.isSafeInteger(packSize) || packSize < 1) {
+    throw new Error("Supplier order quantity constraints are invalid");
+  }
+  if (quantity < minimumOrderQty) throw new Error(`Supplier item minimum order quantity is ${minimumOrderQty}`);
+  if (quantity % packSize !== 0) throw new Error(`Supplier item quantity must be a multiple of ${packSize}`);
+}
+
 export async function listPurchaseOrders(params: { page: number; pageSize: number; search?: string }) {
   const db = getDb();
   let where = undefined;
@@ -83,13 +102,7 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
     const poNumber = `PO-${String(num).padStart(5, '0')}`;
     
     // Calculate total
-    let totalCost = 0n;
-    for (const item of data.items) {
-      if (!Number.isSafeInteger(item.quantity) || item.quantity < 1) throw new Error("Purchase order quantities must be positive integers");
-      const unitCost = decimalToHundredths(item.unitCost);
-      if (unitCost < 0n) throw new Error("Purchase order unit cost cannot be negative");
-      totalCost += BigInt(item.quantity) * unitCost;
-    }
+    const totalCost = calculatePurchaseOrderTotal(data.items);
     
     await tx.insert(schema.purchaseOrders).values({
       id,
@@ -98,7 +111,7 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
       status: "draft",
       expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
       notes: data.notes || null,
-      totalCost: hundredthsToDecimal(totalCost),
+      totalCost,
     });
     
     for (const item of data.items) {
@@ -107,8 +120,7 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
         : [];
       if (supplierItem && supplierItem.supplierId !== data.supplierId) throw new Error("Supplier item does not belong to this purchase order supplier");
       if (supplierItem && supplierItem.active !== 1) throw new Error("Supplier item is inactive");
-      if (supplierItem && item.quantity < supplierItem.minimumOrderQty) throw new Error(`Supplier item minimum order quantity is ${supplierItem.minimumOrderQty}`);
-      if (supplierItem && item.quantity % supplierItem.packSize !== 0) throw new Error(`Supplier item quantity must be a multiple of ${supplierItem.packSize}`);
+      if (supplierItem) assertSupplierOrderQuantity(item.quantity, supplierItem.minimumOrderQty, supplierItem.packSize);
       await tx.insert(schema.poItems).values({
         id: generateId(),
         poId: id,
