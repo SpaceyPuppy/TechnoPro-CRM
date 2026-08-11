@@ -18,4 +18,5 @@ CREATE TABLE `stock_movements` (
   CONSTRAINT `stock_movements_inventory_item_id_inventory_items_id_fk` FOREIGN KEY (`inventory_item_id`) REFERENCES `inventory_items`(`id`),
   CONSTRAINT `stock_movements_actor_user_id_users_id_fk` FOREIGN KEY (`actor_user_id`) REFERENCES `users`(`id`)
 );
+--> statement-breakpoint
 CREATE INDEX `stock_movements_item_occurred_idx` ON `stock_movements` (`inventory_item_id`,`occurred_at`,`id`);
