@@ -20,7 +20,10 @@ class PurchaseOrdersListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Purchase Orders'),
-        actions: [IconButton(icon: const Icon(Icons.add), tooltip: 'New purchase order', onPressed: () => context.go('/procurement/new'))],
+        actions: [
+          IconButton(icon: const Icon(Icons.local_shipping_outlined), tooltip: 'Suppliers', onPressed: () => context.go('/procurement/suppliers')),
+          IconButton(icon: const Icon(Icons.add), tooltip: 'New purchase order', onPressed: () => context.go('/procurement/new')),
+        ],
       ),
       body: asyncOrders.when(
         data: (orders) {

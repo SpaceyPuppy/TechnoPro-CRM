@@ -62,6 +62,17 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
                   icon: const Icon(Icons.refresh),
                   onPressed: () => ref.read(quoteListProvider.notifier).refresh(),
                 ),
+          if (canCounter)
+            AnimatedBuilder(
+              animation: _tab,
+              builder: (_, __) => IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: _tab.index == 0 ? 'New invoice' : 'New quote',
+                onPressed: () => _tab.index == 0
+                    ? context.go('/finance/new')
+                    : context.go('/finance/new?type=quote'),
+              ),
+            ),
         ],
       ),
       body: TabBarView(
@@ -79,17 +90,6 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
           ),
         ],
       ),
-      floatingActionButton: canCounter
-          ? AnimatedBuilder(
-              animation: _tab,
-              builder: (_, __) => FloatingActionButton(
-                onPressed: () => _tab.index == 0
-                    ? context.go('/finance/new')
-                    : context.go('/finance/new?type=quote'),
-                child: const Icon(Icons.add),
-              ),
-            )
-          : null,
     );
   }
 }

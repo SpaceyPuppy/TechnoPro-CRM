@@ -59,6 +59,11 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(customerListProvider),
           ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'New customer',
+            onPressed: () => context.go('/customers/new'),
+          ),
         ],
       ),
       body: LayoutBuilder(
@@ -136,10 +141,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/customers/new'),
-        child: const Icon(Icons.add),
       ),
     );
   }

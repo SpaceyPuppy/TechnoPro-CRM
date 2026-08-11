@@ -58,6 +58,11 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.read(ticketListProvider.notifier).refresh(),
           ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'New ticket',
+            onPressed: () => context.go('/tickets/new'),
+          ),
         ],
       ),
       body: LayoutBuilder(
@@ -135,10 +140,6 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
             ],
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/tickets/new'),
-        child: const Icon(Icons.add),
       ),
     );
   }
