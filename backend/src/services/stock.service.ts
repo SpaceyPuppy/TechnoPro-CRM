@@ -45,7 +45,13 @@ function assertMovementInput(input: ApplyStockMovementInput) {
 export async function applyStockMovement(input: ApplyStockMovementInput) {
   assertMovementInput(input);
   const db = getDb();
-  return db.transaction(async (tx) => {
+  return db.transaction(async (tx) => applyStockMovementInTransaction(tx, input));
+}
+
+/** Used by import and procurement transactions so the movement and its source
+ * document commit or roll back together. */
+export async function applyStockMovementInTransaction(tx: any, input: ApplyStockMovementInput) {
+    assertMovementInput(input);
     const [existing] = await tx
       .select()
       .from(schema.stockMovements)
@@ -96,7 +102,6 @@ export async function applyStockMovement(input: ApplyStockMovementInput) {
       cost: movement.averageCostAfter,
     }).where(eq(schema.inventoryItems.id, item.id));
     return { ...movement, createdAt: new Date() };
-  });
 }
 
 export async function listStockMovements(inventoryItemId: string, limit = 100) {
