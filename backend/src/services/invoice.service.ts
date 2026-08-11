@@ -13,6 +13,7 @@ import {
   sumDecimals,
 } from "../utils/money.js";
 import { getSetting } from "./settings.service.js";
+import { applyStockMovementInTransaction } from "./stock.service.js";
 import type {
   CreateInvoiceRequest,
   CreateLineItemRequest,
@@ -501,6 +502,7 @@ export async function convertQuoteToTicket(
 export async function addLineItem(
   invoiceId: string,
   data: CreateLineItemRequest & { discount?: string },
+  actorUserId?: string,
 ) {
   const db = getDb();
   const id = generateId();
@@ -540,17 +542,8 @@ export async function addLineItem(
       }
       unitCost = inventoryItem.cost;
       if (inventoryItem.stockQty !== null) {
-        const remaining = inventoryItem.stockQty - quantity;
-        if (remaining < 0) {
-          throw new InvoiceConflictError(
-            `Insufficient stock for ${inventoryItem.name}`,
-            "INSUFFICIENT_STOCK",
-          );
-        }
-        await tx
-          .update(schema.inventoryItems)
-          .set({ stockQty: remaining })
-          .where(eq(schema.inventoryItems.id, inventoryItem.id));
+        try { await applyStockMovementInTransaction(tx, { inventoryItemId: inventoryItem.id, quantityDelta: -quantity, unitCost: inventoryItem.cost.toString(), sourceType: "sale", sourceReference: `invoice-line:${id}`, reasonCode: "invoice_part", actorUserId }); }
+        catch (error) { throw new InvoiceConflictError(error instanceof Error ? error.message : "Unable to deduct stock", "INSUFFICIENT_STOCK"); }
       }
     }
 
@@ -622,6 +615,7 @@ export async function updateLineItem(
   invoiceId: string,
   lineItemId: string,
   data: UpdateLineItemRequest,
+  actorUserId?: string,
 ) {
   const db = getDb();
   const updated = await db.transaction(async (tx) => {
@@ -661,17 +655,8 @@ export async function updateLineItem(
         throw new InvoiceConflictError("Inventory item not found", "INVENTORY_NOT_FOUND");
       }
       if (inventoryItem.stockQty !== null) {
-        const remaining = inventoryItem.stockQty - stockDelta;
-        if (remaining < 0) {
-          throw new InvoiceConflictError(
-            `Insufficient stock for ${inventoryItem.name}`,
-            "INSUFFICIENT_STOCK",
-          );
-        }
-        await tx
-          .update(schema.inventoryItems)
-          .set({ stockQty: remaining })
-          .where(eq(schema.inventoryItems.id, inventoryItem.id));
+        try { await applyStockMovementInTransaction(tx, { inventoryItemId: inventoryItem.id, quantityDelta: -stockDelta, unitCost: inventoryItem.cost.toString(), sourceType: stockDelta > 0 ? "sale" : "sale_reversal", sourceReference: `invoice-line-adjust:${lineItemId}:${quantity}`, reasonCode: "invoice_quantity_changed", actorUserId }); }
+        catch (error) { throw new InvoiceConflictError(error instanceof Error ? error.message : "Unable to adjust stock", "INSUFFICIENT_STOCK"); }
       }
     }
 
@@ -692,7 +677,7 @@ export async function updateLineItem(
   return getInvoiceById(invoiceId);
 }
 
-export async function removeLineItem(invoiceId: string, lineItemId: string) {
+export async function removeLineItem(invoiceId: string, lineItemId: string, actorUserId?: string) {
   const db = getDb();
   return db.transaction(async (tx) => {
     const [invoice] = await tx
@@ -719,12 +704,7 @@ export async function removeLineItem(invoiceId: string, lineItemId: string) {
         .where(eq(schema.inventoryItems.id, existing.inventoryItemId))
         .limit(1)
         .for("update");
-      if (inventoryItem?.stockQty !== null && inventoryItem?.stockQty !== undefined) {
-        await tx
-          .update(schema.inventoryItems)
-          .set({ stockQty: inventoryItem.stockQty + existing.quantity })
-          .where(eq(schema.inventoryItems.id, inventoryItem.id));
-      }
+      if (inventoryItem?.stockQty !== null && inventoryItem?.stockQty !== undefined) await applyStockMovementInTransaction(tx, { inventoryItemId: inventoryItem.id, quantityDelta: existing.quantity, unitCost: inventoryItem.cost.toString(), sourceType: "sale_reversal", sourceReference: `invoice-line-reversal:${lineItemId}`, reasonCode: "invoice_line_removed", actorUserId });
     }
 
     await tx.delete(schema.lineItems).where(eq(schema.lineItems.id, lineItemId));

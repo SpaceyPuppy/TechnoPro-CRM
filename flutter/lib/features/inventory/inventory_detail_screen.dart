@@ -3,11 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/widgets/error_view.dart';
 import 'inventory_provider.dart';
+import '../../core/api/api_client.dart';
+import '../../shared/models/models.dart';
 
 class InventoryDetailScreen extends ConsumerWidget {
   const InventoryDetailScreen({super.key, required this.id});
 
   final String id;
+
+  Future<void> _adjust(BuildContext context, WidgetRef ref, InventoryItemModel item) async {
+    final delta = TextEditingController(); final reason = TextEditingController();
+    final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Adjust stock'), content: Column(mainAxisSize: MainAxisSize.min, children: [TextFormField(controller: delta, keyboardType: const TextInputType.numberWithOptions(signed: true), decoration: const InputDecoration(labelText: 'Quantity change (+/-)')), TextFormField(controller: reason, decoration: const InputDecoration(labelText: 'Reason *'))]), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Post adjustment'))]));
+    if (confirmed != true || int.tryParse(delta.text) == null || int.parse(delta.text) == 0 || reason.text.trim().isEmpty) return;
+    await ref.read(apiClientProvider).post('/inventory/${item.id}/adjustments', data: {'quantityDelta': int.parse(delta.text), 'unitCost': item.cost, 'reasonCode': reason.text.trim(), 'sourceReference': 'manual-${DateTime.now().millisecondsSinceEpoch}'});
+    ref.invalidate(inventoryDetailProvider(id)); ref.invalidate(inventoryListProvider);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,6 +30,7 @@ class InventoryDetailScreen extends ConsumerWidget {
         appBar: AppBar(
           title: Text(item.name),
           actions: [
+            if (item.stockQty != null) IconButton(icon: const Icon(Icons.tune), tooltip: 'Adjust stock', onPressed: () => _adjust(context, ref, item)),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () => context.go('/inventory/$id/edit'),
