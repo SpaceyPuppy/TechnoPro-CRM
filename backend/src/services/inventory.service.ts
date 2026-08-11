@@ -59,6 +59,21 @@ export async function createInventoryItem(data: CreateInventoryItemRequest) {
     cost: data.cost ?? "0.00",
     price: data.price,
     barcode: data.barcode ?? null,
+    ...(data as any).upc !== undefined ? { upc: (data as any).upc || null } : {},
+    ...(data as any).manufacturerPartNumber !== undefined ? { manufacturerPartNumber: (data as any).manufacturerPartNumber || null } : {},
+    ...(data as any).itemType !== undefined ? { itemType: (data as any).itemType } : {},
+    ...(data as any).category !== undefined ? { category: (data as any).category || null } : {},
+    ...(data as any).subcategory !== undefined ? { subcategory: (data as any).subcategory || null } : {},
+    ...(data as any).brand !== undefined ? { brand: (data as any).brand || null } : {},
+    ...(data as any).compatibleModel !== undefined ? { compatibleModel: (data as any).compatibleModel || null } : {},
+    ...(data as any).condition !== undefined ? { condition: (data as any).condition || null } : {},
+    ...(data as any).reorderPoint !== undefined ? { reorderPoint: (data as any).reorderPoint } : {},
+    ...(data as any).targetStockLevel !== undefined ? { targetStockLevel: (data as any).targetStockLevel } : {},
+    ...(data as any).warrantyMonths !== undefined ? { warrantyMonths: (data as any).warrantyMonths } : {},
+    ...(data as any).internalNotes !== undefined ? { internalNotes: (data as any).internalNotes || null } : {},
+    ...(data as any).active !== undefined ? { active: (data as any).active } : {},
+    ...(data as any).posSellable !== undefined ? { posSellable: (data as any).posSellable } : {},
+    ...(data as any).serialized !== undefined ? { serialized: (data as any).serialized } : {},
   });
 
   return getInventoryItemById(id);
@@ -77,6 +92,9 @@ export async function updateInventoryItem(id: string, data: UpdateInventoryItemR
   if (data.cost !== undefined) updates.cost = data.cost;
   if (data.price !== undefined) updates.price = data.price;
   if (data.barcode !== undefined) updates.barcode = data.barcode;
+  for (const field of ["upc", "manufacturerPartNumber", "itemType", "category", "subcategory", "brand", "compatibleModel", "condition", "reorderPoint", "targetStockLevel", "warrantyMonths", "internalNotes", "active", "posSellable", "serialized"]) {
+    if ((data as any)[field] !== undefined) updates[field] = (data as any)[field];
+  }
 
   if (Object.keys(updates).length > 0) {
     await db

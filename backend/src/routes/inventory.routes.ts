@@ -8,6 +8,7 @@ import {
 } from "../services/inventory.service.js";
 import { parsePagination, paginationMeta } from "../utils/pagination.js";
 import { getDb, schema } from "../db/index.js";
+import { eq } from "drizzle-orm";
 import { generateId } from "../utils/id.js";
 import type { CreateInventoryItemRequest, UpdateInventoryItemRequest } from "@technopro/shared";
 import { recordAuditEvent } from "../services/audit.service.js";
@@ -22,6 +23,21 @@ function toResponse(row: NonNullable<Awaited<ReturnType<typeof getInventoryItemB
     cost: row.cost,
     price: row.price,
     barcode: row.barcode,
+    upc: row.upc,
+    manufacturerPartNumber: row.manufacturerPartNumber,
+    itemType: row.itemType,
+    category: row.category,
+    subcategory: row.subcategory,
+    brand: row.brand,
+    compatibleModel: row.compatibleModel,
+    condition: row.condition,
+    reorderPoint: row.reorderPoint,
+    targetStockLevel: row.targetStockLevel,
+    warrantyMonths: row.warrantyMonths,
+    internalNotes: row.internalNotes,
+    active: row.active,
+    posSellable: row.posSellable,
+    serialized: row.serialized,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -39,6 +55,10 @@ const createSchema = {
       cost: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       price: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       barcode: { type: "string", maxLength: 255 },
+      upc: { type: "string", maxLength: 32 }, manufacturerPartNumber: { type: "string", maxLength: 100 }, itemType: { type: "string", maxLength: 40 },
+      category: { type: "string", maxLength: 100 }, subcategory: { type: "string", maxLength: 100 }, brand: { type: "string", maxLength: 100 }, compatibleModel: { type: "string", maxLength: 150 }, condition: { type: "string", maxLength: 40 },
+      reorderPoint: { type: ["integer", "null"], minimum: 0 }, targetStockLevel: { type: ["integer", "null"], minimum: 0 }, warrantyMonths: { type: ["integer", "null"], minimum: 0 }, internalNotes: { type: "string", maxLength: 5000 },
+      active: { type: "boolean" }, posSellable: { type: "boolean" }, serialized: { type: "boolean" },
     },
     additionalProperties: false,
   },
@@ -55,6 +75,10 @@ const updateSchema = {
       cost: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       price: { type: "string", pattern: "^\\d+\\.\\d{2}$" },
       barcode: { type: "string", maxLength: 255 },
+      upc: { type: "string", maxLength: 32 }, manufacturerPartNumber: { type: "string", maxLength: 100 }, itemType: { type: "string", maxLength: 40 },
+      category: { type: "string", maxLength: 100 }, subcategory: { type: "string", maxLength: 100 }, brand: { type: "string", maxLength: 100 }, compatibleModel: { type: "string", maxLength: 150 }, condition: { type: "string", maxLength: 40 },
+      reorderPoint: { type: ["integer", "null"], minimum: 0 }, targetStockLevel: { type: ["integer", "null"], minimum: 0 }, warrantyMonths: { type: ["integer", "null"], minimum: 0 }, internalNotes: { type: "string", maxLength: 5000 },
+      active: { type: "boolean" }, posSellable: { type: "boolean" }, serialized: { type: "boolean" },
     },
     additionalProperties: false,
   },
@@ -115,6 +139,23 @@ export async function inventoryRoutes(app: FastifyInstance) {
       return reply.send({ data: toResponse(item) });
     },
   );
+
+  app.get<{ Params: { id: string } }>("/inventory/:id/supplier-items", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
+    const rows = await getDb().select().from(schema.supplierItems).where(eq(schema.supplierItems.inventoryItemId, request.params.id));
+    return reply.send({ data: rows.map((row) => ({ ...row, quotedUnitCost: row.quotedUnitCost?.toString() ?? null, lastPaidUnitCost: row.lastPaidUnitCost?.toString() ?? null, preferred: row.preferred === 1, active: row.active === 1, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() })) });
+  });
+
+  app.post<{ Params: { id: string }; Body: { supplierId: string; supplierSku?: string; supplierUpc?: string; supplierPartNumber?: string; productUrl?: string; packSize?: number; minimumOrderQty?: number; quotedUnitCost?: string; leadTimeDays?: number; preferred?: boolean; active?: boolean } }>("/inventory/:id/supplier-items", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
+    const body = request.body;
+    if (!body.supplierId || (body.packSize !== undefined && body.packSize < 1) || (body.minimumOrderQty !== undefined && body.minimumOrderQty < 1)) return reply.code(400).send({ error: { code: "BAD_REQUEST", message: "Supplier, pack size and minimum order quantity are invalid" } });
+    try {
+      await getDb().transaction(async (tx) => {
+        if (body.preferred) await tx.update(schema.supplierItems).set({ preferred: 0 }).where(eq(schema.supplierItems.inventoryItemId, request.params.id));
+        await tx.insert(schema.supplierItems).values({ id: generateId(), supplierId: body.supplierId, inventoryItemId: request.params.id, supplierSku: body.supplierSku?.trim() || null, supplierUpc: body.supplierUpc?.trim() || null, supplierPartNumber: body.supplierPartNumber?.trim() || null, productUrl: body.productUrl?.trim() || null, packSize: body.packSize ?? 1, minimumOrderQty: body.minimumOrderQty ?? 1, quotedUnitCost: body.quotedUnitCost ?? null, leadTimeDays: body.leadTimeDays ?? null, preferred: body.preferred ? 1 : 0, active: body.active === false ? 0 : 1 });
+      });
+      return reply.code(201).send({ data: true });
+    } catch (error) { return reply.code(400).send({ error: { code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to add supplier item" } }); }
+  });
 
   // Bulk import inventory items â€” managers and admins only
   app.post<{
