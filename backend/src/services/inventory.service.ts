@@ -1,5 +1,6 @@
 ﻿import { eq, like, or, sql, desc } from "drizzle-orm";
 import { getDb, schema } from "../db/index.js";
+import { and } from "drizzle-orm";
 import { generateId } from "../utils/id.js";
 import type { CreateInventoryItemRequest, UpdateInventoryItemRequest } from "@technopro/shared";
 
@@ -20,7 +21,7 @@ export async function listInventory(options: {
         like(schema.inventoryItems.upc, `%${search}%`),
       )
     : undefined;
-  const condition = searchCondition;
+  const condition = and(eq(schema.inventoryItems.active, true), searchCondition);
 
   const [rows, countResult] = await Promise.all([
     db
