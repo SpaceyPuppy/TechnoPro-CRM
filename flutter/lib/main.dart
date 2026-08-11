@@ -94,35 +94,41 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
     return MaterialApp.router(
       title: 'First Choice Phone Repair',
       debugShowCheckedModeBanner: false,
-      theme: _buildTheme(),
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
       scrollBehavior: DesktopScrollBehavior(),
       routerConfig: router,
       builder: (context, child) => _TouchDetector(child: child!),
     );
   }
 
-  ThemeData _buildTheme() {
+  ThemeData _buildTheme(Brightness brightness) {
     const primary = Color(0xFF1D4ED8);
-    const primaryContainer = Color(0xFFDBEAFE);
-    const surface = Color(0xFFF8FAFC);
-    const surfaceContainer = Color(0xFFFFFFFF);
-    const outline = Color(0xFFCBD5E1);
+    final isDark = brightness == Brightness.dark;
+    final primaryContainer = isDark ? const Color(0xFF1E3A8A) : const Color(0xFFDBEAFE);
+    final surface = isDark ? const Color(0xFF101521) : const Color(0xFFF6F8FC);
+    final surfaceContainer = isDark ? const Color(0xFF192131) : const Color(0xFFFFFFFF);
+    final outline = isDark ? const Color(0xFF34425A) : const Color(0xFFCBD5E1);
+    final onSurface = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
+    final onSurfaceVariant = isDark ? const Color(0xFFB8C3D8) : const Color(0xFF475569);
 
     final base = ThemeData(useMaterial3: true);
     final colorScheme = ColorScheme.fromSeed(
       seedColor: primary,
-      brightness: Brightness.light,
+      brightness: brightness,
     ).copyWith(
       primary: primary,
       primaryContainer: primaryContainer,
       surface: surface,
-      surfaceContainerLowest: const Color(0xFFFFFFFF),
-      surfaceContainerLow: const Color(0xFFF1F5F9),
-      surfaceContainer: const Color(0xFFE2E8F0),
-      surfaceContainerHigh: const Color(0xFFCBD5E1),
-      outline: const Color(0xFF94A3B8),
+      surfaceContainerLowest: surfaceContainer,
+      surfaceContainerLow: isDark ? const Color(0xFF151C2A) : const Color(0xFFF1F5F9),
+      surfaceContainer: isDark ? const Color(0xFF202A3C) : const Color(0xFFE2E8F0),
+      surfaceContainerHigh: isDark ? const Color(0xFF2B374B) : const Color(0xFFCBD5E1),
+      outline: isDark ? const Color(0xFF5F6E87) : const Color(0xFF94A3B8),
       outlineVariant: outline,
-      onSurfaceVariant: const Color(0xFF475569),
+      onSurface: onSurface,
+      onSurfaceVariant: onSurfaceVariant,
     );
 
     return ThemeData(
@@ -138,24 +144,24 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
         titleTextStyle: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF0F172A),
+          color: onSurface,
         ),
-        iconTheme: const IconThemeData(color: Color(0xFF475569)),
-        shape: const Border(
-          bottom: BorderSide(color: outline),
+        iconTheme: IconThemeData(color: onSurfaceVariant),
+        shape: Border(
+          bottom: BorderSide(color: outline.withValues(alpha: .7)),
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         color: surfaceContainer,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: outline),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: outline.withValues(alpha: .72)),
+          borderRadius: BorderRadius.circular(16),
         ),
         margin: EdgeInsets.zero,
       ),
-      dividerTheme: const DividerThemeData(
-        color: outline,
+      dividerTheme: DividerThemeData(
+        color: outline.withValues(alpha: .72),
         space: 1,
         thickness: 1,
       ),
@@ -163,15 +169,15 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
         filled: true,
         fillColor: surfaceContainer,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: outline),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: outline),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: outline),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: outline),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: primary, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -181,15 +187,15 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
-          side: const BorderSide(color: outline),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          side: BorderSide(color: outline),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 14),
         ),
       ),
@@ -201,8 +207,19 @@ class _TechnoProAppState extends ConsumerState<TechnoProApp> {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primary,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 4,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surfaceContainer,
+        modalBackgroundColor: surfaceContainer,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surfaceContainer,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
     );
   }

@@ -25,14 +25,14 @@ const _railDestinations = <_Dest>[
 const _phoneDestinations = <_Dest>[
   (icon: Icons.dashboard_outlined,          activeIcon: Icons.dashboard,            label: 'Dashboard',  path: '/dashboard'),
   (icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number,  label: 'Tickets',    path: '/tickets'),
-  (icon: Icons.timer_outlined,              activeIcon: Icons.timer,                label: 'Timer',      path: '/current-work'),
-  (icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Finance', path: '/finance'),
+  (icon: Icons.inventory_2_outlined,        activeIcon: Icons.inventory_2,          label: 'Stock',      path: '/inventory'),
 ];
 
 const _moreItems = <_Dest>[
+  (icon: Icons.timer_outlined,        activeIcon: Icons.timer,        label: 'Current work', path: '/current-work'),
   (icon: Icons.people_outline,       activeIcon: Icons.people,       label: 'Customers', path: '/customers'),
-  (icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: 'Inventory', path: '/inventory'),
   (icon: Icons.local_shipping_outlined, activeIcon: Icons.local_shipping, label: 'Procurement', path: '/procurement'),
+  (icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Finance', path: '/finance'),
   (icon: Icons.settings_outlined,    activeIcon: Icons.settings,    label: 'Settings',  path: '/settings'),
 ];
 
@@ -54,16 +54,10 @@ class AppShell extends ConsumerWidget {
   final Widget child;
 
   String _moreLabel(int selectedIndex) {
-    if (selectedIndex >= 5 && selectedIndex < 5 + _moreItems.length) {
-      return _moreItems[selectedIndex - 5].label;
-    }
     return 'More';
   }
 
   IconData _moreIcon(int selectedIndex) {
-    if (selectedIndex >= 5 && selectedIndex < 5 + _moreItems.length) {
-      return _moreItems[selectedIndex - 5].activeIcon;
-    }
     return Icons.more_horiz;
   }
 
@@ -82,13 +76,13 @@ class AppShell extends ConsumerWidget {
   int _phoneIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/tickets'))   return 1;
-    if (loc.startsWith('/current-work')) return 2;
-    if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 3;
+    if (loc.startsWith('/inventory')) return 3;
     // more items mapping
-    if (loc.startsWith('/customers')) return 5;
-    if (loc.startsWith('/inventory')) return 6;
-    if (loc.startsWith('/procurement')) return 7;
-    if (loc.startsWith('/settings'))  return 8;
+    if (loc.startsWith('/current-work')) return 4;
+    if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 4;
+    if (loc.startsWith('/customers')) return 4;
+    if (loc.startsWith('/procurement')) return 4;
+    if (loc.startsWith('/settings'))  return 4;
     return 0;
   }
 
@@ -136,7 +130,7 @@ class AppShell extends ConsumerWidget {
             onLogout: () => ref.read(authProvider.notifier).logout(),
           ),
           const VerticalDivider(width: 1, thickness: 1, color: _sidebarBorder),
-          Expanded(child: _wrapWithBanner(child, isReachable, ref)),
+          Expanded(child: _wrapWithBanner(_RouteLineage(child: child), isReachable, ref)),
         ],
       ),
     );
@@ -157,7 +151,7 @@ class AppShell extends ConsumerWidget {
             onLogout: () => ref.read(authProvider.notifier).logout(),
           ),
           const VerticalDivider(width: 1, thickness: 1, color: _sidebarBorder),
-          Expanded(child: _wrapWithBanner(child, isReachable, ref)),
+          Expanded(child: _wrapWithBanner(_RouteLineage(child: child), isReachable, ref)),
         ],
       ),
     );
@@ -186,36 +180,138 @@ class AppShell extends ConsumerWidget {
         ],
       ),
       body: _wrapWithBanner(child, isReachable, ref),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navIndex,
-        onDestinationSelected: (i) {
-          if (i < _phoneDestinations.length) {
-            if (_phoneDestinations[i].path == '/finance' && !canCounter) return;
-            context.go(_phoneDestinations[i].path);
-          } else {
-            showMoreSheet(context, canManage: canManage);
-          }
-        },
-        backgroundColor: colorScheme.surface,
-        indicatorColor: colorScheme.primaryContainer,
-        destinations: [
-          ..._phoneDestinations.map((d) => NavigationDestination(
-                icon: Icon(d.icon),
-                selectedIcon: Icon(d.activeIcon),
-                label: d.label,
-              )),
-          NavigationDestination(
-            icon: Icon(moreIcon),
-            label: moreLabel,
-            selectedIcon: Icon(moreIcon),
-          ),
-        ],
+      bottomNavigationBar: _PhoneGlassNavigation(
+        selectedIndex: selectedIndex,
+        moreLabel: moreLabel,
+        moreIcon: moreIcon,
+        onDestinationSelected: (index) => context.go(_phoneDestinations[index].path),
+        onCreate: () => showCreateSheet(context, canManage: canManage),
+        onMore: () => showMoreSheet(context, canManage: canManage, canCounter: canCounter),
       ),
     );
   }
 }
 
 // ── Desktop sidebar widget ────────────────────────────────────────────────────
+
+class _RouteLineage extends StatelessWidget {
+  const _RouteLineage({required this.child});
+  final Widget child;
+
+  String _section(String location) {
+    if (location.startsWith('/tickets')) return 'Tickets';
+    if (location.startsWith('/customers')) return 'Customers';
+    if (location.startsWith('/inventory')) return 'Inventory';
+    if (location.startsWith('/procurement')) return 'Purchase orders';
+    if (location.startsWith('/finance') || location.startsWith('/invoices')) return 'Finance';
+    if (location.startsWith('/current-work')) return 'Current work';
+    if (location.startsWith('/settings')) return 'Settings';
+    return 'Dashboard';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final location = GoRouterState.of(context).matchedLocation;
+    final section = _section(location);
+    final detail = location.endsWith('/new') ? 'Create' : location.endsWith('/edit') ? 'Edit' : null;
+    return Column(
+      children: [
+        Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          alignment: Alignment.centerLeft,
+          color: colors.surfaceContainerLow.withValues(alpha: .72),
+          child: Text('Workspace  /  $section${detail == null ? '' : '  /  $detail'}', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: colors.onSurfaceVariant)),
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
+}
+
+class _PhoneGlassNavigation extends StatelessWidget {
+  const _PhoneGlassNavigation({
+    required this.selectedIndex,
+    required this.moreLabel,
+    required this.moreIcon,
+    required this.onDestinationSelected,
+    required this.onCreate,
+    required this.onMore,
+  });
+
+  final int selectedIndex;
+  final String moreLabel;
+  final IconData moreIcon;
+  final ValueChanged<int> onDestinationSelected;
+  final VoidCallback onCreate;
+  final VoidCallback onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHigh.withValues(alpha: .88),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: .7)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .16), blurRadius: 24, offset: const Offset(0, 10))],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _PhoneDestinationButton(destination: _phoneDestinations[0], selected: selectedIndex == 0, onTap: () => onDestinationSelected(0)),
+            _PhoneDestinationButton(destination: _phoneDestinations[1], selected: selectedIndex == 1, onTap: () => onDestinationSelected(1)),
+            Semantics(
+              button: true,
+              label: 'Create',
+              child: Transform.translate(
+                offset: const Offset(0, -12),
+                child: FilledButton(
+                  onPressed: onCreate,
+                  style: FilledButton.styleFrom(minimumSize: const Size(52, 52), padding: EdgeInsets.zero, shape: const CircleBorder(), elevation: 6),
+                  child: const Icon(Icons.add, size: 25),
+                ),
+              ),
+            ),
+            _PhoneDestinationButton(destination: _phoneDestinations[2], selected: selectedIndex == 3, onTap: () => onDestinationSelected(2)),
+            _PhoneDestinationButton(destination: (icon: moreIcon, activeIcon: moreIcon, label: moreLabel, path: ''), selected: selectedIndex == 4, onTap: onMore),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PhoneDestinationButton extends StatelessWidget {
+  const _PhoneDestinationButton({required this.destination, required this.selected, required this.onTap});
+  final _Dest destination;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(selected ? destination.activeIcon : destination.icon, size: 20, color: selected ? colors.primary : colors.onSurfaceVariant),
+            const SizedBox(height: 2),
+            Text(destination.label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: selected ? colors.primary : colors.onSurfaceVariant, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _DesktopSidebar extends StatelessWidget {
   const _DesktopSidebar({
@@ -274,11 +370,38 @@ class _DesktopSidebar extends StatelessWidget {
                 }
                 final d = _railDestinations[i];
                 final isSelected = i == selectedIndex;
-                return _SidebarItem(
+                final item = _SidebarItem(
                   icon: isSelected ? d.activeIcon : d.icon,
                   label: d.label,
                   isSelected: isSelected,
                   onTap: () => onDestinationSelected(i),
+                );
+                if (d.path != '/inventory' || !canManage) return item;
+                return Column(
+                  children: [
+                    item,
+                    Padding(
+                      padding: const EdgeInsets.only(left: 38, right: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => context.go('/procurement'),
+                              style: TextButton.styleFrom(foregroundColor: _sidebarTextDim, padding: const EdgeInsets.symmetric(horizontal: 8)),
+                              child: const Text('Purchase orders', style: TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => context.go('/procurement/new'),
+                            tooltip: 'Create purchase order',
+                            color: _sidebarActiveIcon,
+                            iconSize: 18,
+                            icon: const Icon(Icons.add_circle_outline),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -480,8 +603,48 @@ class _TabletRail extends StatelessWidget {
 
 // ── More bottom sheet ─────────────────────────────────────────────────────────
 
-void showMoreSheet(BuildContext context, {bool canManage = false}) {
-  final items = canManage ? _moreItems : _moreItems.where((d) => d.path != '/settings').toList();
+void showCreateSheet(BuildContext context, {required bool canManage}) {
+  final actions = <_Dest>[
+    (icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number, label: 'New ticket', path: '/tickets/new'),
+    (icon: Icons.person_add_alt_1_outlined, activeIcon: Icons.person_add_alt_1, label: 'New customer', path: '/customers/new'),
+    if (canManage) (icon: Icons.add_shopping_cart_outlined, activeIcon: Icons.add_shopping_cart, label: 'New purchase order', path: '/procurement/new'),
+    (icon: Icons.play_circle_outline, activeIcon: Icons.play_circle, label: 'Start timer', path: '/current-work'),
+  ];
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    builder: (_) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Create', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            ...actions.map((action) => ListTile(
+              leading: Icon(action.icon, color: Theme.of(context).colorScheme.primary),
+              title: Text(action.label),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              onTap: () {
+                Navigator.pop(context);
+                context.go(action.path);
+              },
+            )),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+void showMoreSheet(BuildContext context, {bool canManage = false, bool canCounter = false}) {
+  final items = _moreItems.where((d) {
+    if (d.path == '/settings') return canManage;
+    if (d.path == '/procurement') return canManage;
+    if (d.path == '/finance') return canCounter;
+    return true;
+  }).toList();
   showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
