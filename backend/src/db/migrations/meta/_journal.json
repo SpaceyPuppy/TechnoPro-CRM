@@ -64,6 +64,13 @@
       "when": 1786042994390,
       "tag": "0008_billable_time_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1786450000000,
+      "tag": "0009_stock_ledger",
+      "breakpoints": true
     }
   ]
 }
