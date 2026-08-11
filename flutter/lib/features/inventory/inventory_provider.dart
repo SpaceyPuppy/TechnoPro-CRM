@@ -18,3 +18,12 @@ final inventoryDetailProvider =
   final res = await dio.get<Map<String, dynamic>>('/inventory/$id');
   return InventoryItemModel.fromJson(res.data!['data'] as Map<String, dynamic>);
 });
+
+/// The server ledger is authoritative for stock changes. Keeping it separate
+/// from the catalogue model prevents an edit form from treating movements as
+/// mutable item fields.
+final stockMovementsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, id) async {
+  final dio = ref.read(apiClientProvider);
+  final res = await dio.get<Map<String, dynamic>>('/inventory/$id/movements');
+  return (res.data?['data'] as List? ?? []).cast<Map<String, dynamic>>();
+});

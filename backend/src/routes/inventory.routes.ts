@@ -224,7 +224,7 @@ export async function inventoryRoutes(app: FastifyInstance) {
     if (!deleted) {
       return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Item not found" } });
     }
-    await recordAuditEvent("inventory_item", request.params.id, "deleted", request.user.id, {
+    await recordAuditEvent("inventory_item", request.params.id, "archived", request.user.id, {
       before: before ? toResponse(before) : null,
     });
     return reply.code(204).send();

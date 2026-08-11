@@ -32,6 +32,7 @@ const _phoneDestinations = <_Dest>[
 const _moreItems = <_Dest>[
   (icon: Icons.people_outline,       activeIcon: Icons.people,       label: 'Customers', path: '/customers'),
   (icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: 'Inventory', path: '/inventory'),
+  (icon: Icons.local_shipping_outlined, activeIcon: Icons.local_shipping, label: 'Procurement', path: '/procurement'),
   (icon: Icons.settings_outlined,    activeIcon: Icons.settings,    label: 'Settings',  path: '/settings'),
 ];
 
@@ -74,7 +75,7 @@ class AppShell extends ConsumerWidget {
     if (loc.startsWith('/inventory')) return 4;
     if (loc.startsWith('/procurement')) return 5;
     if (loc.startsWith('/finance') || loc.startsWith('/invoices')) return 6;
-    if (loc.startsWith('/settings'))  return 6;
+    if (loc.startsWith('/settings'))  return 7;
     return 0;
   }
 
@@ -86,7 +87,8 @@ class AppShell extends ConsumerWidget {
     // more items mapping
     if (loc.startsWith('/customers')) return 5;
     if (loc.startsWith('/inventory')) return 6;
-    if (loc.startsWith('/settings'))  return 7;
+    if (loc.startsWith('/procurement')) return 7;
+    if (loc.startsWith('/settings'))  return 8;
     return 0;
   }
 

@@ -3,6 +3,7 @@ import { getDb, schema } from "../db/index.js";
 import { generateId } from "../utils/id.js";
 import type { CreatePurchaseOrderRequest, UpdatePurchaseOrderRequest } from "@technopro/shared";
 import { applyStockMovementInTransaction } from "./stock.service.js";
+import { decimalToHundredths, hundredthsToDecimal } from "../utils/money.js";
 
 export async function listPurchaseOrders(params: { page: number; pageSize: number; search?: string }) {
   const db = getDb();
@@ -82,9 +83,12 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
     const poNumber = `PO-${String(num).padStart(5, '0')}`;
     
     // Calculate total
-    let totalCost = 0;
+    let totalCost = 0n;
     for (const item of data.items) {
-      totalCost += item.quantity * parseFloat(item.unitCost);
+      if (!Number.isSafeInteger(item.quantity) || item.quantity < 1) throw new Error("Purchase order quantities must be positive integers");
+      const unitCost = decimalToHundredths(item.unitCost);
+      if (unitCost < 0n) throw new Error("Purchase order unit cost cannot be negative");
+      totalCost += BigInt(item.quantity) * unitCost;
     }
     
     await tx.insert(schema.purchaseOrders).values({
@@ -94,7 +98,7 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
       status: "draft",
       expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
       notes: data.notes || null,
-      totalCost: totalCost.toFixed(2),
+      totalCost: hundredthsToDecimal(totalCost),
     });
     
     for (const item of data.items) {
@@ -110,7 +114,7 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderRequest) {
         supplierSku: supplierItem?.supplierSku ?? null,
         description: item.description || null,
         quantity: item.quantity,
-        unitCost: parseFloat(item.unitCost).toFixed(2),
+        unitCost: hundredthsToDecimal(decimalToHundredths(item.unitCost)),
       });
     }
 
@@ -126,6 +130,9 @@ export async function updatePurchaseOrder(id: string, data: UpdatePurchaseOrderR
   
   const existing = await getPurchaseOrderById(id);
   if (!existing) return null;
+  if (data.status !== undefined && data.status !== "draft" && data.status !== "ordered") {
+    throw new Error("Use receiving to change a purchase order to received or cancelled");
+  }
   
   if (existing.status === "received" || existing.status === "cancelled") {
     throw new Error(`Cannot update a PO that is ${existing.status}`);

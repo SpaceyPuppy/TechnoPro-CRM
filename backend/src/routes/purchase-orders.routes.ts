@@ -78,7 +78,9 @@ const updateSchema = {
   body: {
     type: "object",
     properties: {
-      status: { type: "string", enum: ["draft", "ordered", "received", "cancelled"] },
+      // Receipt and cancellation status changes must use the reconciled
+      // receiving endpoint so a PO can never bypass the stock ledger.
+      status: { type: "string", enum: ["draft", "ordered"] },
       expectedDeliveryDate: { type: "string", format: "date-time" },
       notes: { type: "string" },
     },

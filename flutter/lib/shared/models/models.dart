@@ -992,6 +992,7 @@ class PurchaseOrderModel {
   final String id;
   final String poNumber;
   final String supplierId;
+  final String? supplierName;
   final String status; // 'draft' | 'ordered' | 'received' | 'cancelled'
   final String totalCost;
   final String? expectedDeliveryDate;
@@ -1005,6 +1006,7 @@ class PurchaseOrderModel {
     required this.id,
     required this.poNumber,
     required this.supplierId,
+    this.supplierName,
     required this.status,
     required this.totalCost,
     this.expectedDeliveryDate,
@@ -1019,6 +1021,7 @@ class PurchaseOrderModel {
         id: j['id'] as String,
         poNumber: j['poNumber'] as String,
         supplierId: j['supplierId'] as String,
+        supplierName: j['supplierName'] as String?,
         status: j['status'] as String,
         totalCost: j['totalCost'] as String,
         expectedDeliveryDate: j['expectedDeliveryDate'] as String?,
@@ -1027,7 +1030,9 @@ class PurchaseOrderModel {
         updatedAt: j['updatedAt'] as String,
         supplier: j['supplier'] != null
             ? SupplierModel.fromJson(j['supplier'] as Map<String, dynamic>)
-            : null,
+            : j['supplierName'] != null
+                ? SupplierModel(id: j['supplierId'] as String, name: j['supplierName'] as String, createdAt: '', updatedAt: '')
+                : null,
         items: (j['items'] as List? ?? [])
             .map((e) => POItemModel.fromJson(e as Map<String, dynamic>))
             .toList(),

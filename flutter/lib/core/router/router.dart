@@ -16,6 +16,7 @@ import '../../features/inventory/inventory_form_screen.dart';
 import '../../features/inventory/inventory_import_screen.dart';
 import '../../features/procurement/purchase_orders_list_screen.dart';
 import '../../features/procurement/purchase_order_detail_screen.dart';
+import '../../features/procurement/purchase_order_form_screen.dart';
 import '../../features/invoices/invoice_detail_screen.dart';
 import '../../features/invoices/invoice_form_screen.dart';
 import '../../features/invoices/finance_screen.dart';
@@ -171,7 +172,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          GoRoute(path: '/procurement', builder: (_, __) => const PurchaseOrdersListScreen(), routes: [GoRoute(path: ':id', builder: (_, state) => PurchaseOrderDetailScreen(id: state.pathParameters['id']!))]),
+          GoRoute(path: '/procurement', builder: (_, __) => const PurchaseOrdersListScreen(), routes: [GoRoute(path: 'new', builder: (_, __) => const PurchaseOrderFormScreen()), GoRoute(path: ':id', builder: (_, state) => PurchaseOrderDetailScreen(id: state.pathParameters['id']!))]),
           // Legacy /invoices redirect for ticket-linked invoice creation
           GoRoute(
             path: '/invoices',
