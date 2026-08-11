@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
@@ -28,7 +29,7 @@ class TicketDetailScreen extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(body: ErrorView(message: e.toString())),
       data: (ticket) => Scaffold(
-        appBar: AppBar(
+        appBar: PrismAppBar(
           title: Text(ticket.ticketNumber),
           actions: [
             IconButton(
@@ -160,7 +161,8 @@ class _QuickStatusControlState extends ConsumerState<_QuickStatusControl> {
     final canClose = widget.ticket.status != TicketStatus.closed &&
         widget.ticket.status != TicketStatus.cancelled;
 
-    return Card(
+    return PrismSurface(
+      radius: 24,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -233,7 +235,8 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return PrismSurface(
+      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -361,7 +364,8 @@ class _AddNoteCardState extends ConsumerState<_AddNoteCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return PrismSurface(
+      radius: 24,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -431,7 +435,8 @@ class _InvoiceSection extends ConsumerWidget {
           data: (invoice) => invoice == null
               ? const Text('No invoice for this ticket',
                   style: TextStyle(color: Colors.grey))
-              : Card(
+              : PrismSurface(
+                  radius: 20,
                   child: ListTile(
                     leading: const Icon(Icons.receipt_outlined),
                     title: Text(invoice.invoiceNumber),

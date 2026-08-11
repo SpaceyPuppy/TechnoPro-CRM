@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/widgets/error_view.dart';
@@ -65,7 +66,7 @@ class InventoryDetailScreen extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(body: ErrorView(message: e.toString())),
       data: (item) => Scaffold(
-        appBar: AppBar(
+        appBar: PrismAppBar(
           title: Text(item.name),
           actions: [
             if (item.stockQty != null) IconButton(icon: const Icon(Icons.tune), tooltip: 'Adjust stock', onPressed: () => _adjust(context, ref, item)),
@@ -79,7 +80,8 @@ class InventoryDetailScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Card(
+            PrismSurface(
+              radius: 26,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -116,7 +118,7 @@ class InventoryDetailScreen extends ConsumerWidget {
               error: (error, _) => Padding(padding: const EdgeInsets.all(8), child: Text('Could not load supplier options: $error')),
               data: (options) => options.isEmpty
                   ? const Padding(padding: EdgeInsets.all(8), child: Text('No supplier options yet.'))
-                  : Card(child: Column(children: options.map((option) => ListTile(
+                  : PrismSurface(radius: 22, child: Column(children: options.map((option) => ListTile(
                     leading: Icon(option['preferred'] == true ? Icons.star : Icons.local_shipping_outlined),
                     title: Text(option['supplierName'] as String? ?? 'Supplier'),
                     subtitle: Text('UPC ${option['supplierUpc'] as String? ?? '—'} · Pack ${option['packSize']} · MOQ ${option['minimumOrderQty']}'),
@@ -130,7 +132,7 @@ class InventoryDetailScreen extends ConsumerWidget {
               error: (error, _) => Padding(padding: const EdgeInsets.all(8), child: Text('Could not load stock history: $error')),
               data: (movements) => movements.isEmpty
                   ? const Padding(padding: EdgeInsets.all(8), child: Text('No stock movements yet.'))
-                  : Card(child: Column(children: movements.take(20).map((movement) {
+                  : PrismSurface(radius: 22, child: Column(children: movements.take(20).map((movement) {
                       final delta = movement['quantityDelta'] as int? ?? 0;
                       return ListTile(
                         leading: Icon(delta >= 0 ? Icons.add_circle_outline : Icons.remove_circle_outline, color: delta >= 0 ? Colors.green : Colors.red),

@@ -7,6 +7,7 @@ import '../../shared/models/models.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/widgets/error_view.dart';
 import '../../shared/widgets/prism_surfaces.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'dashboard_provider.dart';
 import 'dashboard_preferences.dart';
 
@@ -46,7 +47,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final statsAsync = ref.watch(dashboardProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         toolbarHeight: 72,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,7 +425,8 @@ class _StatusBreakdownCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Card(
+    return PrismSurface(
+      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -541,7 +543,8 @@ class _MyTicketsCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
+    return PrismSurface(
+      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -618,7 +621,8 @@ class _RecentActivityCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
+    return PrismSurface(
+      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

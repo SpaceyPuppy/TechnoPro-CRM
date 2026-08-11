@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'prism_surfaces.dart';
+import 'prism_page.dart';
 
 /// Keeps data-entry focused: a full-height mobile workspace and a contained
 /// sheet-like surface on tablet and desktop.
@@ -19,7 +20,7 @@ class AdaptiveFormScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title), actions: actions),
+      appBar: PrismAppBar(title: Text(title), actions: actions),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final contained = constraints.maxWidth >= 600;

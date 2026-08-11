@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
@@ -38,7 +39,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(body: ErrorView(message: e.toString())),
       data: (invoice) => Scaffold(
-        appBar: AppBar(
+        appBar: PrismAppBar(
           title: Text(invoice.invoiceNumber),
           actions: [
             _PdfButton(invoice: invoice),
@@ -235,7 +236,8 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return PrismSurface(
+      radius: 24,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

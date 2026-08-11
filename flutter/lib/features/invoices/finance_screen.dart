@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -43,7 +44,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen>
     final canCounter = ref.watch(authProvider).user?.role.canCounter ?? false;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('Finance'),
         bottom: TabBar(
           controller: _tab,
@@ -361,9 +362,9 @@ class _FinanceCard extends StatelessWidget {
     final statusColor = _statusColor(
         invoice.isQuote ? (invoice.quoteStatus ?? 'draft') : invoice.status);
 
-    return Card(
-      color:
-          isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+    return PrismSurface(
+      tint: isSelected ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .58) : null,
+      onTap: onTap,
       child: ListTile(
         onTap: onTap,
         title: Text(invoice.invoiceNumber),

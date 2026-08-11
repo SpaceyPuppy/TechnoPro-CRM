@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/widgets/prism_surfaces.dart';
 import '../time_entries_provider.dart';
 
 class TimeEntryTimerWidget extends ConsumerStatefulWidget {
@@ -67,9 +68,11 @@ class _TimeEntryTimerWidgetState extends ConsumerState<TimeEntryTimerWidget> {
           });
         }
 
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: Padding(
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: PrismSurface(
+            radius: 24,
+            child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,6 +129,7 @@ class _TimeEntryTimerWidgetState extends ConsumerState<TimeEntryTimerWidget> {
                   ) else
                   const Text('No time entries yet'),
               ],
+            ),
             ),
           ),
         );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'procurement_provider.dart';
@@ -88,7 +89,7 @@ class PurchaseOrderDetailScreen extends ConsumerWidget {
     final asyncOrder = ref.watch(purchaseOrderProvider(id));
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('PO Details'),
         leading: context.canPop()
             ? IconButton(

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../shared/widgets/prism_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -35,7 +36,7 @@ class _CurrentWorkScreenState extends ConsumerState<CurrentWorkScreen> {
   Widget build(BuildContext context) {
     final current = ref.watch(currentTimeEntryProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: PrismAppBar(
         title: const Text('Current work'),
         actions: [
           IconButton(
@@ -76,7 +77,8 @@ class _CurrentWorkScreenState extends ConsumerState<CurrentWorkScreen> {
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
-                  child: Card(
+                  child: PrismSurface(
+                    radius: 30,
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(

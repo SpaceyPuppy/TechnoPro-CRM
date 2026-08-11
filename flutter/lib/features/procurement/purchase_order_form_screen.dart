@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'data/procurement_repository.dart';
 import 'procurement_provider.dart';
 import '../../shared/widgets/adaptive_form_scaffold.dart';
+import '../../shared/widgets/prism_surfaces.dart';
 
 class PurchaseOrderFormScreen extends ConsumerStatefulWidget {
   const PurchaseOrderFormScreen({super.key});
@@ -143,9 +144,10 @@ class _LineEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(top: 12),
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: PrismSurface(
+        radius: 20,
         padding: const EdgeInsets.all(12),
         child: Column(children: [
           Row(children: [Expanded(child: Text('Supplier item', style: Theme.of(context).textTheme.labelLarge)), if (canRemove) IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Remove line', onPressed: onRemove)]),
