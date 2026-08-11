@@ -1,4 +1,4 @@
-import { char, mysqlEnum, mysqlTable, varchar, text, int, decimal, timestamp, index, uniqueIndex } from "drizzle-orm/mysql-core";
+import { boolean, char, mysqlEnum, mysqlTable, varchar, text, int, decimal, timestamp, index, uniqueIndex } from "drizzle-orm/mysql-core";
 import { users } from "./users.js";
 
 export const inventoryItems = mysqlTable("inventory_items", {
@@ -10,6 +10,21 @@ export const inventoryItems = mysqlTable("inventory_items", {
   cost: decimal("cost", { precision: 10, scale: 2 }).notNull().default("0.00"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull().default("0.00"),
   barcode: varchar("barcode", { length: 255 }),
+  upc: varchar("upc", { length: 32 }),
+  manufacturerPartNumber: varchar("manufacturer_part_number", { length: 100 }),
+  itemType: varchar("item_type", { length: 40 }).notNull().default("part"),
+  category: varchar("category", { length: 100 }),
+  subcategory: varchar("subcategory", { length: 100 }),
+  brand: varchar("brand", { length: 100 }),
+  compatibleModel: varchar("compatible_model", { length: 150 }),
+  condition: varchar("condition", { length: 40 }),
+  reorderPoint: int("reorder_point"),
+  targetStockLevel: int("target_stock_level"),
+  warrantyMonths: int("warranty_months"),
+  internalNotes: text("internal_notes"),
+  active: boolean("active").notNull().default(true),
+  posSellable: boolean("pos_sellable").notNull().default(true),
+  serialized: boolean("serialized").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });

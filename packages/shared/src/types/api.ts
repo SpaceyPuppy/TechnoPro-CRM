@@ -247,6 +247,9 @@ export interface CreateInventoryItemRequest {
   cost?: string;
   price: string;
   barcode?: string;
+  upc?: string; manufacturerPartNumber?: string; itemType?: string; category?: string; subcategory?: string; brand?: string; compatibleModel?: string; condition?: string;
+  reorderPoint?: number | null; targetStockLevel?: number | null; warrantyMonths?: number | null; internalNotes?: string;
+  active?: boolean; posSellable?: boolean; serialized?: boolean;
 }
 
 export interface UpdateInventoryItemRequest {
@@ -257,6 +260,9 @@ export interface UpdateInventoryItemRequest {
   cost?: string;
   price?: string;
   barcode?: string;
+  upc?: string | null; manufacturerPartNumber?: string | null; itemType?: string; category?: string | null; subcategory?: string | null; brand?: string | null; compatibleModel?: string | null; condition?: string | null;
+  reorderPoint?: number | null; targetStockLevel?: number | null; warrantyMonths?: number | null; internalNotes?: string | null;
+  active?: boolean; posSellable?: boolean; serialized?: boolean;
 }
 
 // --- Line Items ---

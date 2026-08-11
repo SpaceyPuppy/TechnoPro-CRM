@@ -15,6 +15,25 @@ export const suppliers = mysqlTable("suppliers", {
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
 
+export const supplierItems = mysqlTable("supplier_items", {
+  id: char("id", { length: 36 }).primaryKey(),
+  supplierId: char("supplier_id", { length: 36 }).notNull().references(() => suppliers.id),
+  inventoryItemId: char("inventory_item_id", { length: 36 }).notNull().references(() => inventoryItems.id),
+  supplierSku: varchar("supplier_sku", { length: 100 }),
+  supplierUpc: varchar("supplier_upc", { length: 32 }),
+  supplierPartNumber: varchar("supplier_part_number", { length: 100 }),
+  productUrl: varchar("product_url", { length: 1000 }),
+  packSize: int("pack_size").notNull().default(1),
+  minimumOrderQty: int("minimum_order_qty").notNull().default(1),
+  quotedUnitCost: decimal("quoted_unit_cost", { precision: 10, scale: 2 }),
+  lastPaidUnitCost: decimal("last_paid_unit_cost", { precision: 10, scale: 2 }),
+  leadTimeDays: int("lead_time_days"),
+  preferred: int("preferred").notNull().default(0),
+  active: int("active").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+});
+
 export const purchaseOrders = mysqlTable("purchase_orders", {
   id: char("id", { length: 36 }).primaryKey(),
   poNumber: varchar("po_number", { length: 50 }).notNull().unique(),

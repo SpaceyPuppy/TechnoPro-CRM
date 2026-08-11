@@ -20,6 +20,9 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
   String? _error;
   bool _initialized = false;
   bool _trackStock = false;
+  bool _posSellable = true;
+  bool _serialized = false;
+  bool _active = true;
 
   final _skuCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
@@ -27,7 +30,19 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
   final _priceCtrl = TextEditingController();
   final _costCtrl = TextEditingController();
   final _stockCtrl = TextEditingController();
+  final _openingReasonCtrl = TextEditingController();
   final _barcodeCtrl = TextEditingController();
+  final _upcCtrl = TextEditingController();
+  final _brandCtrl = TextEditingController();
+  final _categoryCtrl = TextEditingController();
+  final _subCategoryCtrl = TextEditingController();
+  final _modelCtrl = TextEditingController();
+  final _mpnCtrl = TextEditingController();
+  final _conditionCtrl = TextEditingController();
+  final _reorderCtrl = TextEditingController();
+  final _targetStockCtrl = TextEditingController();
+  final _warrantyCtrl = TextEditingController();
+  final _internalNotesCtrl = TextEditingController();
 
   @override
   void dispose() {
@@ -37,7 +52,9 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
     _priceCtrl.dispose();
     _costCtrl.dispose();
     _stockCtrl.dispose();
+    _openingReasonCtrl.dispose();
     _barcodeCtrl.dispose();
+    _upcCtrl.dispose(); _brandCtrl.dispose(); _categoryCtrl.dispose(); _subCategoryCtrl.dispose(); _modelCtrl.dispose(); _mpnCtrl.dispose(); _conditionCtrl.dispose(); _reorderCtrl.dispose(); _targetStockCtrl.dispose(); _warrantyCtrl.dispose(); _internalNotesCtrl.dispose();
     super.dispose();
   }
 
@@ -53,12 +70,23 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
         'sku': _skuCtrl.text.trim(),
         'name': _nameCtrl.text.trim(),
         'price': _priceCtrl.text.trim(),
-        if (_costCtrl.text.isNotEmpty) 'cost': _costCtrl.text.trim(),
+        if (widget.id == null && _costCtrl.text.isNotEmpty) 'cost': _costCtrl.text.trim(),
         if (_descCtrl.text.isNotEmpty) 'description': _descCtrl.text.trim(),
         if (_barcodeCtrl.text.isNotEmpty) 'barcode': _barcodeCtrl.text.trim(),
-        'stockQty': _trackStock && _stockCtrl.text.isNotEmpty
-            ? int.tryParse(_stockCtrl.text)
-            : null,
+        if (_upcCtrl.text.isNotEmpty) 'upc': _upcCtrl.text.trim(),
+        if (_brandCtrl.text.isNotEmpty) 'brand': _brandCtrl.text.trim(),
+        if (_categoryCtrl.text.isNotEmpty) 'category': _categoryCtrl.text.trim(),
+        if (_subCategoryCtrl.text.isNotEmpty) 'subcategory': _subCategoryCtrl.text.trim(),
+        if (_modelCtrl.text.isNotEmpty) 'compatibleModel': _modelCtrl.text.trim(),
+        if (_mpnCtrl.text.isNotEmpty) 'manufacturerPartNumber': _mpnCtrl.text.trim(),
+        if (_conditionCtrl.text.isNotEmpty) 'condition': _conditionCtrl.text.trim(),
+        if (_reorderCtrl.text.isNotEmpty) 'reorderPoint': int.tryParse(_reorderCtrl.text),
+        if (_targetStockCtrl.text.isNotEmpty) 'targetStockLevel': int.tryParse(_targetStockCtrl.text),
+        if (_warrantyCtrl.text.isNotEmpty) 'warrantyMonths': int.tryParse(_warrantyCtrl.text),
+        if (_internalNotesCtrl.text.isNotEmpty) 'internalNotes': _internalNotesCtrl.text.trim(),
+        'active': _active, 'posSellable': _posSellable, 'serialized': _serialized,
+        if (widget.id == null) 'stockQty': _trackStock && _stockCtrl.text.isNotEmpty ? int.tryParse(_stockCtrl.text) : null,
+        if (widget.id == null && _stockCtrl.text.isNotEmpty) 'openingBalanceReason': _openingReasonCtrl.text.trim(),
       };
       if (widget.id == null) {
         await dio.post('/inventory', data: body);
@@ -133,6 +161,7 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
         _priceCtrl.text = item.price;
         _costCtrl.text = item.cost;
         _barcodeCtrl.text = item.barcode ?? '';
+        _upcCtrl.text = item.upc ?? ''; _brandCtrl.text = item.brand ?? ''; _categoryCtrl.text = item.category ?? ''; _subCategoryCtrl.text = item.subcategory ?? ''; _modelCtrl.text = item.compatibleModel ?? ''; _mpnCtrl.text = item.manufacturerPartNumber ?? ''; _conditionCtrl.text = item.condition ?? ''; _reorderCtrl.text = item.reorderPoint?.toString() ?? ''; _targetStockCtrl.text = item.targetStockLevel?.toString() ?? ''; _warrantyCtrl.text = item.warrantyMonths?.toString() ?? ''; _internalNotesCtrl.text = item.internalNotes ?? ''; _active = item.active; _posSellable = item.posSellable; _serialized = item.serialized;
         _trackStock = item.stockQty != null;
         _stockCtrl.text = item.stockQty?.toString() ?? '';
       }
@@ -189,11 +218,37 @@ class _InventoryFormScreenState extends ConsumerState<InventoryFormScreen> {
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
+              if (!isEdit) ...[
+                TextFormField(controller: _openingReasonCtrl, decoration: const InputDecoration(labelText: 'Opening-balance reason *', border: OutlineInputBorder()), validator: (value) => _trackStock && (_stockCtrl.text.isNotEmpty && _stockCtrl.text != '0') && (value == null || value.trim().isEmpty) ? 'Reason is required for opening stock' : null),
+                const SizedBox(height: 16),
+              ],
             ],
             TextFormField(
               controller: _barcodeCtrl,
               decoration: const InputDecoration(labelText: 'Barcode', border: OutlineInputBorder()),
             ),
+            const SizedBox(height: 16),
+            TextFormField(controller: _upcCtrl, decoration: const InputDecoration(labelText: 'UPC / GTIN', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            TextFormField(controller: _brandCtrl, decoration: const InputDecoration(labelText: 'Brand / manufacturer', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            TextFormField(controller: _categoryCtrl, decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            TextFormField(controller: _subCategoryCtrl, decoration: const InputDecoration(labelText: 'Sub-category', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            TextFormField(controller: _modelCtrl, decoration: const InputDecoration(labelText: 'Compatible device / model', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            TextFormField(controller: _mpnCtrl, decoration: const InputDecoration(labelText: 'Manufacturer part number', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            TextFormField(controller: _conditionCtrl, decoration: const InputDecoration(labelText: 'Condition', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            Row(children: [Expanded(child: TextFormField(controller: _reorderCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Reorder point', border: OutlineInputBorder()))), const SizedBox(width: 12), Expanded(child: TextFormField(controller: _targetStockCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target stock', border: OutlineInputBorder())))]),
+            const SizedBox(height: 16),
+            TextFormField(controller: _warrantyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Warranty months', border: OutlineInputBorder())),
+            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Sell through point of sale'), value: _posSellable, onChanged: (value) => setState(() => _posSellable = value)),
+            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Serialized item'), value: _serialized, onChanged: (value) => setState(() => _serialized = value)),
+            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Active item'), value: _active, onChanged: (value) => setState(() => _active = value)),
+            TextFormField(controller: _internalNotesCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Internal notes', border: OutlineInputBorder())),
             const SizedBox(height: 16),
             TextFormField(
               controller: _descCtrl,

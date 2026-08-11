@@ -13,4 +13,4 @@ export { inventoryItems, stockMovements } from "./inventory.js";
 export { invoices, payments, lineItems } from "./billing.js";
 export { appSettings } from "./app_settings.js";
 export { auditEvents } from "./audit_events.js";
-export { suppliers, purchaseOrders, poItems, suppliersRelations, purchaseOrdersRelations, poItemsRelations } from "./suppliers.js";
+export { suppliers, supplierItems, purchaseOrders, poItems, suppliersRelations, purchaseOrdersRelations, poItemsRelations } from "./suppliers.js";
