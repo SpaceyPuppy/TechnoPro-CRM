@@ -19,6 +19,7 @@ import { settingsRoutes } from "./routes/settings.routes.js";
 import { timeEntryRoutes } from "./routes/time-entry.routes.js";
 import { supplierRoutes } from "./routes/suppliers.routes.js";
 import { purchaseOrderRoutes } from "./routes/purchase-orders.routes.js";
+import { stockRoutes } from "./routes/stock.routes.js";
 import { auditRoutes } from "./routes/audit.routes.js";
 import { closeDb } from "./db/index.js";
 
@@ -68,6 +69,7 @@ async function main() {
       await api.register(settingsRoutes);
       await api.register(supplierRoutes);
       await api.register(purchaseOrderRoutes);
+      await api.register(stockRoutes);
       await api.register(auditRoutes);
     },
     { prefix: "/api/v1" },

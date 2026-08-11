@@ -9,7 +9,7 @@ export {
   ticketChecklistItems,
 } from "./tickets.js";
 export { timeEntries } from "./time_entries.js";
-export { inventoryItems } from "./inventory.js";
+export { inventoryItems, stockMovements } from "./inventory.js";
 export { invoices, payments, lineItems } from "./billing.js";
 export { appSettings } from "./app_settings.js";
 export { auditEvents } from "./audit_events.js";
