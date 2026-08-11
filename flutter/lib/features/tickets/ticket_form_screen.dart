@@ -6,6 +6,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../shared/models/enums.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/error_view.dart';
+import '../../shared/widgets/adaptive_form_scaffold.dart';
 import '../dashboard/dashboard_provider.dart';
 import 'tickets_provider.dart';
 import 'widgets/customer_search_section.dart';
@@ -209,19 +210,19 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
       _initFromTicket(ticketAsync.value!);
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isEdit ? 'Edit Ticket' : 'New Ticket'),
-      ),
-      body: Form(
+    return AdaptiveFormScaffold(
+      title: isEdit ? 'Edit Ticket' : 'New Ticket',
+      child: Form(
         key: _formKey,
         child: CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   if (!isEdit) ...[
+                    const _WorkflowProgress(),
+                    const SizedBox(height: 24),
                     // ── Customer ──────────────────────────────────────
                     _SectionHeader(
                       icon: Icons.person_outline,
@@ -437,6 +438,40 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+class _WorkflowProgress extends StatelessWidget {
+  const _WorkflowProgress();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    const steps = ['Customer', 'Device & repair', 'Details'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Ticket intake', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (var index = 0; index < steps.length; index++) ...[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(height: 4, decoration: BoxDecoration(color: index == 0 ? colors.primary : colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(8))),
+                    const SizedBox(height: 6),
+                    Text(steps[index], style: Theme.of(context).textTheme.labelSmall?.copyWith(color: index == 0 ? colors.primary : colors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              if (index < steps.length - 1) const SizedBox(width: 6),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.icon, required this.title});
