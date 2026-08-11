@@ -1,0 +1,8 @@
+[Unit]
+Description=TechnoPro guarded Caddy Docker-binding watchdog
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/technopro/app/deploy/scripts/caddy-watchdog.sh
