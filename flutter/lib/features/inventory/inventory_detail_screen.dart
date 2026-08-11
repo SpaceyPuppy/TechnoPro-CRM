@@ -19,10 +19,36 @@ class InventoryDetailScreen extends ConsumerWidget {
     ref.invalidate(inventoryDetailProvider(id)); ref.invalidate(inventoryListProvider); ref.invalidate(stockMovementsProvider(id));
   }
 
+  Future<void> _addSupplierOption(BuildContext context, WidgetRef ref, InventoryItemModel item) async {
+    final suppliersResponse = await ref.read(apiClientProvider).get<Map<String, dynamic>>('/suppliers');
+    final suppliers = (suppliersResponse.data?['data'] as List? ?? []).cast<Map<String, dynamic>>();
+    String? supplierId;
+    final sku = TextEditingController(); final upc = TextEditingController(); final cost = TextEditingController();
+    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
+      title: const Text('Add supplier option'),
+      content: SizedBox(width: 420, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        DropdownButtonFormField<String>(value: supplierId, isExpanded: true, decoration: const InputDecoration(labelText: 'Supplier *'), items: suppliers.map((supplier) => DropdownMenuItem(value: supplier['id'] as String, child: Text(supplier['name'] as String, overflow: TextOverflow.ellipsis))).toList(), onChanged: (value) => setDialogState(() => supplierId = value)),
+        TextFormField(controller: sku, decoration: const InputDecoration(labelText: 'Supplier SKU')),
+        TextFormField(controller: upc, decoration: const InputDecoration(labelText: 'Supplier UPC')),
+        TextFormField(controller: cost, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Quoted unit cost')),
+      ])),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: supplierId == null ? null : () => Navigator.pop(dialogContext, true), child: const Text('Save'))],
+    )));
+    if (confirmed != true || supplierId == null) return;
+    await ref.read(apiClientProvider).post('/inventory/${item.id}/supplier-items', data: {
+      'supplierId': supplierId,
+      if (sku.text.trim().isNotEmpty) 'supplierSku': sku.text.trim(),
+      if (upc.text.trim().isNotEmpty) 'supplierUpc': upc.text.trim(),
+      if (cost.text.trim().isNotEmpty) 'quotedUnitCost': cost.text.trim(),
+    });
+    ref.invalidate(supplierItemsProvider(id));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemAsync = ref.watch(inventoryDetailProvider(id));
     final movementsAsync = ref.watch(stockMovementsProvider(id));
+    final supplierItemsAsync = ref.watch(supplierItemsProvider(id));
 
     return itemAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -32,6 +58,7 @@ class InventoryDetailScreen extends ConsumerWidget {
           title: Text(item.name),
           actions: [
             if (item.stockQty != null) IconButton(icon: const Icon(Icons.tune), tooltip: 'Adjust stock', onPressed: () => _adjust(context, ref, item)),
+            IconButton(icon: const Icon(Icons.local_shipping_outlined), tooltip: 'Add supplier option', onPressed: () => _addSupplierOption(context, ref, item)),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () => context.go('/inventory/$id/edit'),
@@ -70,6 +97,20 @@ class InventoryDetailScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            Text('Supplier options', style: Theme.of(context).textTheme.titleMedium),
+            supplierItemsAsync.when(
+              loading: () => const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
+              error: (error, _) => Padding(padding: const EdgeInsets.all(8), child: Text('Could not load supplier options: $error')),
+              data: (options) => options.isEmpty
+                  ? const Padding(padding: EdgeInsets.all(8), child: Text('No supplier options yet.'))
+                  : Card(child: Column(children: options.map((option) => ListTile(
+                    leading: Icon(option['preferred'] == true ? Icons.star : Icons.local_shipping_outlined),
+                    title: Text(option['supplierName'] as String? ?? 'Supplier'),
+                    subtitle: Text('UPC ${option['supplierUpc'] as String? ?? '—'} · Pack ${option['packSize']} · MOQ ${option['minimumOrderQty']}'),
+                    trailing: Text(option['quotedUnitCost'] == null ? '' : '\$${option['quotedUnitCost']}'),
+                  )).toList())),
             ),
             const SizedBox(height: 16),
             Text('Stock history', style: Theme.of(context).textTheme.titleMedium),

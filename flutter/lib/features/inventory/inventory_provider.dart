@@ -27,3 +27,9 @@ final stockMovementsProvider = FutureProvider.family<List<Map<String, dynamic>>,
   final res = await dio.get<Map<String, dynamic>>('/inventory/$id/movements');
   return (res.data?['data'] as List? ?? []).cast<Map<String, dynamic>>();
 });
+
+final supplierItemsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, id) async {
+  final dio = ref.read(apiClientProvider);
+  final res = await dio.get<Map<String, dynamic>>('/inventory/$id/supplier-items');
+  return (res.data?['data'] as List? ?? []).cast<Map<String, dynamic>>();
+});

@@ -156,8 +156,8 @@ export async function inventoryRoutes(app: FastifyInstance) {
   );
 
   app.get<{ Params: { id: string } }>("/inventory/:id/supplier-items", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
-    const rows = await getDb().select().from(schema.supplierItems).where(eq(schema.supplierItems.inventoryItemId, request.params.id));
-    return reply.send({ data: rows.map((row) => ({ ...row, quotedUnitCost: row.quotedUnitCost?.toString() ?? null, lastPaidUnitCost: row.lastPaidUnitCost?.toString() ?? null, preferred: row.preferred === 1, active: row.active === 1, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() })) });
+    const rows = await getDb().select({ supplierItem: schema.supplierItems, supplierName: schema.suppliers.name }).from(schema.supplierItems).leftJoin(schema.suppliers, eq(schema.supplierItems.supplierId, schema.suppliers.id)).where(eq(schema.supplierItems.inventoryItemId, request.params.id));
+    return reply.send({ data: rows.map(({ supplierItem, supplierName }) => ({ ...supplierItem, supplierName, quotedUnitCost: supplierItem.quotedUnitCost?.toString() ?? null, lastPaidUnitCost: supplierItem.lastPaidUnitCost?.toString() ?? null, preferred: supplierItem.preferred === 1, active: supplierItem.active === 1, createdAt: supplierItem.createdAt.toISOString(), updatedAt: supplierItem.updatedAt.toISOString() })) });
   });
 
   app.post<{ Params: { id: string }; Body: { supplierId: string; supplierSku?: string; supplierUpc?: string; supplierPartNumber?: string; productUrl?: string; packSize?: number; minimumOrderQty?: number; quotedUnitCost?: string; leadTimeDays?: number; preferred?: boolean; active?: boolean } }>("/inventory/:id/supplier-items", { preHandler: app.requireRole("manager", "admin") }, async (request, reply) => {
