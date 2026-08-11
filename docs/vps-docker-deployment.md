@@ -143,6 +143,34 @@ curl --fail --show-error https://crm.example.com/api/v1/health
 
 Replace the example hostname. A healthy result contains `"status":"ok"`. Caddy obtains and renews the public certificate automatically when DNS and ports 80/443 are correct.
 
+### Guarded Caddy watchdog
+
+The release installer enables `technopro-caddy-watchdog.timer`, which runs
+every two minutes. It verifies that the API is healthy before checking Caddy's
+Docker proxy-network attachment, published TCP 80/443 bindings and the
+VPS-local HTTPS health endpoint.
+
+If Caddy alone has lost its Docker networking or public bindings, the watchdog
+rate-limits a Caddy-only recovery using:
+
+```bash
+sudo docker compose --env-file deploy/.env -f deploy/compose.vps.yml \
+  up -d --no-deps --force-recreate caddy
+```
+
+It does not restart MySQL, the API or the migration service, and it will not
+attempt recovery when the API is unhealthy. Inspect its timer and most recent
+run with:
+
+```bash
+sudo systemctl status technopro-caddy-watchdog.timer
+sudo journalctl -u technopro-caddy-watchdog.service
+```
+
+Keep an independent external monitor on `https://YOUR_DOMAIN/api/v1/health`.
+The watchdog is a local repair mechanism; an external monitor confirms that
+Cloudflare and the public route remain reachable.
+
 ## 5. Create the first administrator
 
 The installer creates the first administrator without writing its password to `.env`. The command below is retained for recovery or a fully manual deployment:

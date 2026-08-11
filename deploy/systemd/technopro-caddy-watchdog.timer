@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the TechnoPro guarded Caddy watchdog every two minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+RandomizedDelaySec=15s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

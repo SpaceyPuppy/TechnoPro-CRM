@@ -207,13 +207,15 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           root="release/technopro-server-${version}"
-          mkdir -p "$root/deploy/scripts" "$root/docs"
+          mkdir -p "$root/deploy/scripts" "$root/deploy/systemd" "$root/docs"
           cp deploy/compose.vps.yml "$root/deploy/"
           cp deploy/Caddyfile "$root/deploy/"
           cp deploy/.env.example "$root/deploy/"
           sed -i "s/^TECHNOPRO_VERSION=.*/TECHNOPRO_VERSION=${version}/" "$root/deploy/.env.example"
           cp deploy/RELEASE-README.md "$root/README.md"
-          cp deploy/scripts/backup.sh deploy/scripts/restore.sh "$root/deploy/scripts/"
+          cp deploy/scripts/backup.sh deploy/scripts/restore.sh deploy/scripts/caddy-watchdog.sh "$root/deploy/scripts/"
+          cp deploy/systemd/technopro-caddy-watchdog.service \
+            deploy/systemd/technopro-caddy-watchdog.timer "$root/deploy/systemd/"
           cp docs/vps-docker-deployment.md "$root/docs/"
           tar -C release -czf "release/technopro-server-${version}.tar.gz" "technopro-server-${version}"
           sed "s/__TECHNOPRO_VERSION__/${version}/g" deploy/install.sh > release/install-technopro.sh
@@ -249,6 +251,7 @@ jobs:
             - Install `technopro-*-android.apk` on the Android phone.
             - Download `install-technopro.sh`, inspect it, then run it with `sudo` on the VPS.
             - Re-run the installer from a newer release to update the server.
+            - The installer enables the guarded Caddy watchdog. It checks the API first and only recreates Caddy if its Docker network attachment or public port bindings are missing. Check it with `sudo systemctl status technopro-caddy-watchdog.timer` and `sudo journalctl -u technopro-caddy-watchdog.service`.
             - API image: `${{ needs.containers.outputs.api-image }}:${{ needs.containers.outputs.version }}`.
             - Migration image: `${{ needs.containers.outputs.migration-image }}:${{ needs.containers.outputs.version }}`.
             - Download and extract `technopro-*-windows.zip`, then run `Release/technopro_crm.exe` on a Windows machine.

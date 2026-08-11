@@ -338,7 +338,7 @@ tar -xzf "$temporary/$archive" -C "$temporary"
 bundle="$temporary/technopro-server-${version}"
 [[ -f "$bundle/deploy/compose.vps.yml" ]] || die "release deployment bundle is incomplete"
 
-install -d -m 0750 "$APP_DIR/deploy/scripts" "$APP_DIR/docs"
+install -d -m 0750 "$APP_DIR/deploy/scripts" "$APP_DIR/deploy/systemd" "$APP_DIR/docs"
 install -m 0644 "$bundle/deploy/compose.vps.yml" "$APP_DIR/deploy/compose.vps.yml"
 install -m 0644 "$bundle/deploy/Caddyfile" "$APP_DIR/deploy/Caddyfile"
 install -m 0644 "$bundle/deploy/.env.example" "$APP_DIR/deploy/.env.example"
@@ -346,6 +346,11 @@ install -m 0644 "$bundle/README.md" "$APP_DIR/README.md"
 install -m 0644 "$bundle/docs/vps-docker-deployment.md" "$APP_DIR/docs/vps-docker-deployment.md"
 install -m 0755 "$bundle/deploy/scripts/backup.sh" "$APP_DIR/deploy/scripts/backup.sh"
 install -m 0755 "$bundle/deploy/scripts/restore.sh" "$APP_DIR/deploy/scripts/restore.sh"
+install -m 0755 "$bundle/deploy/scripts/caddy-watchdog.sh" "$APP_DIR/deploy/scripts/caddy-watchdog.sh"
+install -m 0644 "$bundle/deploy/systemd/technopro-caddy-watchdog.service" \
+  /etc/systemd/system/technopro-caddy-watchdog.service
+install -m 0644 "$bundle/deploy/systemd/technopro-caddy-watchdog.timer" \
+  /etc/systemd/system/technopro-caddy-watchdog.timer
 install -d -m 0700 "$backup_path"
 
 if $existing_install && [[ -n "$current_version" && "$current_version" != "$version" ]]; then
@@ -392,6 +397,9 @@ compose=(docker compose --env-file "$ENV_FILE" -f "$APP_DIR/deploy/compose.vps.y
 
 "${compose[@]}" pull
 "${compose[@]}" up -d
+
+systemctl daemon-reload
+systemctl enable --now technopro-caddy-watchdog.timer
 
 if $configure_admin; then
   echo "Creating or confirming the initial administrator..."

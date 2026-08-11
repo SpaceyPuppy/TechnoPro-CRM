@@ -28,3 +28,20 @@ This archive is retained as the version-matched deployment kit used by the insta
 8. Open `https://YOUR_DOMAIN/api/v1/health`, then configure the same server URL on the Android login screen.
 
 Read `docs/vps-docker-deployment.md` before putting real data into the system. It covers firewalling, administrator creation, nightly backups, restore testing, updates and the complete go-live checklist.
+
+## Guarded Caddy watchdog
+
+The installer enables `technopro-caddy-watchdog.timer`. Every two minutes it
+checks that the API is healthy, Caddy is attached to the Docker proxy network,
+and Caddy publishes TCP ports 80 and 443. It also performs a VPS-local HTTPS
+health check.
+
+When Caddy alone has lost its Docker network attachment or published port
+bindings, the watchdog rate-limits and performs a Caddy-only Compose recreate.
+It never restarts MySQL, the API or the migration service, and it does not
+attempt to remediate application/database health failures.
+
+```bash
+sudo systemctl status technopro-caddy-watchdog.timer
+sudo journalctl -u technopro-caddy-watchdog.service
+```
