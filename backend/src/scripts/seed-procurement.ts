@@ -2,6 +2,7 @@
 import { getDb, closeDb, schema } from "../db/index.js";
 import { generateId } from "../utils/id.js";
 import { eq } from "drizzle-orm";
+import { applyStockMovement } from "../services/stock.service.js";
 
 async function seedProcurement() {
   console.log("Seeding Procurement data...");
@@ -9,6 +10,7 @@ async function seedProcurement() {
   const suffix = Math.floor(Math.random() * 1000);
 
   // 0. Clear existing PO data
+  await db.delete(schema.purchaseOrderReceiptLines);
   await db.delete(schema.poItems);
   await db.delete(schema.purchaseOrders);
   console.log("  Cleared existing PO data.");
@@ -42,22 +44,33 @@ async function seedProcurement() {
         id: item1Id,
         sku: "SCRN-IP13-ORG",
         name: "iPhone 13 Screen (Original)",
-        stockQty: 5,
-        cost: "85.00",
+        stockQty: 0,
+        cost: "0.00",
         price: "249.00",
       },
       {
         id: item2Id,
         sku: "BATT-IP12-PREM",
         name: "iPhone 12 Battery (Premium)",
-        stockQty: 10,
-        cost: "15.50",
+        stockQty: 0,
+        cost: "0.00",
         price: "89.00",
       }
+    ]);
+    await Promise.all([
+      applyStockMovement({ inventoryItemId: item1Id, quantityDelta: 5, unitCost: "85.00", sourceType: "opening_balance", sourceReference: `seed-opening:${item1Id}`, reasonCode: "development_seed" }),
+      applyStockMovement({ inventoryItemId: item2Id, quantityDelta: 10, unitCost: "15.50", sourceType: "opening_balance", sourceReference: `seed-opening:${item2Id}`, reasonCode: "development_seed" }),
     ]);
     items = await db.select().from(schema.inventoryItems).limit(2);
     console.log("  Created 2 Test Inventory Items");
   }
+
+  // Supplier mappings make the native PO form exercise supplier SKUs, quotes
+  // and ordering constraints instead of falling back to anonymous lines.
+  await db.insert(schema.supplierItems).values([
+    { id: generateId(), supplierId, inventoryItemId: items[0].id, supplierSku: "GTP-SCRN-IP13-ORG", packSize: 1, minimumOrderQty: 1, quotedUnitCost: items[0].cost },
+    { id: generateId(), supplierId, inventoryItemId: items[1].id, supplierSku: "GTP-BATT-IP12-PREM", packSize: 1, minimumOrderQty: 1, quotedUnitCost: items[1].cost },
+  ]).onDuplicateKeyUpdate({ set: { active: 1 } });
 
   // 3. Create a DRAFT Purchase Order
   const poDraftId = generateId();
