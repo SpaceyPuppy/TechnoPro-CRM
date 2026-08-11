@@ -12,11 +12,9 @@ class DeviceModelsScreen extends ConsumerWidget {
     final modelsAsync = ref.watch(deviceModelsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Device Models')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(context, ref),
-        tooltip: 'Add model',
-        child: const Icon(Icons.add),
+      appBar: AppBar(
+        title: const Text('Device Models'),
+        actions: [IconButton(onPressed: () => _showAddDialog(context, ref), tooltip: 'Add model', icon: const Icon(Icons.add))],
       ),
       body: modelsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

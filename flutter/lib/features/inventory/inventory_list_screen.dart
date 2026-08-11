@@ -32,6 +32,7 @@ class InventoryListScreen extends ConsumerWidget {
             onPressed: () => ref.invalidate(inventoryListProvider),
           ),
           if (canManage) IconButton(icon: const Icon(Icons.upload_file), tooltip: 'Import CSV', onPressed: () => context.go('/inventory/import')),
+          if (canManage) IconButton(icon: const Icon(Icons.add), tooltip: 'New inventory item', onPressed: () => context.go('/inventory/new')),
         ],
       ),
       body: LayoutBuilder(
@@ -78,12 +79,6 @@ class InventoryListScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: canManage
-          ? FloatingActionButton(
-              onPressed: () => context.go('/inventory/new'),
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 }

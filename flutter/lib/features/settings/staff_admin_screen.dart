@@ -59,11 +59,9 @@ class StaffAdminScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final staff = ref.watch(staffListProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Staff Administration')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openEditor(context, ref),
-        icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Add Staff'),
+      appBar: AppBar(
+        title: const Text('Staff Administration'),
+        actions: [IconButton(onPressed: () => _openEditor(context, ref), tooltip: 'Add staff', icon: const Icon(Icons.person_add_outlined))],
       ),
       body: staff.when(
         loading: () => const Center(child: CircularProgressIndicator()),

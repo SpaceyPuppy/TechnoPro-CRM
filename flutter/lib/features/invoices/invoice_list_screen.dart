@@ -43,6 +43,11 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.read(invoiceListProvider.notifier).refresh(),
           ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'New invoice',
+            onPressed: () => context.go('/invoices/new'),
+          ),
         ],
       ),
       body: LayoutBuilder(
@@ -88,10 +93,6 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/invoices/new'),
-        child: const Icon(Icons.add),
       ),
     );
   }
